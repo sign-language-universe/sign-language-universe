@@ -1619,6 +1619,35 @@ html, body {
   text-align: center;
 }
 
+.scoring-web-holistic-note,
+.scoring-auto-note {
+  min-height: 18px;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.scoring-web-holistic-note.checking {
+  color: var(--accent-yellow);
+}
+
+.scoring-web-holistic-note.ready {
+  color: var(--accent-green);
+}
+
+.scoring-web-holistic-note.offline {
+  color: var(--accent-pink);
+}
+
+.scoring-auto-note {
+  color: var(--accent-cyan);
+}
+
+.scoring-auto-note[hidden] {
+  display: none;
+}
+
 .scoring-progress-wrap {
   height: 6px;
   overflow: hidden;

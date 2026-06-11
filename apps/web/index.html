@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>手语小宇宙 — Sign Language Universe</title>
+  <link rel="dns-prefetch" href="//cdn.jsdelivr.net">
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -311,7 +313,7 @@
                 </div>
                 <div class="hint-item">
                   <span class="hint-dot"></span>
-                  <span>完成后点「打分」获取成绩</span>
+                  <span>录制完成后自动进入评分</span>
                 </div>
                 <div class="hint-item reward-hint-item">
                   <span class="hint-dot reward-dot"></span>
@@ -348,6 +350,7 @@
                 </label>
               </div>
               <div class="scoring-capture-hint" id="scoring-capture-hint">采样参数待确认</div>
+              <div class="scoring-web-holistic-note" id="scoring-web-holistic-note">Web Holistic 准备中</div>
               <div class="scoring-progress-wrap" aria-hidden="true">
                 <div class="scoring-progress-bar" id="scoring-progress-bar"></div>
               </div>
@@ -359,7 +362,7 @@
                 </button>
                 <button class="challenge-ctrl-btn score-btn" id="btn-score" onclick="scoreChallenge()" disabled>
                   <span class="ctrl-icon">⭐</span>
-                  <span>打分</span>
+                  <span>自动评分</span>
                 </button>
               </div>
               <div class="scoring-service-row" id="scoring-service-row">
@@ -368,6 +371,7 @@
                 <button class="scoring-api-btn" type="button" onclick="ScoringBridge.saveApiBaseFromInput()">连接</button>
               </div>
               <div class="scoring-worker-note" id="scoring-worker-note">评分服务待连接</div>
+              <div class="scoring-auto-note" id="scoring-auto-note" hidden>等待评分：0.0s</div>
               <!-- 计时器 -->
               <div class="challenge-timer" id="challenge-timer">录制时长：<span id="timer-display">00:00</span></div>
             </div>
