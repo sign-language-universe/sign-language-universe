@@ -1429,6 +1429,35 @@ html, body {
   font-weight: 700;
 }
 
+.scoring-countdown-overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  z-index: 8;
+  background: rgba(2,8,23,0.48);
+  color: var(--text-primary);
+  pointer-events: none;
+}
+
+.scoring-countdown-overlay.hidden {
+  display: none;
+}
+
+.scoring-countdown-overlay span {
+  width: 104px;
+  height: 104px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 3px solid rgba(255,255,255,0.78);
+  background: rgba(10,16,35,0.72);
+  font-size: 46px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  box-shadow: 0 0 28px rgba(77,166,255,0.3);
+}
+
 /* 四角扫描框装饰 */
 .challenge-camera-frame::before {
   content: '';
@@ -1518,6 +1547,66 @@ html, body {
 .challenge-ctrl-btn:disabled {
   opacity: 0.3;
   cursor: not-allowed;
+}
+
+.scoring-capture-settings {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.scoring-capture-settings label {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.scoring-capture-settings label span {
+  white-space: nowrap;
+}
+
+.scoring-capture-settings input {
+  width: 100%;
+  min-width: 0;
+  height: 34px;
+  padding: 0 9px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.06);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 13px;
+}
+
+.scoring-capture-settings input:focus {
+  outline: none;
+  border-color: rgba(77,232,160,0.55);
+  box-shadow: 0 0 0 3px rgba(77,232,160,0.1);
+}
+
+.scoring-capture-hint {
+  min-height: 18px;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.scoring-progress-wrap {
+  height: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.08);
+}
+
+.scoring-progress-bar {
+  width: 0%;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--accent-green), var(--accent-blue), var(--accent-yellow));
+  transition: width 0.18s linear, opacity 0.2s ease;
 }
 
 .scoring-service-row {
@@ -1636,6 +1725,50 @@ html, body {
   margin-bottom: 20px; line-height: 1.6;
 }
 
+.scoring-result-details {
+  width: min(100%, 520px);
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0 auto 18px;
+  padding: 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255,255,255,0.09);
+  background: rgba(255,255,255,0.045);
+  text-align: left;
+}
+
+.scoring-result-details[hidden] {
+  display: none;
+}
+
+.scoring-result-details div {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.scoring-result-details span {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.scoring-result-details strong {
+  min-width: 0;
+  color: var(--text-primary);
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.scoring-result-details p {
+  grid-column: 1 / -1;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
 .result-actions {
   display: flex; gap: 10px; justify-content: center;
   flex-wrap: wrap;
@@ -1660,6 +1793,12 @@ html, body {
   }
   .challenge-layout {
     flex-direction: column;
+  }
+  .scoring-capture-settings {
+    grid-template-columns: 1fr;
+  }
+  .scoring-result-details {
+    grid-template-columns: 1fr;
   }
   .challenge-left {
     max-height: 340px;

@@ -24,6 +24,7 @@ http://127.0.0.1:5173
 - 原生 HTML/CSS/JS。
 - 包含宇宙主题首页、星系星球选择、词汇学习卡片、检索、测评、个人空间站。
 - 挑战模式已经接入 `js/scoring.js`：浏览器采集摄像头帧，调用 `services/scoring-api` 的 `/api/scoring/score`。
+- 挑战模式包含旧打分 demo 的关键交互：3 秒倒计时、采集时长、上传 FPS、帧宽设置、采样帧数提示、进度条、评分模式/帧数/worker 耗时/样本 ID/建议提示。
 - 没有内置 demo 视频；目标词汇示范使用现有 Canvas 动画。
 - 评分 API 未连接时，页面会返回明确标注的本地预览评分，避免挑战流程中断。
 - `assets/3d/*.glb` 当前直接进入仓库；后续如模型继续增大，应迁移到 Git LFS、Release artifacts 或 CDN。
