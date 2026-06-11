@@ -28,7 +28,7 @@ Main Repo:  sign-language-universe
 
 ## 尚未完成
 
-- GitHub Organization 需要在网页上创建。
+- GitHub Organization 需要在网页上创建。【DONE】
 - 当前环境没有 `gh` 命令，尚未创建远端仓库和 push。
 - 前端尚未正式接入评分 API。
 - 旧评分后端仍需拆分和配置化。
