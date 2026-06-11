@@ -30,6 +30,12 @@ GitHub Pages 部署说明见：
 docs/operations/github_pages_frontend_deploy_manual_20260611.md
 ```
 
+Public 仓库发布与 Apache-2.0 授权说明见：
+
+```text
+docs/operations/public_repository_release_manual_20260611.md
+```
+
 ## 启动评分 API 骨架
 
 ```bash
@@ -52,3 +58,9 @@ http://127.0.0.1:5080/api/scoring/health
 - 主分支 `main` 受保护，不直接 push。
 - 大型生成物、真实用户视频、Holistic cache、运行日志不进入 Git。
 - 评分 API 变更必须同步更新 `packages/shared-contracts/openapi/scoring-api.yaml`。
+
+## License
+
+Unless otherwise noted, source code and project documentation are licensed under the Apache License, Version 2.0. See `LICENSE` and `NOTICE`.
+
+Media, 3D models, generated assets, datasets, and third-party content may require separate provenance and license review before public redistribution.

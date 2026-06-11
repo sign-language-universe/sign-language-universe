@@ -56,6 +56,15 @@ Plan: GitHub Free
 
 则 GitHub Pages 可能无法真正发布。GitHub 页面可能会提示需要升级。
 
+如果当前仓库已经改为：
+
+```text
+Repository: public
+Plan: GitHub Free
+```
+
+则可以继续使用 GitHub Pages，不需要为了 Pages 单独升级 GitHub Team。
+
 可选方案：
 
 ```text
@@ -63,7 +72,7 @@ Plan: GitHub Free
   推荐。仓库继续 private，GitHub Pages 可用。
 
 方案 B：把仓库改成 public
-  不推荐，除非确认代码、素材、算法和资料都可以公开。
+  可用。前提是确认代码、素材、算法和资料都可以公开。
 
 方案 C：继续使用服务器或 SSH 端口转发本地预览
   适合还没有升级 GitHub Team 的阶段。
