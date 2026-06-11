@@ -60,9 +60,16 @@
     browserHolistic: null,
     browserHolisticLoading: null,
     browserHolisticPending: null,
+    browserHolisticPreloadPromise: null,
+    browserHolisticWarmupPromise: null,
     browserHolisticUnavailable: false,
     browserHolisticActive: false,
-    browserHolisticStats: null
+    browserHolisticReady: false,
+    browserHolisticPreloadMs: null,
+    browserHolisticWarmupMs: null,
+    browserHolisticStats: null,
+    scoringWaitTimer: null,
+    scoringStartedAt: 0
   };
 
   function show(message) {
@@ -165,9 +172,73 @@
     return Number(value).toFixed(digits);
   }
 
+  function formatSeconds(ms) {
+    return `${(Math.max(0, Number(ms) || 0) / 1000).toFixed(1)}s`;
+  }
+
   function finiteNumber(value, fallback = 0) {
     const number = Number(value);
     return Number.isFinite(number) ? number : fallback;
+  }
+
+  function setWebHolisticStatus(kind, text) {
+    const note = document.getElementById('scoring-web-holistic-note');
+    if (!note) return;
+    note.className = `scoring-web-holistic-note ${kind}`;
+    note.textContent = text;
+  }
+
+  function webHolisticReadyText(extraText = '') {
+    const preloadText = state.browserHolisticPreloadMs !== null
+      ? `加载 ${formatSeconds(state.browserHolisticPreloadMs)}`
+      : '已加载';
+    const warmupText = state.browserHolisticWarmupMs !== null
+      ? `预热 ${formatSeconds(state.browserHolisticWarmupMs)}`
+      : '已预热';
+    return `Web Holistic 已就绪并常驻 · ${preloadText} · ${warmupText}${extraText}`;
+  }
+
+  function syncWebHolisticStatus() {
+    if (state.browserHolisticReady && state.browserHolistic) {
+      setWebHolisticStatus('ready', webHolisticReadyText());
+    } else if (state.browserHolisticPreloadPromise || state.browserHolisticLoading || state.browserHolisticWarmupPromise) {
+      setWebHolisticStatus('checking', 'Web Holistic 正在加载并预热');
+    } else if (state.browserHolisticUnavailable) {
+      setWebHolisticStatus('offline', 'Web Holistic 不可用，将回退上传压缩帧');
+    } else {
+      setWebHolisticStatus('checking', 'Web Holistic 准备中');
+    }
+  }
+
+  function setAutoScoreStatus(text, visible = true) {
+    const note = document.getElementById('scoring-auto-note');
+    if (!note) return;
+    note.hidden = !visible;
+    if (text) note.textContent = text;
+  }
+
+  function updateScoringWaitStatus() {
+    const elapsedMs = state.scoringStartedAt ? performance.now() - state.scoringStartedAt : 0;
+    setAutoScoreStatus(`正在等待评分：${formatSeconds(elapsedMs)}`, true);
+  }
+
+  function stopScoringWaitStatus(text = '', { hide = false } = {}) {
+    if (state.scoringWaitTimer) {
+      window.clearInterval(state.scoringWaitTimer);
+      state.scoringWaitTimer = null;
+    }
+    if (hide) {
+      setAutoScoreStatus('', false);
+    } else if (text) {
+      setAutoScoreStatus(text, true);
+    }
+  }
+
+  function startScoringWaitStatus() {
+    stopScoringWaitStatus();
+    state.scoringStartedAt = performance.now();
+    updateScoringWaitStatus();
+    state.scoringWaitTimer = window.setInterval(updateScoringWaitStatus, 100);
   }
 
   function withTimeout(promise, timeoutMs, message) {
@@ -223,6 +294,7 @@
           ...(state.browserHolisticStats || {}),
           sdk_load_ms: Math.round(performance.now() - startedAt)
         };
+        state.browserHolisticPreloadMs = state.browserHolisticStats.sdk_load_ms;
         return holistic;
       })().catch(error => {
         state.browserHolisticUnavailable = true;
@@ -264,6 +336,87 @@
         }
       });
     });
+  }
+
+  async function warmupBrowserHolistic() {
+    if (state.browserHolisticReady && state.browserHolistic) return state.browserHolistic;
+    if (state.browserHolisticWarmupPromise) return state.browserHolisticWarmupPromise;
+    state.browserHolisticWarmupPromise = (async () => {
+      const holistic = await ensureBrowserHolistic();
+      if (!holistic) return null;
+      const startedAt = performance.now();
+      const canvas = document.createElement('canvas');
+      canvas.width = 96;
+      canvas.height = 96;
+      const context = canvas.getContext('2d');
+      context.fillStyle = '#111';
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      await sendBrowserHolisticImage(canvas);
+      canvas.width = 0;
+      canvas.height = 0;
+      state.browserHolisticReady = true;
+      state.browserHolisticWarmupMs = Math.round(performance.now() - startedAt);
+      state.browserHolisticStats = {
+        ...(state.browserHolisticStats || {}),
+        enabled: true,
+        route: 'preloaded_web_holistic',
+        warmup_ms: state.browserHolisticWarmupMs
+      };
+      setWebHolisticStatus('ready', webHolisticReadyText());
+      return holistic;
+    })().catch(error => {
+      state.browserHolisticReady = false;
+      state.browserHolisticUnavailable = true;
+      state.browserHolisticStats = {
+        ...(state.browserHolisticStats || {}),
+        enabled: false,
+        route: 'frame_slices',
+        preload_error: error.message
+      };
+      setWebHolisticStatus('offline', `Web Holistic 加载失败：${error.message}`);
+      return null;
+    }).finally(() => {
+      state.browserHolisticWarmupPromise = null;
+    });
+    return state.browserHolisticWarmupPromise;
+  }
+
+  async function preloadBrowserHolistic() {
+    if (state.browserHolisticReady && state.browserHolistic) {
+      setWebHolisticStatus('ready', webHolisticReadyText());
+      return state.browserHolistic;
+    }
+    if (state.browserHolisticUnavailable) {
+      setWebHolisticStatus('offline', 'Web Holistic 不可用，将回退上传压缩帧');
+      return null;
+    }
+    if (state.browserHolisticPreloadPromise) return state.browserHolisticPreloadPromise;
+    state.browserHolisticPreloadPromise = (async () => {
+      setWebHolisticStatus('checking', 'Web Holistic 正在加载并预热');
+      const startedAt = performance.now();
+      const holistic = await withTimeout(warmupBrowserHolistic(), BROWSER_HOLISTIC_TIMEOUT_MS, '浏览器 Holistic 预加载超时');
+      if (holistic) {
+        if (state.browserHolisticPreloadMs === null) {
+          state.browserHolisticPreloadMs = Math.round(performance.now() - startedAt);
+        }
+        setWebHolisticStatus('ready', webHolisticReadyText());
+      }
+      return holistic;
+    })().catch(error => {
+      state.browserHolisticReady = false;
+      state.browserHolisticUnavailable = true;
+      state.browserHolisticStats = {
+        ...(state.browserHolisticStats || {}),
+        enabled: false,
+        route: 'frame_slices',
+        preload_error: error.message
+      };
+      setWebHolisticStatus('offline', `Web Holistic 加载失败：${error.message}`);
+      return null;
+    }).finally(() => {
+      state.browserHolisticPreloadPromise = null;
+    });
+    return state.browserHolisticPreloadPromise;
   }
 
   function serializeLandmarkPoint(point) {
@@ -331,8 +484,10 @@
     if (!video || video.readyState < 2) return;
     try {
       const startedAt = performance.now();
-      setServiceStatus('checking', '正在加载浏览器 Holistic');
-      await withTimeout(ensureBrowserHolistic(), BROWSER_HOLISTIC_TIMEOUT_MS, '浏览器 Holistic 加载超时');
+      setWebHolisticStatus('checking', 'Web Holistic 已加载，正在用摄像头画面预热');
+      setServiceStatus('checking', '正在准备浏览器 Holistic');
+      const holistic = await preloadBrowserHolistic();
+      if (!holistic) throw new Error('浏览器 Holistic 未就绪');
 
       const warmCanvas = document.createElement('canvas');
       const sourceWidth = video.videoWidth || 640;
@@ -352,13 +507,16 @@
         enabled: true,
         route: 'web_holistic_landmarks',
         prepare_ms: Math.round(performance.now() - startedAt),
-        warmup_ms: Math.round(performance.now() - warmStartedAt)
+        preload_ms: state.browserHolisticPreloadMs,
+        blank_warmup_ms: state.browserHolisticWarmupMs,
+        camera_warmup_ms: Math.round(performance.now() - warmStartedAt)
       };
       plan.targetFrames = Math.max(plan.targetFrames, Math.min(MAX_FRAMES, BROWSER_HOLISTIC_TARGET_FRAMES));
       plan.uploadFps = Math.min(12, Math.max(plan.uploadFps, Math.ceil(plan.targetFrames / plan.durationSec)));
       plan.candidateFps = plan.targetFrames / plan.durationSec;
       plan.candidateFrames = plan.targetFrames;
       plan.captureTransport = 'web_holistic_landmarks';
+      setWebHolisticStatus('ready', webHolisticReadyText(` · 采集 ${plan.targetFrames} 帧`));
       setServiceStatus('ready', `浏览器 Holistic 已就绪 · 将上传 ${plan.targetFrames} 帧关键点`);
     } catch (error) {
       state.browserHolisticActive = false;
@@ -368,6 +526,7 @@
         route: 'frame_slices',
         error: error.message
       };
+      setWebHolisticStatus('offline', 'Web Holistic 不可用，将上传压缩帧');
       setServiceStatus('online', '浏览器 Holistic 不可用，将上传压缩帧');
     }
   }
@@ -563,6 +722,7 @@
   function stopAll() {
     state.captureRunId++;
     stopUiTimer();
+    stopScoringWaitStatus('', { hide: true });
     stopCameraStream();
     state.frames = [];
     state.landmarkRows = [];
@@ -578,8 +738,11 @@
     stopAll();
     updateApiInput();
     updateCaptureHint();
+    syncWebHolisticStatus();
+    setAutoScoreStatus('', false);
     renderScoreDetails(null);
     checkHealth();
+    preloadBrowserHolistic();
   }
 
   function updateTimerUi() {
@@ -827,6 +990,8 @@
     state.frames = [];
     state.landmarkRows = [];
     state.browserHolisticActive = false;
+    stopScoringWaitStatus('', { hide: true });
+    renderScoreDetails(null);
     AppState.isRecording = false;
     state.capturePlan = buildCapturePlan({ write: true });
     updateCaptureHint(state.capturePlan);
@@ -866,12 +1031,20 @@
     const recIndicator = document.getElementById('recording-indicator');
     if (recIndicator) recIndicator.classList.remove('active');
     if (startBtn) startBtn.classList.remove('recording');
-    if (scoreBtn) scoreBtn.disabled = Math.max(state.landmarkRows.length, state.frames.length) < 3;
+    if (scoreBtn) scoreBtn.disabled = true;
     renderCaptureComplete(selected.length, state.capturePlan);
     const readyCount = Math.max(state.landmarkRows.length, state.frames.length);
     const routeText = state.landmarkRows.length >= 3 ? '关键点帧' : '上传帧';
-    setServiceStatus(readyCount >= 3 ? 'online' : 'offline', readyCount >= 3 ? `采集完成：候选 ${state.capturePlan.candidateFrames} 帧，${routeText} ${readyCount} 帧` : '采集帧不足，请重采');
-    show(readyCount >= 3 ? '采集完成，可以点击「打分」' : '采集帧不足，请重采');
+    if (readyCount < 3) {
+      setServiceStatus('offline', '采集帧不足，请重采');
+      show('采集帧不足，请重采');
+      return;
+    }
+    setServiceStatus('checking', `采集完成：候选 ${state.capturePlan.candidateFrames} 帧，${routeText} ${readyCount} 帧，正在自动评分`);
+    setAutoScoreStatus('采集完成，正在自动评分：0.0s', true);
+    show('采集完成，正在自动评分');
+    await new Promise(resolve => setTimeout(resolve, 160));
+    if (runId === state.captureRunId) await scoreChallengeWithApi();
   }
 
   function availableSampleCount() {
@@ -1057,11 +1230,12 @@
     }
     const scoreBtn = document.getElementById('btn-score');
     if (scoreBtn) scoreBtn.disabled = true;
+    startScoringWaitStatus();
 
     const cameraInner = document.getElementById('challenge-camera-inner');
     if (cameraInner) {
       cameraInner.classList.remove('is-live');
-      cameraInner.innerHTML = '<p style="color:var(--accent-cyan);">评估中...</p><small>正在分析采集帧</small>';
+      cameraInner.innerHTML = '<p style="color:var(--accent-cyan);">正在评分...</p><small>等待服务器返回评分结果</small>';
     }
 
     if (availableSampleCount() < 3) {
@@ -1074,6 +1248,8 @@
   }
 
   function finishChallengeScore(result) {
+    const elapsedMs = state.scoringStartedAt ? performance.now() - state.scoringStartedAt : 0;
+    stopScoringWaitStatus(`评分完成：${formatSeconds(elapsedMs)}`);
     state.scoringBusy = false;
     const score = Number.isFinite(Number(result.score)) ? Math.round(Number(result.score)) : 0;
     AppState.challengeScore = score;
@@ -1098,6 +1274,7 @@
     stopAll,
     checkHealth,
     saveApiBaseFromInput,
+    preloadBrowserHolistic,
     updateCaptureHint
   };
 
@@ -1108,6 +1285,13 @@
       if (input) input.addEventListener('input', () => updateCaptureHint());
     });
     updateCaptureHint();
+    syncWebHolisticStatus();
+    preloadBrowserHolistic();
     checkHealth();
+  });
+
+  window.addEventListener('pageshow', () => {
+    syncWebHolisticStatus();
+    preloadBrowserHolistic();
   });
 })();
