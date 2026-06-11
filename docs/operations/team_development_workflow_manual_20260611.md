@@ -6,7 +6,28 @@
 
 ```text
 GitHub: https://github.com/sign-language-universe/sign-language-universe
-本地:   /data/WYC/sign-language-universe
+本地:   <repo-dir>
+```
+
+本文中：
+
+```text
+<repo-dir>
+```
+
+表示每个成员自己电脑或服务器上的本地仓库根目录。示例：
+
+```text
+~/projects/sign-language-universe
+D:\workspace\sign-language-universe
+/workspace/sign-language-universe
+```
+
+首次获取仓库：
+
+```bash
+git clone git@github.com:sign-language-universe/sign-language-universe.git <repo-dir>
+cd <repo-dir>
 ```
 
 ## 1. 总体原则
@@ -118,7 +139,7 @@ test
 进入仓库：
 
 ```bash
-cd /data/WYC/sign-language-universe
+cd <repo-dir>
 ```
 
 同步远端：
@@ -179,13 +200,13 @@ gh pr view --web
 在 VS Code 中打开仓库根目录：
 
 ```text
-/data/WYC/sign-language-universe
+<repo-dir>
 ```
 
-不要只打开旧仓库：
+不要只打开其他旧项目仓库，例如：
 
 ```text
-/data/WYC/signLanguage
+<old-project-dir>
 ```
 
 也不要只打开子目录：
@@ -210,7 +231,7 @@ gh pr list
 应该看到：
 
 ```text
-/data/WYC/sign-language-universe
+<repo-dir>
 git@github.com:sign-language-universe/sign-language-universe.git
 ```
 
@@ -453,7 +474,7 @@ gh pr list
 并确认 VS Code 打开的是：
 
 ```text
-/data/WYC/sign-language-universe
+<repo-dir>
 ```
 
 ## 9. 常用本地验证命令
@@ -469,7 +490,7 @@ test -f apps/web/index.html
 前端预览：
 
 ```bash
-cd /data/WYC/sign-language-universe/apps/web
+cd <repo-dir>/apps/web
 python -m http.server 5173 --bind 127.0.0.1
 ```
 
@@ -482,7 +503,7 @@ http://127.0.0.1:5173/
 评分 API 骨架：
 
 ```bash
-cd /data/WYC/sign-language-universe
+cd <repo-dir>
 python -m venv .venv
 source .venv/bin/activate
 pip install -r services/scoring-api/requirements.txt
@@ -635,7 +656,7 @@ gh api repos/sign-language-universe/sign-language-universe/pages
 每日开始：
 
 ```bash
-cd /data/WYC/sign-language-universe
+cd <repo-dir>
 git fetch --all --prune
 git switch main
 git pull --ff-only
