@@ -179,7 +179,7 @@ https://github.com/sign-language-universe/sign-language-universe
 https://github.com/orgs/sign-language-universe/teams
 ```
 
-创建以下团队：
+点击 `New team`，创建以下团队：
 
 ```text
 maintainers
@@ -188,6 +188,17 @@ scoring
 content
 qa
 ```
+
+每个团队建议这样填写：
+
+```text
+Team name: maintainers / frontend / scoring / content / qa
+Description: 简短写明职责
+Parent team: 暂不设置
+Visibility: Visible
+```
+
+这里建议选择 `Visible`，不要选 `Secret`。原因是当前仓库的 `.github/CODEOWNERS` 使用了 `@sign-language-universe/<team>` 这种团队 owner 写法；GitHub 要求作为 CODEOWNERS 的 team 必须可见，并且必须对仓库有写权限。
 
 建议职责：
 
@@ -202,6 +213,8 @@ qa
 - `qa`
   - 测试、体验反馈、验收。
 
+建议先把你自己加入 `maintainers`，并保留 Organization owner 权限。其他成员原则上不要直接给 owner 或 admin，先通过 team 管理权限。
+
 ## 5. 邀请成员
 
 进入：
@@ -212,7 +225,210 @@ https://github.com/orgs/sign-language-universe/people
 
 点击 `Invite member`。
 
-收集每个成员的 GitHub 用户名后，按角色加入团队。
+收集每个成员的 GitHub 用户名后，按角色加入团队。建议先让每个人发给你以下信息：
+
+```text
+姓名:
+GitHub username:
+主要负责模块: frontend / scoring / content / qa / maintainers
+是否需要直接改代码: yes / no
+是否需要参与 review: yes / no
+```
+
+### 5.1 推荐加入顺序
+
+推荐按这个顺序操作：
+
+```text
+1. 先邀请成员加入 Organization
+2. 成员接受邀请
+3. 把成员加入对应 team
+4. 给 team 配置仓库权限
+5. 用测试 PR 验证 review 和 CODEOWNERS 是否生效
+```
+
+不要一开始就把成员作为个人 collaborator 单独加到仓库。团队协作应优先使用 Organization team 管理权限，这样后续换人、转岗、移除权限都更清晰。
+
+### 5.2 邀请成员加入 Organization
+
+操作入口：
+
+```text
+Organization -> People -> Invite member
+```
+
+也可以直接打开：
+
+```text
+https://github.com/orgs/sign-language-universe/people
+```
+
+操作步骤：
+
+1. 点击 `Invite member`。
+2. 输入成员的 GitHub username 或邮箱。
+3. 选择普通 `Member`，不要选择 `Owner`。
+4. 如果页面允许直接选择 team，可以同时勾选对应 team。
+5. 发送邀请。
+6. 等成员在邮箱或 GitHub 通知中接受邀请。
+
+角色建议：
+
+```text
+普通开发/内容/测试成员 -> Member
+项目负责人/仓库治理负责人 -> Owner，人数控制在 1-2 人
+```
+
+`Owner` 拥有 Organization 级别管理权限，包括成员管理、仓库删除、权限变更等。除非确实需要共同管理整个组织，否则不要给 `Owner`。
+
+### 5.3 成员接受邀请后加入 team
+
+如果邀请时没有直接勾选 team，成员接受邀请后再手动加入。
+
+操作入口：
+
+```text
+Organization -> Teams -> 选择 team -> Members -> Add a member
+```
+
+也可以直接打开：
+
+```text
+https://github.com/orgs/sign-language-universe/teams/frontend
+https://github.com/orgs/sign-language-universe/teams/scoring
+https://github.com/orgs/sign-language-universe/teams/content
+https://github.com/orgs/sign-language-universe/teams/qa
+https://github.com/orgs/sign-language-universe/teams/maintainers
+```
+
+操作步骤：
+
+1. 打开对应 team 页面。
+2. 点击 `Members`。
+3. 点击 `Add a member`。
+4. 搜索成员 GitHub username。
+5. 选择成员并确认。
+6. 如果某人跨模块工作，可以加入多个 team。
+
+示例：
+
+```text
+做首页、学习页、练习页前端 -> frontend
+做手语打分算法、评分 API -> scoring
+做词汇库、课程文案、教学资料 -> content
+做测试验收、问题复现 -> qa
+负责仓库设置、发版、权限和 CI -> maintainers
+```
+
+### 5.4 team 内角色：Member 与 Maintainer
+
+GitHub team 内还有两个常用角色：
+
+```text
+Team member
+Team maintainer
+```
+
+建议：
+
+```text
+普通成员 -> Team member
+每个方向的小负责人 -> Team maintainer
+```
+
+`Team maintainer` 可以管理该 team 的成员和部分 team 设置，但不是整个 Organization owner。比如：
+
+```text
+frontend 方向负责人 -> frontend team maintainer
+scoring 方向负责人 -> scoring team maintainer
+content 方向负责人 -> content team maintainer
+```
+
+这样以后前端组加新人，不一定每次都要 Organization owner 操作。
+
+### 5.5 当前项目的推荐分组
+
+第一阶段建议按下面方式分：
+
+```text
+你:
+  Organization owner
+  maintainers
+  scoring
+
+前端页面同学:
+  frontend
+
+手语评分/算法同学:
+  scoring
+
+课程内容/资料整理同学:
+  content
+
+测试/体验反馈同学:
+  qa
+
+可以帮忙统一 review 和合并的人:
+  maintainers
+```
+
+如果一个成员既做前端又做内容，可以同时加入：
+
+```text
+frontend
+content
+```
+
+### 5.6 不建议使用 Outside collaborator
+
+`Outside collaborator` 适合临时访问单个仓库的人，但不适合作为长期团队协作方式。
+
+本项目第一阶段建议：
+
+```text
+长期团队成员 -> Organization member + team
+临时外部审阅者 -> 必要时再考虑 outside collaborator
+```
+
+原因：
+
+- outside collaborator 不能加入 Organization team。
+- 不能很好配合当前 `.github/CODEOWNERS` 的团队 review。
+- 权限管理会分散到个人，不利于后续规模化协作。
+
+### 5.7 按角色加入团队的具体例子
+
+假设有以下成员：
+
+```text
+alice: 做前端页面
+bob: 做课程内容
+carol: 做打分 API
+dave: 做测试
+erin: 协助管理仓库
+```
+
+具体操作：
+
+```text
+alice -> 加入 frontend
+bob -> 加入 content
+carol -> 加入 scoring
+dave -> 加入 qa
+erin -> 加入 maintainers
+```
+
+如果 `alice` 还负责合并前端 PR，可以设置：
+
+```text
+alice -> frontend team maintainer
+```
+
+如果 `carol` 还负责评分模块 review：
+
+```text
+carol -> scoring team maintainer
+```
 
 第一阶段权限建议：
 
@@ -225,6 +441,30 @@ qa: Triage 或 Write
 ```
 
 不要给所有人 Admin。
+
+### 5.8 成员加入后的检查
+
+每加完一个成员，检查三件事：
+
+1. Organization `People` 页面能看到该成员。
+2. 对应 `Teams -> Members` 页面能看到该成员。
+3. 仓库 `Settings -> Collaborators & teams` 能看到对应 team 有正确权限。
+
+对于 `frontend`、`scoring` 这类写在 `.github/CODEOWNERS` 里的 team，还必须满足：
+
+```text
+team 是 Visible
+team 对仓库至少有 Write 权限
+CODEOWNERS 中 team 名称拼写一致
+```
+
+当前仓库使用的 CODEOWNERS team 是：
+
+```text
+@sign-language-universe/maintainers
+@sign-language-universe/frontend
+@sign-language-universe/scoring
+```
 
 ## 6. 设置仓库权限
 
@@ -245,6 +485,70 @@ qa -> Triage
 ```
 
 如果 GitHub 页面要求先邀请成员进入 Organization，再给团队授权，按页面提示操作即可。
+
+操作步骤：
+
+1. 打开仓库页面。
+2. 进入 `Settings`。
+3. 进入 `Collaborators & teams` 或 `Manage access`。
+4. 点击 `Add teams`。
+5. 搜索并选择 team。
+6. 选择权限级别。
+7. 保存。
+
+### 6.1 权限级别怎么选
+
+GitHub 仓库常见权限从低到高大致是：
+
+```text
+Read
+Triage
+Write
+Maintain
+Admin
+```
+
+建议含义：
+
+```text
+Read:
+  只能看代码，适合旁观学习或只读成员。
+
+Triage:
+  可以管理 Issue 和 PR 的标签、里程碑、分配等，但不能直接 push 代码。
+  适合 qa、产品、内容验收角色。
+
+Write:
+  可以 push 分支、创建 PR、参与代码开发。
+  适合 frontend、scoring、content 中需要直接提交代码的人。
+
+Maintain:
+  可以管理仓库但不能访问最危险的设置。
+  适合仓库维护者、发版负责人。
+
+Admin:
+  可以改仓库设置、权限、分支保护、删除仓库等。
+  只给极少数负责人。
+```
+
+当前项目推荐：
+
+```text
+maintainers -> Maintain
+frontend -> Write
+scoring -> Write
+content -> Write
+qa -> Triage
+```
+
+如果开启 `Require review from Code Owners`，注意：
+
+```text
+frontend 和 scoring 必须是 Write 或更高
+maintainers 必须是 Write 或更高
+```
+
+否则 CODEOWNERS 可能不会触发，或者触发后无法作为有效 review。
 
 ## 7. 设置 main 分支保护
 
