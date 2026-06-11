@@ -24,6 +24,12 @@ python -m http.server 5173
 http://127.0.0.1:5173
 ```
 
+GitHub Pages 部署说明见：
+
+```text
+docs/operations/github_pages_frontend_deploy_manual_20260611.md
+```
+
 ## 启动评分 API 骨架
 
 ```bash
