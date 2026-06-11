@@ -344,6 +344,12 @@
                   <span>打分</span>
                 </button>
               </div>
+              <div class="scoring-service-row" id="scoring-service-row">
+                <span class="service-dot idle" id="scoring-service-dot"></span>
+                <input id="scoring-api-base-input" class="scoring-api-input" type="url" inputmode="url" placeholder="评分 API 地址" aria-label="评分 API 地址">
+                <button class="scoring-api-btn" type="button" onclick="ScoringBridge.saveApiBaseFromInput()">连接</button>
+              </div>
+              <div class="scoring-worker-note" id="scoring-worker-note">评分服务待连接</div>
               <!-- 计时器 -->
               <div class="challenge-timer" id="challenge-timer">录制时长：<span id="timer-display">00:00</span></div>
             </div>
@@ -441,5 +447,6 @@
   <script src="js/stars.js"></script>
   <script src="js/animations.js"></script>
   <script src="js/app.js"></script>
+  <script src="js/scoring.js"></script>
 </body>
 </html>
