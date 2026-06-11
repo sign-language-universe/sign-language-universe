@@ -19,6 +19,7 @@ import statistics
 import subprocess
 import sys
 import threading
+import time
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Literal
@@ -29,13 +30,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 
-APP_VERSION = "0.2.0"
+APP_VERSION = "0.3.0"
 REPO_ROOT = Path(__file__).resolve().parents[3]
 WORKER_SCRIPT = Path(__file__).with_name("holistic_worker_daemon.py")
 DEFAULT_OUTPUT_ROOT = REPO_ROOT / "work" / "generated" / "scoring-api"
 OUTPUT_ROOT = Path(os.getenv("SLU_SCORING_OUTPUT_ROOT", str(DEFAULT_OUTPUT_ROOT)))
 TEMPLATE_ROOT = os.getenv("SLU_TEMPLATE_ROOT", "").strip()
 SEMANTIC_PROFILE_JSON = os.getenv("SLU_SEMANTIC_PROFILE_JSON", "").strip()
+FACE_CORE_INDICES = [33, 133, 159, 145, 362, 263, 386, 374, 61, 291, 13, 14]
+FACE_LANDMARK_COUNT = 478
 
 SUPPORTED_TEMPLATES = [
     {"id": "xiangjiao", "label": "香蕉", "aliases": ["banana", "香蕉"], "available": True},
@@ -67,10 +70,33 @@ class FrameSlice(BaseModel):
     image_base64: str
 
 
+class LandmarkPoint(BaseModel):
+    x: float
+    y: float
+    z: float = 0.0
+    visibility: float | None = None
+    presence: float | None = None
+
+
+class LandmarkRowSlice(BaseModel):
+    index: int = Field(ge=0)
+    timestamp_ms: int = Field(ge=0)
+    pose_landmarks: list[Any] = Field(default_factory=list)
+    left_hand_landmarks: list[Any] = Field(default_factory=list)
+    right_hand_landmarks: list[Any] = Field(default_factory=list)
+    face_landmarks: list[Any] = Field(default_factory=list)
+    face_core_landmarks: list[Any] = Field(default_factory=list)
+    frame_weight: float = Field(default=1.0, gt=0)
+    image_width: int | None = Field(default=None, ge=1)
+    image_height: int | None = Field(default=None, ge=1)
+    processing_ms: int | None = Field(default=None, ge=0)
+
+
 class ScoreRequest(BaseModel):
     template_id: str = Field(default="flower")
-    input_type: Literal["frame_slices", "video_path"] = "frame_slices"
+    input_type: Literal["frame_slices", "video_path", "landmark_rows"] = "frame_slices"
     frames: list[FrameSlice] = Field(default_factory=list)
+    landmark_rows: list[LandmarkRowSlice] = Field(default_factory=list)
     video_path: str | None = None
     fps: float | None = Field(default=None, gt=0)
     duration_ms: int | None = Field(default=None, ge=0)
@@ -340,22 +366,28 @@ def _template_root_has_templates() -> bool:
     return root.exists() and any(root.rglob("*_holistic_results.json"))
 
 
+def _request_temporal_samples(request: ScoreRequest) -> list[FrameSlice] | list[LandmarkRowSlice]:
+    if request.input_type == "landmark_rows":
+        return request.landmark_rows
+    return request.frames
+
+
 def _estimate_fps(request: ScoreRequest) -> float:
     if request.fps and math.isfinite(request.fps):
         return max(1.0, min(float(request.fps), 30.0))
-    frames = sorted(request.frames, key=lambda item: item.timestamp_ms)
-    if len(frames) >= 2:
-        duration_ms = max(1, frames[-1].timestamp_ms - frames[0].timestamp_ms)
-        return max(1.0, min(30.0, (len(frames) - 1) * 1000.0 / duration_ms))
+    samples = sorted(_request_temporal_samples(request), key=lambda item: item.timestamp_ms)
+    if len(samples) >= 2:
+        duration_ms = max(1, samples[-1].timestamp_ms - samples[0].timestamp_ms)
+        return max(1.0, min(30.0, (len(samples) - 1) * 1000.0 / duration_ms))
     return 5.0
 
 
 def _frame_duration_ms(request: ScoreRequest) -> int:
     if request.duration_ms is not None:
         return int(request.duration_ms)
-    frames = sorted(request.frames, key=lambda item: item.timestamp_ms)
-    if len(frames) >= 2:
-        return int(max(0, frames[-1].timestamp_ms - frames[0].timestamp_ms))
+    samples = sorted(_request_temporal_samples(request), key=lambda item: item.timestamp_ms)
+    if len(samples) >= 2:
+        return int(max(0, samples[-1].timestamp_ms - samples[0].timestamp_ms))
     return 0
 
 
@@ -424,7 +456,245 @@ def _score_holistic_capture(worker_response: dict[str, Any], request: ScoreReque
     return score, valid, metrics
 
 
+def _finite_or_default(value: Any, default: float = 0.0) -> float:
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return float(default)
+    return number if math.isfinite(number) else float(default)
+
+
+def _sanitize_frame_weight(value: Any) -> float:
+    return max(0.05, min(10.0, _finite_or_default(value, 1.0)))
+
+
+def _point_field(point: Any, key: str, index: int, default: float = 0.0) -> float | None:
+    if isinstance(point, LandmarkPoint):
+        value = getattr(point, key, None)
+    elif isinstance(point, dict):
+        value = point.get(key)
+    elif isinstance(point, (list, tuple)):
+        value = point[index] if len(point) > index else None
+    else:
+        value = None
+    if value is None:
+        return None
+    return _finite_or_default(value, default)
+
+
+def _serialize_landmark_points(points: list[Any], group: str) -> list[dict[str, float]]:
+    max_points = 512
+    serialized: list[dict[str, float]] = []
+    for point in points[:max_points]:
+        item = {
+            "x": _point_field(point, "x", 0, 0.0) or 0.0,
+            "y": _point_field(point, "y", 1, 0.0) or 0.0,
+            "z": _point_field(point, "z", 2, 0.0) or 0.0,
+        }
+        visibility = _point_field(point, "visibility", 3, 0.0)
+        presence = _point_field(point, "presence", 4, 0.0)
+        if visibility is not None:
+            item["visibility"] = visibility
+        if presence is not None:
+            item["presence"] = presence
+        serialized.append(item)
+    if group == "face_landmarks" and len(serialized) == 468:
+        serialized.extend({"x": 0.0, "y": 0.0, "z": 0.0, "visibility": 0.0, "presence": 0.0} for _ in range(10))
+    return serialized
+
+
+def _expand_face_core_landmarks(points: list[Any]) -> list[dict[str, float]]:
+    core = _serialize_landmark_points(points, "face_core_landmarks")
+    if not core:
+        return []
+    expanded = [
+        {"x": 0.0, "y": 0.0, "z": 0.0, "visibility": 0.0, "presence": 0.0}
+        for _ in range(FACE_LANDMARK_COUNT)
+    ]
+    for target_index, point in zip(FACE_CORE_INDICES, core):
+        expanded[target_index] = point
+    return expanded
+
+
+def _landmarks_present(points: list[dict[str, float]], group: str) -> bool:
+    expected_counts = {
+        "pose_landmarks": 33,
+        "left_hand_landmarks": 21,
+        "right_hand_landmarks": 21,
+        "face_landmarks": 468,
+    }
+    minimum = expected_counts.get(group, 1)
+    return len(points) >= minimum
+
+
+def _bbox_from_serialized_landmarks(
+    points: list[dict[str, float]],
+    image_width: int,
+    image_height: int,
+) -> dict[str, float] | None:
+    if not points:
+        return None
+    xs: list[float] = []
+    ys: list[float] = []
+    visibilities: list[float] = []
+    for point in points:
+        x = _finite_or_default(point.get("x"))
+        y = _finite_or_default(point.get("y"))
+        xs.append(x * image_width)
+        ys.append(y * image_height)
+        visibilities.append(_finite_or_default(point.get("visibility"), 1.0))
+    if not xs or not ys:
+        return None
+    return {
+        "x_min": min(xs),
+        "x_max": max(xs),
+        "y_min": min(ys),
+        "y_max": max(ys),
+        "visibility_mean": _mean(visibilities),
+    }
+
+
+def _frame_motion(prev: dict[str, Any] | None, current: dict[str, Any]) -> dict[str, float]:
+    if not prev:
+        return {"motion_energy": 0.0, "bbox_shift": 0.0}
+
+    total_energy = 0.0
+    total_shift = 0.0
+    for group in ["pose", "left_hand", "right_hand", "face"]:
+        prev_box = prev.get(group, {}).get("bbox")
+        curr_box = current.get(group, {}).get("bbox")
+        if not prev_box or not curr_box:
+            continue
+        prev_cx = (float(prev_box["x_min"]) + float(prev_box["x_max"])) / 2.0
+        prev_cy = (float(prev_box["y_min"]) + float(prev_box["y_max"])) / 2.0
+        curr_cx = (float(curr_box["x_min"]) + float(curr_box["x_max"])) / 2.0
+        curr_cy = (float(curr_box["y_min"]) + float(curr_box["y_max"])) / 2.0
+        dx = curr_cx - prev_cx
+        dy = curr_cy - prev_cy
+        total_shift += math.hypot(dx, dy)
+        total_energy += abs(dx) + abs(dy)
+    return {"motion_energy": total_energy, "bbox_shift": total_shift}
+
+
+def _landmark_record_from_slice(
+    item: LandmarkRowSlice,
+    fps: float,
+    image_width: int,
+    image_height: int,
+) -> dict[str, Any]:
+    frame_idx = int(item.index)
+    timestamp_sec = max(0.0, int(item.timestamp_ms) / 1000.0)
+    face_landmarks = _serialize_landmark_points(item.face_landmarks, "face_landmarks")
+    if not face_landmarks and item.face_core_landmarks:
+        face_landmarks = _expand_face_core_landmarks(item.face_core_landmarks)
+    result_data = {
+        "pose_landmarks": _serialize_landmark_points(item.pose_landmarks, "pose_landmarks"),
+        "left_hand_landmarks": _serialize_landmark_points(item.left_hand_landmarks, "left_hand_landmarks"),
+        "right_hand_landmarks": _serialize_landmark_points(item.right_hand_landmarks, "right_hand_landmarks"),
+        "face_landmarks": face_landmarks,
+    }
+    row: dict[str, Any] = {
+        "frame_idx": frame_idx,
+        "timestamp_sec": timestamp_sec if timestamp_sec > 0 else frame_idx / fps,
+        "pose_present": _landmarks_present(result_data["pose_landmarks"], "pose_landmarks"),
+        "left_hand_present": _landmarks_present(result_data["left_hand_landmarks"], "left_hand_landmarks"),
+        "right_hand_present": _landmarks_present(result_data["right_hand_landmarks"], "right_hand_landmarks"),
+        "face_present": _landmarks_present(result_data["face_landmarks"], "face_landmarks"),
+        "pose": {},
+        "left_hand": {},
+        "right_hand": {},
+        "face": {},
+        "frame_weight": _sanitize_frame_weight(item.frame_weight),
+    }
+    for group_key, row_key in [
+        ("pose_landmarks", "pose"),
+        ("left_hand_landmarks", "left_hand"),
+        ("right_hand_landmarks", "right_hand"),
+        ("face_landmarks", "face"),
+    ]:
+        bbox = _bbox_from_serialized_landmarks(result_data[group_key], image_width, image_height)
+        if bbox:
+            row[row_key] = {"bbox": bbox, "visibility_mean": bbox["visibility_mean"]}
+
+    return {
+        "frame_idx": frame_idx,
+        "timestamp_sec": row["timestamp_sec"],
+        "row": row,
+        "result_data": result_data,
+        "frame_eval_sec": round(float(item.processing_ms or 0) / 1000.0, 3),
+        "frame_weight": row["frame_weight"],
+    }
+
+
+def _landmark_rows_worker_response(
+    request: ScoreRequest,
+    request_id: str,
+    write_result: bool = True,
+) -> dict[str, Any]:
+    started = time.perf_counter()
+    fps = _estimate_fps(request)
+    items = sorted(request.landmark_rows, key=lambda item: (item.index, item.timestamp_ms))
+    image_width = max(1, int(next((item.image_width for item in items if item.image_width), 320)))
+    image_height = max(1, int(next((item.image_height for item in items if item.image_height), 240)))
+    records: list[dict[str, Any]] = []
+    rows: list[dict[str, Any]] = []
+    prev_row: dict[str, Any] | None = None
+
+    for item in items:
+        record = _landmark_record_from_slice(item, fps, image_width, image_height)
+        row = record["row"]
+        row.update(_frame_motion(prev_row, row))
+        prev_row = row
+        records.append(record)
+        rows.append(row)
+
+    frame_indices = [int(record["frame_idx"]) for record in records]
+    total_frames = max(max(frame_indices, default=-1) + 1, len(records))
+    result_file: Path | None = None
+    if write_result:
+        result_dir = OUTPUT_ROOT / request_id / "web_holistic"
+        result_dir.mkdir(parents=True, exist_ok=True)
+        result_file = result_dir / f"user_{request.template_id}_{request_id}_holistic_results.json"
+        payload = {
+            "video": f"browser_web_holistic_{request_id}",
+            "video_stem": f"user_{request.template_id}_{request_id}",
+            "fps": fps,
+            "total_frames": total_frames,
+            "sampled_frame_indices": frame_indices,
+            "frame_weights": [{"frame_idx": int(row["frame_idx"]), "frame_weight": row["frame_weight"]} for row in rows],
+            "generated_at": datetime.now().isoformat(timespec="seconds"),
+            "static_image_mode": False,
+            "input_mode": "web_holistic_landmarks",
+            "records": records,
+        }
+        result_file.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+
+    processing_ms = [int(item.processing_ms or 0) for item in items]
+    return {
+        "type": "result",
+        "request_id": request_id,
+        "input_mode": "web_holistic_landmarks",
+        "result_file": str(result_file) if result_file else None,
+        "rows": rows,
+        "samples": len(records),
+        "holistic_eval_sec": round(sum(processing_ms) / 1000.0, 3),
+        "request_total_sec": round(time.perf_counter() - started, 3),
+        "client_processing_ms_total": sum(processing_ms),
+        "client_processing_ms_mean": round(_mean([float(value) for value in processing_ms]), 1) if processing_ms else 0.0,
+    }
+
+
 def _fallback_frame_score(request: ScoreRequest) -> tuple[float, bool, dict[str, Any]]:
+    if request.input_type == "landmark_rows" and request.landmark_rows:
+        worker_response = _landmark_rows_worker_response(request, f"fallback_{uuid4().hex[:8]}", write_result=False)
+        score_value, valid, metrics = _score_holistic_capture(worker_response, request)
+        return score_value, valid, {
+            "fallback_scoring": True,
+            "frame_count": len(request.landmark_rows),
+            "duration_ms": _frame_duration_ms(request),
+            "holistic_metrics": metrics,
+            "input_mode": "web_holistic_landmarks",
+        }
     sizes = [len(frame.image_base64 or "") for frame in request.frames]
     frame_count = len(sizes)
     mean_size = _mean([float(size) for size in sizes])
@@ -490,6 +760,13 @@ def _template_similarity_response(
     result = scoring_mvp.run_pair(standard, query, **kwargs)
     score_value = _clamp_score(float(result.get("prototype_score") or 0.0))
     metrics = _holistic_metrics(worker_response)
+    input_mode = str(worker_response.get("input_mode") or "")
+    scoring_mode = "web_holistic_template_similarity" if input_mode == "web_holistic_landmarks" else "holistic_template_similarity"
+    feedback_message = (
+        "已使用浏览器 Holistic 关键点和服务器模板进行原型相似度评分。"
+        if scoring_mode == "web_holistic_template_similarity"
+        else "已使用服务器 Holistic 模板进行原型相似度评分。"
+    )
     return ScoreResponse(
         request_id=request_id,
         template_id=request.template_id,
@@ -497,20 +774,23 @@ def _template_similarity_response(
         level=_level_from_score(score_value),
         score_valid=bool(score_value > 0),
         feedback=[
-            {"type": "template", "message": "已使用服务器 Holistic 模板进行原型相似度评分。"},
+            {"type": "template", "message": feedback_message},
             {"type": "policy", "message": "当前分数是原型相似度结果，尚未经过真实用户人工标注校准。"},
         ],
         diagnostics={
-            "scoring_mode": "holistic_template_similarity",
+            "scoring_mode": scoring_mode,
             "template_path": str(template_path),
             "query_path": str(query_path),
             "worker": worker_service.snapshot(),
             "worker_response": {
-                "input_mode": worker_response.get("input_mode"),
+                "input_mode": input_mode,
                 "holistic_eval_sec": worker_response.get("holistic_eval_sec"),
                 "request_total_sec": worker_response.get("request_total_sec"),
+                "client_processing_ms_total": worker_response.get("client_processing_ms_total"),
+                "client_processing_ms_mean": worker_response.get("client_processing_ms_mean"),
             },
             "holistic_metrics": metrics,
+            "client_meta": request.client_meta,
             "prototype": {
                 "dtw_distance": result.get("dtw_distance"),
                 "normalized_distance": result.get("normalized_distance"),
@@ -524,8 +804,15 @@ def _template_similarity_response(
 
 def _holistic_quality_response(request: ScoreRequest, request_id: str, worker_response: dict[str, Any]) -> ScoreResponse:
     score_value, valid, metrics = _score_holistic_capture(worker_response, request)
+    input_mode = str(worker_response.get("input_mode") or "")
+    scoring_mode = "web_holistic_capture_quality" if input_mode == "web_holistic_landmarks" else "holistic_capture_quality"
     feedback = [
-        {"type": "worker", "message": "已接入 Holistic worker 并完成浏览器帧关键点检测。"},
+        {
+            "type": "worker",
+            "message": "已接收浏览器 Holistic 关键点。"
+            if scoring_mode == "web_holistic_capture_quality"
+            else "已接入 Holistic worker 并完成浏览器帧关键点检测。",
+        },
         {"type": "template", "message": "当前未配置服务器模板目录，返回捕获质量分而不是标准动作相似度分。"},
     ]
     if not valid:
@@ -538,17 +825,20 @@ def _holistic_quality_response(request: ScoreRequest, request_id: str, worker_re
         score_valid=valid,
         feedback=feedback,
         diagnostics={
-            "scoring_mode": "holistic_capture_quality",
+            "scoring_mode": scoring_mode,
             "template_root_configured": bool(TEMPLATE_ROOT),
             "template_path": None,
             "worker": worker_service.snapshot(),
             "worker_response": {
-                "input_mode": worker_response.get("input_mode"),
+                "input_mode": input_mode,
                 "result_file": worker_response.get("result_file"),
                 "holistic_eval_sec": worker_response.get("holistic_eval_sec"),
                 "request_total_sec": worker_response.get("request_total_sec"),
+                "client_processing_ms_total": worker_response.get("client_processing_ms_total"),
+                "client_processing_ms_mean": worker_response.get("client_processing_ms_mean"),
             },
             "holistic_metrics": metrics,
+            "client_meta": request.client_meta,
         },
     )
 
@@ -630,6 +920,18 @@ def warmup_worker(wait_for_ready_sec: float = Query(default=180.0, gt=0, le=300)
 @app.post("/api/scoring/score", response_model=ScoreResponse)
 def score(request: ScoreRequest) -> ScoreResponse:
     request_id = f"score_{uuid4().hex[:12]}"
+    if request.input_type == "landmark_rows":
+        if not request.landmark_rows:
+            return _fallback_response(request, request_id, "empty_landmark_rows")
+        try:
+            worker_response = _landmark_rows_worker_response(request, request_id)
+            template_path = _find_template_path(request.template_id)
+            if template_path is not None:
+                return _template_similarity_response(request, request_id, worker_response, template_path)
+            return _holistic_quality_response(request, request_id, worker_response)
+        except Exception as exc:
+            return _fallback_response(request, request_id, "landmark_rows_error", worker_error=str(exc))
+
     if request.input_type == "frame_slices" and not request.frames:
         return _fallback_response(request, request_id, "empty_frame_slices")
 
