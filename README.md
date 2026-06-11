@@ -42,6 +42,12 @@ GitHub CLI 本地安装与仓库管理说明见：
 docs/operations/github_cli_management_manual_20260611.md
 ```
 
+团队开发、VS Code、PR 与 gh 日常协作流程见：
+
+```text
+docs/operations/team_development_workflow_manual_20260611.md
+```
+
 ## 启动评分 API 骨架
 
 ```bash
