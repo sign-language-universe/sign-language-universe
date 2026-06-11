@@ -6,7 +6,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     DISPLAY= \
     PORT=7860 \
     PYTHONPATH=/app/packages/scoring-core:/app/services/scoring-api \
-    SLU_ENABLE_HOLISTIC_WORKER=false \
+    SLU_ENABLE_HOLISTIC_WORKER=true \
     SLU_SCORING_OUTPUT_ROOT=/tmp/sign-language-universe/scoring-api
 
 RUN apt-get update && apt-get install -y --no-install-recommends \

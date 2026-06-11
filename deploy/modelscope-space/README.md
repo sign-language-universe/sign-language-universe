@@ -8,7 +8,7 @@
 - `/api/scoring/score`
 - 可选 Holistic worker warm-up：`/api/scoring/worker/warmup`
 
-默认先关闭 Holistic worker，确保容器和 GitHub Pages 前端连接能快速跑通。确认容器资源足够后，再在创空间环境变量里启用 worker。
+默认启动 Holistic worker，用于直接验证 ModelScope CPU 创空间是否能承载 MediaPipe Holistic。若资源不足或启动失败，可在创空间环境变量里显式关闭 worker。
 
 ## 端口
 
@@ -22,17 +22,17 @@ Docker 创空间要求应用监听：
 
 ## 环境变量
 
-先用默认值跑通：
-
-```text
-SLU_ENABLE_HOLISTIC_WORKER=false
-SLU_SCORING_OUTPUT_ROOT=/tmp/sign-language-universe/scoring-api
-```
-
-确认基础 API 正常后，再尝试：
+默认值会启动 worker：
 
 ```text
 SLU_ENABLE_HOLISTIC_WORKER=true
+SLU_SCORING_OUTPUT_ROOT=/tmp/sign-language-universe/scoring-api
+```
+
+如需先只验证基础 API，可显式关闭：
+
+```text
+SLU_ENABLE_HOLISTIC_WORKER=false
 ```
 
 如果你有服务器侧模板 JSON，可额外设置：
