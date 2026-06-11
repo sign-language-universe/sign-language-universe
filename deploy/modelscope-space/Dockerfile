@@ -6,7 +6,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     DISPLAY= \
     PORT=7860 \
     PYTHONPATH=/app/packages/scoring-core:/app/services/scoring-api \
-    SLU_ENABLE_HOLISTIC_WORKER=false \
+    SLU_ENABLE_HOLISTIC_WORKER=true \
     SLU_SCORING_OUTPUT_ROOT=/tmp/sign-language-universe/scoring-api
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -32,7 +32,7 @@ RUN python -m pip install --no-cache-dir --upgrade pip setuptools wheel \
       numpy \
       Pillow \
       opencv-python-headless \
-      mediapipe \
+      mediapipe==0.10.18 \
     && python -m pip install --no-cache-dir -e /app/packages/scoring-core \
     && mkdir -p /tmp/sign-language-universe/scoring-api /tmp/sign-language-universe/logs
 

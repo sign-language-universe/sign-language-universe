@@ -6,10 +6,12 @@
 
 用 ModelScope 魔搭 Docker 创空间部署 `services/scoring-api`，让 GitHub Pages 前端可以连接国内可访问的 HTTPS 评分 API。
 
-推荐先分两步：
+当前 Dockerfile 已默认开启 Holistic worker，以绕开部分平台环境变量未注入运行容器的问题。建议按下面顺序验证：
 
-1. 先部署基础 scoring API，`SLU_ENABLE_HOLISTIC_WORKER=false`，确认 GitHub Pages 能连通。
-2. 再打开 `SLU_ENABLE_HOLISTIC_WORKER=true`，测试 MediaPipe Holistic worker 是否能在创空间资源下正常启动。
+1. 直接部署默认镜像，确认 `worker_enabled=true`，并测试 MediaPipe Holistic worker 是否能在创空间资源下正常启动。
+2. 如果资源不足或启动失败，再显式设置 `SLU_ENABLE_HOLISTIC_WORKER=false`，先保留基础 scoring API。
+
+Dockerfile 固定使用 `mediapipe==0.10.18`。不要直接升级到未验证的新版本；新版 MediaPipe 可能不再暴露当前 worker 依赖的 legacy `mp.solutions.holistic` 接口。
 
 ## 关键限制
 
@@ -84,17 +86,17 @@ git push -u origin main
 
 ## 环境变量
 
-第一轮先保持 worker 关闭：
-
-```text
-SLU_ENABLE_HOLISTIC_WORKER=false
-SLU_SCORING_OUTPUT_ROOT=/tmp/sign-language-universe/scoring-api
-```
-
-基础 API 连通后，再尝试：
+默认会启动 worker：
 
 ```text
 SLU_ENABLE_HOLISTIC_WORKER=true
+SLU_SCORING_OUTPUT_ROOT=/tmp/sign-language-universe/scoring-api
+```
+
+如果只想验证基础 API 或 worker 启动失败，可显式关闭：
+
+```text
+SLU_ENABLE_HOLISTIC_WORKER=false
 ```
 
 如果后续准备了服务器侧模板 JSON，再配置：

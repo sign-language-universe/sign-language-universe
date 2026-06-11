@@ -110,6 +110,23 @@ def _readline_with_timeout(stream, timeout_sec: float) -> str:
         raise TimeoutError("Holistic worker response timed out") from exc
 
 
+def _tail_text(path_value: str | None, max_chars: int = 6000) -> str | None:
+    if not path_value:
+        return None
+    try:
+        path = Path(path_value)
+        if not path.is_file():
+            return None
+        with path.open("rb") as handle:
+            handle.seek(0, os.SEEK_END)
+            size = handle.tell()
+            handle.seek(max(0, size - max_chars))
+            data = handle.read(max_chars)
+        return data.decode("utf-8", errors="replace")
+    except Exception as exc:  # pragma: no cover - diagnostic path
+        return f"<failed to read stderr tail: {exc}>"
+
+
 class HolisticWorkerService:
     """Small persistent subprocess wrapper for ``holistic_worker_daemon.py``."""
 
@@ -138,6 +155,7 @@ class HolisticWorkerService:
             "pid": self.process.pid if self.process and self.process.poll() is None else None,
             "error": self.error,
             "stderr_log": self.stderr_log,
+            "stderr_tail": _tail_text(self.stderr_log) if self.status == "error" else None,
             "startup": self.ready_payload,
         }
 
