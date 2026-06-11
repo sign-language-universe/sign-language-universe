@@ -7,15 +7,16 @@
   const STORAGE_KEY = 'signUniverseScoringApiBase';
   const MAX_FRAMES = 90;
   const COUNTDOWN_SECONDS = 3;
+  const UPLOAD_JPEG_QUALITY = 0.7;
   const MOTION_SIG_WIDTH = 32;
   const MOTION_SIG_HEIGHT = 24;
 
   const CAPTURE_RECOMMENDATIONS = {
-    '花': { minFrames: 12, minDurationSec: 2.5, minFps: 5 },
-    '跳': { minFrames: 8, minDurationSec: 2.0, minFps: 5 },
-    '香蕉': { minFrames: 10, minDurationSec: 2.5, minFps: 5 },
-    '汽车': { minFrames: 10, minDurationSec: 2.5, minFps: 5 },
-    default: { minFrames: 10, minDurationSec: 2.5, minFps: 5 }
+    '花': { minFrames: 10, minDurationSec: 2.5, minFps: 4 },
+    '跳': { minFrames: 8, minDurationSec: 2.0, minFps: 4 },
+    '香蕉': { minFrames: 10, minDurationSec: 2.5, minFps: 4 },
+    '汽车': { minFrames: 10, minDurationSec: 2.5, minFps: 4 },
+    default: { minFrames: 10, minDurationSec: 2.5, minFps: 4 }
   };
 
   const WORD_TEMPLATE_IDS = {
@@ -168,9 +169,9 @@
   function buildCapturePlan({ write = false } = {}) {
     const word = currentWordData().word;
     const rec = getCaptureRecommendation(word);
-    let durationSec = clampNumber(inputValue('scoring-duration-sec', 3), 1, 8, 3);
-    let uploadFps = Math.round(clampNumber(inputValue('scoring-capture-fps', 5), 1, 12, 5));
-    const frameWidth = Math.round(clampNumber(inputValue('scoring-frame-width', 480), 240, 960, 480));
+    let durationSec = clampNumber(inputValue('scoring-duration-sec', 2.5), 1, 8, 2.5);
+    let uploadFps = Math.round(clampNumber(inputValue('scoring-capture-fps', 4), 1, 12, 4));
+    const frameWidth = Math.round(clampNumber(inputValue('scoring-frame-width', 320), 240, 960, 320));
     const requestedDurationSec = durationSec;
     const requestedUploadFps = uploadFps;
     const originalFrames = Math.max(1, Math.round(durationSec * uploadFps));
@@ -232,6 +233,21 @@
     if (bar) bar.style.width = `${Math.max(0, Math.min(100, percent))}%`;
   }
 
+  function formatTimerMs(ms) {
+    const safeMs = Math.max(0, Math.round(Number(ms) || 0));
+    const totalTenths = Math.round(safeMs / 100);
+    const mins = String(Math.floor(totalTenths / 600)).padStart(2, '0');
+    const secs = String(Math.floor((totalTenths % 600) / 10)).padStart(2, '0');
+    const tenths = totalTenths % 10;
+    return tenths ? `${mins}:${secs}.${tenths}` : `${mins}:${secs}`;
+  }
+
+  function setTimerMs(ms) {
+    const timerEl = document.getElementById('timer-display');
+    if (timerEl) timerEl.textContent = formatTimerMs(ms);
+    AppState.recordingSeconds = Math.max(0, (Number(ms) || 0) / 1000);
+  }
+
   function renderCameraShell() {
     const cameraInner = document.getElementById('challenge-camera-inner');
     if (!cameraInner) return null;
@@ -271,6 +287,35 @@
     return video;
   }
 
+  function stopCameraStream() {
+    if (state.video) {
+      try {
+        state.video.pause();
+        state.video.srcObject = null;
+      } catch (error) {
+        // Ignore browser-specific teardown errors; track.stop() below is authoritative.
+      }
+    }
+    if (state.stream) {
+      state.stream.getTracks().forEach(track => track.stop());
+      state.stream = null;
+    }
+    state.video = null;
+  }
+
+  function renderCaptureComplete(selectedCount, plan) {
+    const cameraInner = document.getElementById('challenge-camera-inner');
+    if (!cameraInner) return;
+    cameraInner.classList.remove('is-live');
+    cameraInner.innerHTML = `
+      <div class="scoring-capture-complete">
+        <strong>采集完成</strong>
+        <span>上传 ${selectedCount} 帧 · ${formatTimerMs(Math.round(plan.durationSec * 1000))}</span>
+        <small>摄像头已关闭</small>
+      </div>
+    `;
+  }
+
   function stopUiTimer() {
     if (state.uiTimer) {
       clearInterval(state.uiTimer);
@@ -281,11 +326,7 @@
   function stopAll() {
     state.captureRunId++;
     stopUiTimer();
-    if (state.stream) {
-      state.stream.getTracks().forEach(track => track.stop());
-      state.stream = null;
-    }
-    state.video = null;
+    stopCameraStream();
     state.frames = [];
     state.capturePlan = null;
     state.captureDurationMs = 0;
@@ -303,12 +344,12 @@
   }
 
   function updateTimerUi() {
-    const elapsed = Math.max(0, Math.floor((Date.now() - state.recordStartedAt) / 1000));
-    const mins = String(Math.floor(elapsed / 60)).padStart(2, '0');
-    const secs = String(elapsed % 60).padStart(2, '0');
-    const timerEl = document.getElementById('timer-display');
-    if (timerEl) timerEl.textContent = `${mins}:${secs}`;
-    AppState.recordingSeconds = elapsed;
+    const elapsedMs = Math.max(0, Date.now() - state.recordStartedAt);
+    const cappedMs = state.captureDurationMs ? Math.min(elapsedMs, state.captureDurationMs) : elapsedMs;
+    setTimerMs(cappedMs);
+    if (AppState.isRecording && state.captureDurationMs) {
+      setProgress((cappedMs / state.captureDurationMs) * 100);
+    }
   }
 
   function buildMotionSignature(context, width, height) {
@@ -381,7 +422,7 @@
     canvas.width = width;
     canvas.height = height;
     context.drawImage(video, 0, 0, width, height);
-    const dataUrl = canvas.toDataURL('image/jpeg', 0.82);
+    const dataUrl = canvas.toDataURL('image/jpeg', UPLOAD_JPEG_QUALITY);
     const imageBase64 = dataUrl.split(',', 2)[1] || '';
     return {
       candidateIndex,
@@ -408,7 +449,6 @@
   }
 
   async function collectFrames(plan, runId) {
-    const intervalMs = 1000 / plan.candidateFps;
     const candidates = [];
     let prevSignature = null;
     state.recordStartedAt = Date.now();
@@ -421,9 +461,17 @@
     const countEl = document.getElementById('scoring-frame-count');
     if (countEl) countEl.textContent = '0 帧';
 
-    state.uiTimer = setInterval(updateTimerUi, 250);
+    state.uiTimer = setInterval(updateTimerUi, 100);
+    updateTimerUi();
     for (let i = 0; i < plan.candidateFrames; i++) {
       if (runId !== state.captureRunId) return [];
+      const targetElapsedMs = plan.candidateFrames > 1
+        ? Math.round((i * state.captureDurationMs) / (plan.candidateFrames - 1))
+        : 0;
+      const waitMs = state.recordStartedAt + targetElapsedMs - Date.now();
+      if (waitMs > 0) await new Promise(resolve => setTimeout(resolve, waitMs));
+      if (runId !== state.captureRunId) return [];
+      updateTimerUi();
       const captured = captureFrame(plan.frameWidth, i);
       if (captured) {
         const motion = signatureMotion(prevSignature, captured.signature);
@@ -437,12 +485,13 @@
           frameWeight: 1.0
         });
       }
-      setProgress(((i + 1) / plan.candidateFrames) * 100);
       if (countEl) countEl.textContent = `${candidates.length} 候选帧`;
-      if (i + 1 < plan.candidateFrames) {
-        await new Promise(resolve => setTimeout(resolve, intervalMs));
-      }
     }
+    const remainingMs = state.recordStartedAt + state.captureDurationMs - Date.now();
+    if (remainingMs > 0) await new Promise(resolve => setTimeout(resolve, remainingMs));
+    if (runId !== state.captureRunId) return [];
+    setTimerMs(state.captureDurationMs);
+    setProgress(100);
 
     const energies = candidates.map((item, idx) => {
       const left = candidates[Math.max(0, idx - 1)]?.energy || 0;
@@ -469,6 +518,7 @@
     state.captureRunId++;
     const runId = state.captureRunId;
     stopUiTimer();
+    stopCameraStream();
     state.frames = [];
     AppState.isRecording = false;
     state.capturePlan = buildCapturePlan({ write: true });
@@ -500,10 +550,12 @@
     if (runId !== state.captureRunId) return;
     stopUiTimer();
     AppState.isRecording = false;
+    stopCameraStream();
     const recIndicator = document.getElementById('recording-indicator');
     if (recIndicator) recIndicator.classList.remove('active');
     if (startBtn) startBtn.classList.remove('recording');
     if (scoreBtn) scoreBtn.disabled = selected.length < 3;
+    renderCaptureComplete(selected.length, state.capturePlan);
     setServiceStatus(selected.length >= 3 ? 'online' : 'offline', selected.length >= 3 ? `采集完成：候选 ${state.capturePlan.candidateFrames} 帧，上传 ${selected.length} 帧` : '采集帧不足，请重采');
     show(selected.length >= 3 ? '采集完成，可以点击「打分」' : '采集帧不足，请重采');
   }
@@ -647,6 +699,7 @@
     stopUiTimer();
     AppState.isRecording = false;
     state.scoringBusy = true;
+    stopCameraStream();
 
     const startBtn = document.getElementById('btn-start-record');
     if (startBtn) {
