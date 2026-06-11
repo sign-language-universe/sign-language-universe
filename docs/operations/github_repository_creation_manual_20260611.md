@@ -215,6 +215,78 @@ Visibility: Visible
 
 建议先把你自己加入 `maintainers`，并保留 Organization owner 权限。其他成员原则上不要直接给 owner 或 admin，先通过 team 管理权限。
 
+### 4.1 组织层级和权限模型
+
+可以把 GitHub Organization 理解成团队协作的总容器。第一阶段推荐使用的层级是：
+
+```text
+Organization
+  -> Team
+    -> Member
+```
+
+对应到当前项目就是：
+
+```text
+sign-language-universe
+  -> maintainers
+    -> 仓库维护成员
+  -> frontend
+    -> 前端开发成员
+  -> scoring
+    -> 手语评分/算法/API 成员
+  -> content
+    -> 内容和课程资料成员
+  -> qa
+    -> 测试和验收成员
+```
+
+成员关系和仓库权限是两件事：
+
+```text
+Organization
+  -> 管理人和 team 的组织关系
+
+Repository
+  -> 授权给 team
+  -> team 内成员继承该 team 的仓库权限
+```
+
+也就是说，不建议给每个成员单独配置仓库权限，而是：
+
+```text
+1. 先把成员加入 Organization
+2. 再把成员放入对应 Team
+3. 再给 Team 配置 Repository 权限
+4. 成员自动获得该 Team 对仓库的权限
+```
+
+示例：
+
+```text
+frontend team 对 sign-language-universe 仓库有 Write 权限
+  -> alice 加入 frontend
+  -> alice 自动获得该仓库 Write 权限
+
+qa team 对 sign-language-universe 仓库有 Triage 权限
+  -> dave 加入 qa
+  -> dave 自动获得该仓库 Triage 权限
+```
+
+这样做的好处：
+
+- 新成员只需要加入对应 team，不需要逐个仓库单独授权。
+- 成员职责变化时，只需要调整 team 归属。
+- 成员离开项目时，从 Organization 或 team 移除即可回收权限。
+- `CODEOWNERS` 可以按 team 自动请求 review，而不是依赖单个人。
+
+补充说明：
+
+- GitHub 也支持嵌套 team，但本项目第一阶段不需要使用。
+- Organization owner 是组织级管理员，不等同于普通项目成员。
+- Repository Admin 是单个仓库的最高权限，也不应该默认给所有成员。
+- 推荐长期成员使用 `Organization member + team`，临时外部协作者再考虑 `Outside collaborator`。
+
 ## 5. 邀请成员
 
 进入：
