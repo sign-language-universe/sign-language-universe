@@ -10,6 +10,12 @@
   const UPLOAD_JPEG_QUALITY = 0.7;
   const MOTION_SIG_WIDTH = 32;
   const MOTION_SIG_HEIGHT = 24;
+  const HOLISTIC_CDN_BASE = 'https://cdn.jsdelivr.net/npm/@mediapipe/holistic';
+  const HOLISTIC_SCRIPT_URL = `${HOLISTIC_CDN_BASE}/holistic.js`;
+  const BROWSER_HOLISTIC_TIMEOUT_MS = 12000;
+  const BROWSER_HOLISTIC_FRAME_TIMEOUT_MS = 3500;
+  const BROWSER_HOLISTIC_TARGET_FRAMES = 24;
+  const FACE_CORE_INDICES = [33, 133, 159, 145, 362, 263, 386, 374, 61, 291, 13, 14];
 
   const CAPTURE_RECOMMENDATIONS = {
     '花': { minFrames: 10, minDurationSec: 2.5, minFps: 4 },
@@ -42,6 +48,7 @@
     video: null,
     canvas: document.createElement('canvas'),
     frames: [],
+    landmarkRows: [],
     uiTimer: null,
     recordStartedAt: 0,
     capturePlan: null,
@@ -49,7 +56,13 @@
     captureRunId: 0,
     apiBase: null,
     lastHealth: null,
-    scoringBusy: false
+    scoringBusy: false,
+    browserHolistic: null,
+    browserHolisticLoading: null,
+    browserHolisticPending: null,
+    browserHolisticUnavailable: false,
+    browserHolisticActive: false,
+    browserHolisticStats: null
   };
 
   function show(message) {
@@ -152,6 +165,213 @@
     return Number(value).toFixed(digits);
   }
 
+  function finiteNumber(value, fallback = 0) {
+    const number = Number(value);
+    return Number.isFinite(number) ? number : fallback;
+  }
+
+  function withTimeout(promise, timeoutMs, message) {
+    let timer = null;
+    const timeout = new Promise((_, reject) => {
+      timer = window.setTimeout(() => reject(new Error(message)), timeoutMs);
+    });
+    return Promise.race([promise, timeout]).finally(() => {
+      if (timer) window.clearTimeout(timer);
+    });
+  }
+
+  function loadScriptOnce(src, timeoutMs = BROWSER_HOLISTIC_TIMEOUT_MS) {
+    if (document.querySelector(`script[src="${src}"]`)) return Promise.resolve();
+    return withTimeout(new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = src;
+      script.async = true;
+      script.crossOrigin = 'anonymous';
+      script.onload = () => resolve();
+      script.onerror = () => reject(new Error(`脚本加载失败：${src}`));
+      document.head.appendChild(script);
+    }), timeoutMs, '浏览器 Holistic 脚本加载超时');
+  }
+
+  async function ensureBrowserHolistic() {
+    if (state.browserHolistic) return state.browserHolistic;
+    if (state.browserHolisticUnavailable) return null;
+    if (!state.browserHolisticLoading) {
+      state.browserHolisticLoading = (async () => {
+        const startedAt = performance.now();
+        await loadScriptOnce(HOLISTIC_SCRIPT_URL);
+        if (!window.Holistic) throw new Error('浏览器 Holistic SDK 未正确加载');
+        const holistic = new window.Holistic({
+          locateFile: file => `${HOLISTIC_CDN_BASE}/${file}`
+        });
+        holistic.setOptions({
+          modelComplexity: 1,
+          smoothLandmarks: true,
+          enableSegmentation: false,
+          refineFaceLandmarks: false,
+          minDetectionConfidence: 0.5,
+          minTrackingConfidence: 0.5
+        });
+        holistic.onResults(results => {
+          const pending = state.browserHolisticPending;
+          if (!pending) return;
+          state.browserHolisticPending = null;
+          pending.resolve(results);
+        });
+        state.browserHolistic = holistic;
+        state.browserHolisticStats = {
+          ...(state.browserHolisticStats || {}),
+          sdk_load_ms: Math.round(performance.now() - startedAt)
+        };
+        return holistic;
+      })().catch(error => {
+        state.browserHolisticUnavailable = true;
+        state.browserHolistic = null;
+        throw error;
+      }).finally(() => {
+        state.browserHolisticLoading = null;
+      });
+    }
+    return state.browserHolisticLoading;
+  }
+
+  async function sendBrowserHolisticImage(image) {
+    const holistic = await ensureBrowserHolistic();
+    if (!holistic) return null;
+    if (state.browserHolisticPending) {
+      throw new Error('浏览器 Holistic 仍在处理上一帧');
+    }
+    return new Promise((resolve, reject) => {
+      const timer = window.setTimeout(() => {
+        if (state.browserHolisticPending) state.browserHolisticPending = null;
+        reject(new Error('浏览器 Holistic 单帧处理超时'));
+      }, BROWSER_HOLISTIC_FRAME_TIMEOUT_MS);
+      state.browserHolisticPending = {
+        resolve: results => {
+          window.clearTimeout(timer);
+          resolve(results);
+        },
+        reject: error => {
+          window.clearTimeout(timer);
+          reject(error);
+        }
+      };
+      Promise.resolve(holistic.send({ image })).catch(error => {
+        if (state.browserHolisticPending) {
+          window.clearTimeout(timer);
+          state.browserHolisticPending = null;
+          reject(error);
+        }
+      });
+    });
+  }
+
+  function serializeLandmarkPoint(point) {
+    const values = [
+      finiteNumber(point.x),
+      finiteNumber(point.y),
+      finiteNumber(point.z)
+    ];
+    if (Number.isFinite(Number(point.visibility)) || Number.isFinite(Number(point.presence))) {
+      values.push(finiteNumber(point.visibility));
+      values.push(finiteNumber(point.presence));
+    }
+    return values;
+  }
+
+  function serializeLandmarkList(landmarks, indices = null) {
+    if (!landmarks || typeof landmarks[Symbol.iterator] !== 'function') return [];
+    const points = Array.from(landmarks);
+    const selected = Array.isArray(indices)
+      ? indices.map(index => points[index]).filter(Boolean)
+      : points;
+    return selected.map(serializeLandmarkPoint);
+  }
+
+  function landmarkCount(row) {
+    if (!row) return 0;
+    return ['pose_landmarks', 'left_hand_landmarks', 'right_hand_landmarks', 'face_landmarks', 'face_core_landmarks']
+      .reduce((sum, key) => sum + (Array.isArray(row[key]) ? row[key].length : 0), 0);
+  }
+
+  function landmarkPresenceRatio(rows, keys) {
+    if (!rows.length) return 0;
+    const present = rows.filter(row => keys.some(key => Array.isArray(row[key]) && row[key].length > 0)).length;
+    return present / rows.length;
+  }
+
+  async function landmarkRowFromCanvas(canvas, item, plan) {
+    const startedAt = performance.now();
+    const results = await sendBrowserHolisticImage(canvas);
+    if (!results) return null;
+    return {
+      index: item.candidateIndex,
+      timestamp_ms: Math.round(item.timestampMs),
+      frame_weight: finiteNumber(item.frameWeight, 1),
+      image_width: canvas.width,
+      image_height: canvas.height,
+      processing_ms: Math.round(performance.now() - startedAt),
+      pose_landmarks: serializeLandmarkList(results.poseLandmarks),
+      left_hand_landmarks: serializeLandmarkList(results.leftHandLandmarks),
+      right_hand_landmarks: serializeLandmarkList(results.rightHandLandmarks),
+      face_landmarks: [],
+      face_core_landmarks: serializeLandmarkList(results.faceLandmarks, FACE_CORE_INDICES),
+      capture_fps: plan.candidateFps || plan.uploadFps
+    };
+  }
+
+  async function prepareBrowserHolisticForCapture(video, plan) {
+    state.browserHolisticActive = false;
+    state.browserHolisticStats = {
+      enabled: false,
+      route: 'frame_slices',
+      sdk: '@mediapipe/holistic',
+      cdn: HOLISTIC_CDN_BASE
+    };
+    if (!video || video.readyState < 2) return;
+    try {
+      const startedAt = performance.now();
+      setServiceStatus('checking', '正在加载浏览器 Holistic');
+      await withTimeout(ensureBrowserHolistic(), BROWSER_HOLISTIC_TIMEOUT_MS, '浏览器 Holistic 加载超时');
+
+      const warmCanvas = document.createElement('canvas');
+      const sourceWidth = video.videoWidth || 640;
+      const sourceHeight = video.videoHeight || 480;
+      warmCanvas.width = 192;
+      warmCanvas.height = Math.max(1, Math.round(warmCanvas.width * sourceHeight / sourceWidth));
+      const context = warmCanvas.getContext('2d');
+      context.drawImage(video, 0, 0, warmCanvas.width, warmCanvas.height);
+      const warmStartedAt = performance.now();
+      await sendBrowserHolisticImage(warmCanvas);
+      warmCanvas.width = 0;
+      warmCanvas.height = 0;
+
+      state.browserHolisticActive = true;
+      state.browserHolisticStats = {
+        ...(state.browserHolisticStats || {}),
+        enabled: true,
+        route: 'web_holistic_landmarks',
+        prepare_ms: Math.round(performance.now() - startedAt),
+        warmup_ms: Math.round(performance.now() - warmStartedAt)
+      };
+      plan.targetFrames = Math.max(plan.targetFrames, Math.min(MAX_FRAMES, BROWSER_HOLISTIC_TARGET_FRAMES));
+      plan.uploadFps = Math.min(12, Math.max(plan.uploadFps, Math.ceil(plan.targetFrames / plan.durationSec)));
+      plan.candidateFps = plan.targetFrames / plan.durationSec;
+      plan.candidateFrames = plan.targetFrames;
+      plan.captureTransport = 'web_holistic_landmarks';
+      setServiceStatus('ready', `浏览器 Holistic 已就绪 · 将上传 ${plan.targetFrames} 帧关键点`);
+    } catch (error) {
+      state.browserHolisticActive = false;
+      state.browserHolisticStats = {
+        ...(state.browserHolisticStats || {}),
+        enabled: false,
+        route: 'frame_slices',
+        error: error.message
+      };
+      setServiceStatus('online', '浏览器 Holistic 不可用，将上传压缩帧');
+    }
+  }
+
   function inputValue(id, fallback) {
     const el = document.getElementById(id);
     return el ? el.value : fallback;
@@ -221,6 +441,10 @@
   function updateCaptureHint(plan = buildCapturePlan()) {
     const hint = document.getElementById('scoring-capture-hint');
     if (!hint) return;
+    if (plan.captureTransport === 'web_holistic_landmarks') {
+      hint.textContent = `采样：浏览器本机提取 Holistic 关键点；${plan.durationSec}s 内采集 ${plan.targetFrames} 帧关键点，只上传姿态、双手和面部核心点。`;
+      return;
+    }
     if (plan.adjusted) {
       hint.textContent = `采样：${plan.word} 推荐 >=${plan.minFrames} 上传帧；当前 ${plan.requestedDurationSec}s x ${plan.requestedUploadFps}fps = ${plan.originalFrames} 帧，采集时自动调整为 ${plan.durationSec}s x ${plan.uploadFps}fps = ${plan.targetFrames} 帧。`;
     } else {
@@ -341,9 +565,11 @@
     stopUiTimer();
     stopCameraStream();
     state.frames = [];
+    state.landmarkRows = [];
     state.capturePlan = null;
     state.captureDurationMs = 0;
     state.scoringBusy = false;
+    state.browserHolisticActive = false;
     AppState.isRecording = false;
     setProgress(0);
   }
@@ -423,24 +649,32 @@
       .map((idx, rank) => ({ ...candidates[idx], uploadRank: rank }));
   }
 
-  function captureFrame(frameWidth, candidateIndex) {
+  function captureFrame(frameWidth, candidateIndex, options = {}) {
+    const includeImage = options.includeImage !== false;
+    const keepCanvas = options.keepCanvas === true;
     const video = state.video;
     if (!video || video.readyState < 2) return null;
     const sourceWidth = video.videoWidth || 640;
     const sourceHeight = video.videoHeight || 480;
     const width = Math.max(240, Math.min(frameWidth, sourceWidth, 960));
     const height = Math.max(1, Math.round(width * sourceHeight / sourceWidth));
-    const canvas = state.canvas;
+    const canvas = keepCanvas ? document.createElement('canvas') : state.canvas;
     const context = canvas.getContext('2d', { willReadFrequently: true });
     canvas.width = width;
     canvas.height = height;
     context.drawImage(video, 0, 0, width, height);
-    const dataUrl = canvas.toDataURL('image/jpeg', UPLOAD_JPEG_QUALITY);
-    const imageBase64 = dataUrl.split(',', 2)[1] || '';
+    let frame = null;
+    if (includeImage) {
+      const dataUrl = canvas.toDataURL('image/jpeg', UPLOAD_JPEG_QUALITY);
+      frame = { image_base64: dataUrl.split(',', 2)[1] || '' };
+    }
     return {
       candidateIndex,
       timestampMs: Date.now() - state.recordStartedAt,
-      frame: { image_base64: imageBase64 },
+      frame,
+      canvas: keepCanvas ? canvas : null,
+      width,
+      height,
       signature: buildMotionSignature(context, width, height)
     };
   }
@@ -464,6 +698,9 @@
   async function collectFrames(plan, runId) {
     const candidates = [];
     let prevSignature = null;
+    const useBrowserHolistic = state.browserHolisticActive === true;
+    state.frames = [];
+    state.landmarkRows = [];
     state.recordStartedAt = Date.now();
     state.captureDurationMs = Math.round(plan.durationSec * 1000);
     AppState.isRecording = true;
@@ -485,7 +722,10 @@
       if (waitMs > 0) await new Promise(resolve => setTimeout(resolve, waitMs));
       if (runId !== state.captureRunId) return [];
       updateTimerUi();
-      const captured = captureFrame(plan.frameWidth, i);
+      const captured = captureFrame(plan.frameWidth, i, {
+        includeImage: !useBrowserHolistic,
+        keepCanvas: useBrowserHolistic
+      });
       if (captured) {
         const motion = signatureMotion(prevSignature, captured.signature);
         prevSignature = captured.signature;
@@ -493,6 +733,9 @@
           candidateIndex: i,
           timestampMs: captured.timestampMs,
           frame: captured.frame,
+          canvas: captured.canvas,
+          width: captured.width,
+          height: captured.height,
           energy: motion,
           energySmooth: motion,
           frameWeight: 1.0
@@ -521,12 +764,57 @@
       item.frameWeight = weights[idx] || 1.0;
     });
     const selected = selectEnergyCoverageFrames(candidates, plan.targetFrames);
-    state.frames = selected.map(item => ({
-      index: item.candidateIndex,
-      timestamp_ms: Math.round(item.timestampMs),
-      image_base64: item.frame.image_base64
-    }));
-    if (countEl) countEl.textContent = `${state.frames.length} 上传帧`;
+    if (useBrowserHolistic) {
+      const extractionStartedAt = performance.now();
+      const rows = [];
+      for (let idx = 0; idx < selected.length; idx += 1) {
+        if (runId !== state.captureRunId) return [];
+        const item = selected[idx];
+        if (!item.canvas) continue;
+        setServiceStatus('checking', `正在本机提取关键点：${idx + 1}/${selected.length}`);
+        try {
+          const row = await landmarkRowFromCanvas(item.canvas, item, plan);
+          if (row) rows.push(row);
+        } catch (error) {
+          state.browserHolisticStats = {
+            ...(state.browserHolisticStats || {}),
+            extraction_error: error.message
+          };
+        } finally {
+          item.canvas.width = 0;
+          item.canvas.height = 0;
+          item.canvas = null;
+        }
+      }
+      state.landmarkRows = rows;
+      state.frames = [];
+      state.browserHolisticStats = {
+        ...(state.browserHolisticStats || {}),
+        selected_frames: selected.length,
+        landmark_rows: rows.length,
+        landmark_points: rows.reduce((sum, row) => sum + landmarkCount(row), 0),
+        extraction_ms: Math.round(performance.now() - extractionStartedAt),
+        hand_presence_ratio: Number(landmarkPresenceRatio(rows, ['left_hand_landmarks', 'right_hand_landmarks']).toFixed(3)),
+        pose_presence_ratio: Number(landmarkPresenceRatio(rows, ['pose_landmarks']).toFixed(3))
+      };
+      if (countEl) countEl.textContent = `${state.landmarkRows.length} 关键点帧`;
+    } else {
+      selected.forEach(item => {
+        if (item.canvas) {
+          item.canvas.width = 0;
+          item.canvas.height = 0;
+        }
+      });
+      state.frames = selected
+        .filter(item => item.frame && item.frame.image_base64)
+        .map(item => ({
+          index: item.candidateIndex,
+          timestamp_ms: Math.round(item.timestampMs),
+          image_base64: item.frame.image_base64
+        }));
+      state.landmarkRows = [];
+      if (countEl) countEl.textContent = `${state.frames.length} 上传帧`;
+    }
     return selected;
   }
 
@@ -537,6 +825,8 @@
     stopUiTimer();
     stopCameraStream();
     state.frames = [];
+    state.landmarkRows = [];
+    state.browserHolisticActive = false;
     AppState.isRecording = false;
     state.capturePlan = buildCapturePlan({ write: true });
     updateCaptureHint(state.capturePlan);
@@ -548,6 +838,8 @@
       show(`摄像头开启失败：${error.message}`);
       return;
     }
+    await prepareBrowserHolisticForCapture(state.video, state.capturePlan);
+    updateCaptureHint(state.capturePlan);
 
     const startBtn = document.getElementById('btn-start-record');
     if (startBtn) {
@@ -574,10 +866,16 @@
     const recIndicator = document.getElementById('recording-indicator');
     if (recIndicator) recIndicator.classList.remove('active');
     if (startBtn) startBtn.classList.remove('recording');
-    if (scoreBtn) scoreBtn.disabled = selected.length < 3;
+    if (scoreBtn) scoreBtn.disabled = Math.max(state.landmarkRows.length, state.frames.length) < 3;
     renderCaptureComplete(selected.length, state.capturePlan);
-    setServiceStatus(selected.length >= 3 ? 'online' : 'offline', selected.length >= 3 ? `采集完成：候选 ${state.capturePlan.candidateFrames} 帧，上传 ${selected.length} 帧` : '采集帧不足，请重采');
-    show(selected.length >= 3 ? '采集完成，可以点击「打分」' : '采集帧不足，请重采');
+    const readyCount = Math.max(state.landmarkRows.length, state.frames.length);
+    const routeText = state.landmarkRows.length >= 3 ? '关键点帧' : '上传帧';
+    setServiceStatus(readyCount >= 3 ? 'online' : 'offline', readyCount >= 3 ? `采集完成：候选 ${state.capturePlan.candidateFrames} 帧，${routeText} ${readyCount} 帧` : '采集帧不足，请重采');
+    show(readyCount >= 3 ? '采集完成，可以点击「打分」' : '采集帧不足，请重采');
+  }
+
+  function availableSampleCount() {
+    return Math.max(state.frames.length, state.landmarkRows.length);
   }
 
   function localPreviewScore(reason) {
@@ -586,19 +884,31 @@
     const variation = sizes.length >= 2 && meanSize > 0
       ? sizes.slice(1).reduce((sum, value, idx) => sum + Math.abs(value - sizes[idx]), 0) / (sizes.length - 1) / meanSize
       : 0;
+    const sampleCount = availableSampleCount();
+    const handRatio = landmarkPresenceRatio(state.landmarkRows, ['left_hand_landmarks', 'right_hand_landmarks']);
+    const poseRatio = landmarkPresenceRatio(state.landmarkRows, ['pose_landmarks']);
     const durationMs = state.captureDurationMs || Math.max(0, Date.now() - state.recordStartedAt);
-    const coverage = Math.min(1, state.frames.length / 12);
+    const coverage = Math.min(1, sampleCount / 12);
     const durationScore = Math.min(1, Math.max(0, durationMs / 3500));
     const payloadScore = Math.min(1, meanSize / 24000);
     const variationScore = Math.min(1, variation * 12);
-    const score = Math.round(Math.max(0, Math.min(100, 25 + 32 * coverage + 20 * durationScore + 13 * payloadScore + 10 * variationScore)));
+    const landmarkScore = state.landmarkRows.length
+      ? (28 * Math.max(handRatio, (handRatio + poseRatio) / 2) + 14 * poseRatio)
+      : 0;
+    const score = Math.round(Math.max(0, Math.min(100, 25 + 32 * coverage + 20 * durationScore + 13 * payloadScore + 10 * variationScore + landmarkScore)));
     return {
       request_id: `local_${Date.now()}`,
       score,
-      score_valid: state.frames.length >= 3,
+      score_valid: sampleCount >= 3,
       level: 'browser_local_fallback',
       feedback: [{ type: 'fallback', message: reason || '本地预览评分' }],
-      diagnostics: { scoring_mode: 'browser_local_fallback', frame_count: state.frames.length, duration_ms: durationMs }
+      diagnostics: {
+        scoring_mode: 'browser_local_fallback',
+        frame_count: sampleCount,
+        landmark_rows: state.landmarkRows.length,
+        duration_ms: durationMs,
+        browser_holistic: state.browserHolisticStats
+      }
     };
   }
 
@@ -606,17 +916,21 @@
     const wordData = currentWordData();
     const plan = state.capturePlan || buildCapturePlan();
     const durationMs = state.captureDurationMs || Math.round(plan.durationSec * 1000);
+    const useLandmarks = state.landmarkRows.length >= 3;
     const payload = {
       template_id: templateIdForWord(wordData.word),
-      input_type: 'frame_slices',
+      input_type: useLandmarks ? 'landmark_rows' : 'frame_slices',
       fps: plan.candidateFps || plan.uploadFps,
       duration_ms: durationMs,
-      frames: state.frames,
+      frames: useLandmarks ? [] : state.frames,
+      landmark_rows: useLandmarks ? state.landmarkRows : [],
       client_meta: {
         source: 'apps/web/challenge',
         word: wordData.word,
         model: wordData.model || wordData.word,
         capture_plan: plan,
+        capture_transport: useLandmarks ? 'web_holistic_landmarks' : 'jpeg_frame_slices',
+        browser_holistic: state.browserHolisticStats,
         page: window.location.href
       }
     };
@@ -639,6 +953,8 @@
 
   function serviceTextFromResult(result) {
     const mode = result.diagnostics?.scoring_mode || result.level || '';
+    if (mode === 'web_holistic_template_similarity') return '浏览器 Holistic 模板评分完成';
+    if (mode === 'web_holistic_capture_quality') return '浏览器 Holistic 捕获质量评分完成';
     if (mode === 'holistic_template_similarity') return 'Holistic 模板评分完成';
     if (mode === 'holistic_capture_quality') return 'Holistic 捕获质量评分完成';
     if (mode.includes('fallback')) return '本地预览评分完成';
@@ -653,6 +969,8 @@
 
   function scoringModeLabel(mode) {
     const labels = {
+      web_holistic_template_similarity: '浏览器 Holistic 模板相似度',
+      web_holistic_capture_quality: '浏览器 Holistic 捕获质量',
       holistic_template_similarity: 'Holistic 模板相似度',
       holistic_capture_quality: 'Holistic 捕获质量',
       browser_frame_fallback: '浏览器帧预览',
@@ -664,6 +982,7 @@
   function resultFrameCount(result) {
     return result?.diagnostics?.frame_count
       ?? result?.diagnostics?.holistic_metrics?.samples
+      ?? state.landmarkRows.length
       ?? state.frames.length
       ?? '--';
   }
@@ -678,6 +997,16 @@
     if (!result) return '--';
     const mode = result.diagnostics?.scoring_mode || result.level || '';
     const metrics = result.diagnostics?.holistic_metrics || {};
+    if (mode === 'web_holistic_template_similarity') {
+      return '已在浏览器本机提取 Holistic 关键点，只上传关键点到服务器模板评分；该分数仍需结合真实用户标注继续校准。';
+    }
+    if (mode === 'web_holistic_capture_quality') {
+      const hand = Number(metrics.hand_presence_ratio || 0);
+      const pose = Number(metrics.pose_presence_ratio || 0);
+      if (hand < 0.35) return `手部覆盖偏低（${formatNumber(hand, 2)}），请让关键手部靠近摄像头并完整入画后重采。`;
+      if (pose < 0.35) return `人体姿态覆盖偏低（${formatNumber(pose, 2)}），请保持上半身和双手都在画面中。`;
+      return '浏览器已识别到可用关键点；继续关注手形、方向、动作起止和节奏。';
+    }
     if (mode === 'holistic_template_similarity') {
       return '已使用服务器模板做原型相似度评分；该分数仍需结合真实用户标注继续校准。';
     }
@@ -712,7 +1041,7 @@
 
   async function scoreChallengeWithApi() {
     if (state.scoringBusy) return;
-    if (!AppState.isRecording && state.frames.length === 0) {
+    if (!AppState.isRecording && availableSampleCount() === 0) {
       show('请先点击「开始」录制手语');
       return;
     }
@@ -735,7 +1064,7 @@
       cameraInner.innerHTML = '<p style="color:var(--accent-cyan);">评估中...</p><small>正在分析采集帧</small>';
     }
 
-    if (state.frames.length < 3) {
+    if (availableSampleCount() < 3) {
       finishChallengeScore(localPreviewScore('采集帧不足，请重新采集更完整动作。'));
       return;
     }
