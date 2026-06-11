@@ -7,6 +7,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PORT=7860 \
     PYTHONPATH=/app/packages/scoring-core:/app/services/scoring-api \
     SLU_ENABLE_HOLISTIC_WORKER=true \
+    SLU_TEMPLATE_ROOT=/app/templates/holistic \
+    SLU_SEMANTIC_PROFILE_JSON=/app/templates/sign_semantic_weights.json \
     SLU_SCORING_OUTPUT_ROOT=/tmp/sign-language-universe/scoring-api
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -22,6 +24,7 @@ WORKDIR /app
 COPY packages/scoring-core /app/packages/scoring-core
 COPY packages/shared-contracts /app/packages/shared-contracts
 COPY services/scoring-api /app/services/scoring-api
+COPY templates /app/templates
 COPY README.md LICENSE NOTICE /app/
 
 RUN python -m pip install --no-cache-dir --upgrade pip setuptools wheel \
