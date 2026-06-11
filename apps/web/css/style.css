@@ -1458,6 +1458,31 @@ html, body {
   box-shadow: 0 0 28px rgba(77,166,255,0.3);
 }
 
+.scoring-capture-complete {
+  min-height: 100%;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 8px;
+  color: var(--text-secondary);
+}
+
+.scoring-capture-complete strong {
+  color: var(--accent-green);
+  font-size: 18px;
+}
+
+.scoring-capture-complete span {
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.scoring-capture-complete small {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
 /* 四角扫描框装饰 */
 .challenge-camera-frame::before {
   content: '';
