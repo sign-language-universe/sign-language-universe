@@ -1,0 +1,15 @@
+{
+  "name": "sign-language-universe",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python"
+      ]
+    }
+  },
+  "postCreateCommand": "pip install -r services/scoring-api/requirements.txt && pip install -e packages/scoring-core",
+  "remoteUser": "vscode"
+}

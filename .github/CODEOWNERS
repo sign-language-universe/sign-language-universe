@@ -1,0 +1,23 @@
+# Global fallback
+* @sign-language-universe/maintainers
+
+# Product docs and architecture
+/docs/architecture/ @sign-language-universe/maintainers
+/docs/adr/ @sign-language-universe/maintainers
+/AGENTS.md @sign-language-universe/maintainers
+
+# Frontend
+/apps/web/ @sign-language-universe/frontend
+
+# Scoring module
+/packages/scoring-core/ @sign-language-universe/scoring
+/services/scoring-api/ @sign-language-universe/scoring
+/docs/scoring/ @sign-language-universe/scoring
+
+# Shared API contracts
+/packages/shared-contracts/ @sign-language-universe/frontend @sign-language-universe/scoring
+/docs/api/ @sign-language-universe/frontend @sign-language-universe/scoring
+
+# CI and repo governance
+/.github/ @sign-language-universe/maintainers
+/.devcontainer/ @sign-language-universe/maintainers

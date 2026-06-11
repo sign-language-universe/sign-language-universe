@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>手语小宇宙 — Sign Language Universe</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <!-- ============ 星空背景画布 ============ -->
+  <canvas id="starCanvas"></canvas>
+
+  <!-- ============ 页面容器 ============ -->
+  <div id="app">
+
+    <!-- ===== 页面0：启动页 ===== -->
+    <section id="screen-splash" class="screen active">
+      <div class="splash-content">
+        <div class="logo-area">
+          <div class="logo-planet"></div>
+          <h1 class="app-title">手语小宇宙</h1>
+          <p class="app-subtitle">Sign Language Universe</p>
+          <p class="app-desc">用双手探索语言的银河</p>
+        </div>
+        <div class="mode-select">
+          <button class="mode-btn learning" onclick="navigateTo('galaxy', 'learning')">
+            <span class="mode-icon">🪐</span>
+            <span class="mode-label">学习宇宙</span>
+            <span class="mode-desc">词汇教学 · 互动游戏 · 测评</span>
+          </button>
+          <button class="mode-btn personal" onclick="navigateTo('galaxy', 'personal')">
+            <span class="mode-icon">🏠</span>
+            <span class="mode-label">个人空间</span>
+            <span class="mode-desc">空间站 · 好友联盟 · 排行</span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== 页面1：星系选择 ===== -->
+    <section id="screen-galaxy" class="screen">
+      <header class="top-bar">
+        <button class="back-btn" onclick="navigateTo('splash')">← 返回</button>
+        <div class="mode-badge" id="galaxy-mode-badge"></div>
+        <button class="icon-btn" onclick="navigateTo('search')">🔍</button>
+      </header>
+      <div class="galaxy-container" id="galaxy-container">
+        <!-- JS 动态生成星系和星球 -->
+      </div>
+      <div class="galaxy-legend">
+        <div class="legend-item"><span class="dot lv1"></span> 一级（基础）</div>
+        <div class="legend-item"><span class="dot lv2"></span> 二级（进阶）</div>
+        <div class="legend-item"><span class="dot lv3"></span> 三级（高级）</div>
+      </div>
+    </section>
+
+    <!-- ===== 页面2：词汇学习卡片 ===== -->
+    <section id="screen-learning" class="screen">
+      <header class="top-bar">
+        <button class="back-btn" onclick="navigateTo('galaxy')">← 返回星球</button>
+        <span class="progress-text" id="learning-progress">1 / 15</span>
+        <button class="icon-btn" id="btn-collect" onclick="toggleCollect()">⭐</button>
+      </header>
+      <div class="learning-outer-wrap">
+        <!-- 左侧：上一词 -->
+        <button class="learning-nav-btn prev-word-btn" id="btn-learn-prev" onclick="prevWord()" title="上一个词汇">
+          <span class="nav-arrow">◀</span>
+          <span class="nav-label">上一词</span>
+        </button>
+        <!-- 中间：学习内容 -->
+        <div class="learning-container">
+          <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+          <div class="video-area" id="video-area">
+            <!-- 动画展示画布（替代视频占位） -->
+            <div class="animation-viewer" id="learning-anim-viewer">
+              <canvas id="learning-anim-canvas"></canvas>
+              <div class="anim-overlay-hint" id="anim-overlay">
+                <span class="anim-phase-icon">🤚</span>
+                <p class="anim-phase-text" id="anim-phase-label">准备学习</p>
+              </div>
+              <div class="anim-controls">
+                <button class="anim-ctrl-btn" id="btn-anim-play" onclick="toggleAnimPlay()">▶ 播放</button>
+                <button class="anim-ctrl-btn" id="btn-anim-replay" onclick="restartAnim()">🔄 重播</button>
+                <span class="anim-speed-label" id="anim-phase-name">--</span>
+              </div>
+            </div>
+          </div>
+          <div class="word-info">
+            <h2 class="word-title" id="word-title">你好</h2>
+            <p class="word-pinyin" id="word-pinyin">nǐ hǎo</p>
+          </div>
+          <div class="word-explanation">
+            <div class="explanation-image" id="explanation-image">
+              <span>🖐️ 图示释义区域</span>
+            </div>
+            <div class="explanation-text" id="explanation-text">
+              <p><strong>打法：</strong>一手伸出拇指，自然弯曲，在胸前向上点动两下。</p>
+              <p><strong>用法：</strong>日常问候用语，用于见面打招呼。</p>
+            </div>
+          </div>
+          <div class="culture-tip" id="culture-tip">
+            <span class="tip-icon">💡</span>
+            <div class="tip-content">
+              <strong>手语小知识：</strong>
+              <p id="tip-text">在中国手语中，问候语通常伴随微笑的表情和点头的体态，这些非手控特征也是手语的重要组成部分。</p>
+            </div>
+          </div>
+          <div class="learning-actions">
+            <button class="action-btn secondary" onclick="navigateTo('challenge')">挑战模式 🎯</button>
+          </div>
+        </div>
+        <!-- 右侧：下一词 -->
+        <button class="learning-nav-btn next-word-btn" id="btn-learn-next" onclick="nextWord()" title="下一个词汇">
+          <span class="nav-arrow">▶</span>
+          <span class="nav-label">下一词</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- ===== 页面3：检索页面 ===== -->
+    <section id="screen-search" class="screen">
+      <header class="top-bar">
+        <button class="back-btn" onclick="navigateTo('galaxy')">← 返回</button>
+        <h3>词汇检索</h3>
+        <span></span>
+      </header>
+      <div class="search-container">
+        <div class="search-tabs">
+          <button class="search-tab active" onclick="switchSearchTab('keyword')">关键词</button>
+          <button class="search-tab" onclick="switchSearchTab('letter')">首字母</button>
+          <button class="search-tab" onclick="switchSearchTab('handshape')">手形检索</button>
+        </div>
+        <div class="search-input-area">
+          <input type="text" class="search-input" placeholder="输入手语词汇关键词..." id="search-input">
+          <button class="search-btn" onclick="doSearch()">🔍</button>
+        </div>
+        <div class="search-results" id="search-results">
+          <p class="search-hint">输入关键词开始搜索手语词汇</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== 页面4：测评页面 ===== -->
+    <section id="screen-assessment" class="screen">
+      <header class="top-bar">
+        <button class="back-btn" onclick="navigateTo('learning')">← 返回学习</button>
+        <span class="assessment-type" id="assessment-type">理解能力 · 选择题</span>
+        <span class="question-progress" id="question-progress">1/10</span>
+      </header>
+      <div class="assessment-container">
+        <div id="assessment-mode-select">
+          <h3 class="section-title">选择测评模式</h3>
+          <div class="assessment-modes">
+            <button class="assessment-mode-btn" onclick="startAssessment('comprehension')">
+              <span class="mode-icon-large">📖</span>
+              <strong>理解能力（输入）</strong>
+              <p>选择题 · 连词成句 · 翻译</p>
+            </button>
+            <button class="assessment-mode-btn" onclick="startAssessment('expression')">
+              <span class="mode-icon-large">🤚</span>
+              <strong>表达能力（输出）</strong>
+              <p>动作捕捉 · 手势评分</p>
+            </button>
+          </div>
+        </div>
+        <div id="comprehension-quiz" style="display:none;">
+          <div class="quiz-video" id="quiz-video">
+            <p>📹 观看手语视频，选择正确含义</p>
+          </div>
+          <div class="quiz-options" id="quiz-options"></div>
+        </div>
+        <div id="expression-quiz" style="display:none;">
+          <div class="camera-area" id="camera-area">
+            <div class="camera-placeholder">
+              <p>📷 请对着摄像头做出以下词汇的手语</p>
+              <h2 id="expression-target-word">你好</h2>
+              <div class="camera-frame">
+                <div class="camera-inner">
+                  <p class="integration-hint">
+                    <strong>🔌 动作检测算法接入点</strong><br>
+                    此处集成 MediaPipe Hands 或团队自研算法<br>
+                    实时捕获 21 个手部关键点 + 面部网格<br>
+                    包含：手形 · 位置 · 动作轨迹 · 朝向 · 表情 · 口动
+                  </p>
+                </div>
+              </div>
+              <div class="capture-controls">
+                <button class="capture-btn" onclick="startCapture()">🎥 开始捕捉</button>
+                <button class="capture-btn stop" onclick="stopCapture()">⏹ 停止</button>
+              </div>
+              <div class="score-display" id="score-display">
+                <div class="score-item">
+                  <span>手势准确度</span>
+                  <div class="score-bar"><div class="score-fill" style="width:0%" id="score-hand"></div></div>
+                </div>
+                <div class="score-item">
+                  <span>表情/口动</span>
+                  <div class="score-bar"><div class="score-fill" style="width:0%" id="score-face"></div></div>
+                </div>
+                <div class="score-item">
+                  <span>体态/方向</span>
+                  <div class="score-bar"><div class="score-fill" style="width:0%" id="score-pose"></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== 页面5：个人空间站 ===== -->
+    <section id="screen-spacestation" class="screen">
+      <header class="top-bar">
+        <button class="back-btn" onclick="navigateTo('galaxy')">← 返回星系</button>
+        <h3>我的空间站</h3>
+        <button class="icon-btn">⚙️</button>
+      </header>
+      <div class="spacestation-container">
+        <div class="astronaut-area">
+          <div class="astronaut-avatar">
+            <div class="astronaut-body">
+              <div class="astronaut-helmet">
+                <div class="astronaut-face">🧑‍🚀</div>
+              </div>
+              <div class="astronaut-suit"></div>
+            </div>
+          </div>
+          <h3 class="astronaut-name">宇航员 <span id="username-display">探索者</span></h3>
+          <div class="astronaut-stats">
+            <div class="stat"><span class="stat-val" id="stat-words">0</span><span class="stat-label">已学词汇</span></div>
+            <div class="stat"><span class="stat-val" id="stat-stars">0</span><span class="stat-label">成就积分</span></div>
+            <div class="stat"><span class="stat-val" id="stat-rank">#--</span><span class="stat-label">好友排行</span></div>
+          </div>
+        </div>
+        <div class="station-preview">
+          <div class="station-3d-placeholder">
+            <p>🏗️ 个人空间站 3D 场景</p>
+            <small>Three.js 渲染 · 道具装饰 · NPC 互动</small>
+            <div class="station-items">
+              <span class="station-item">🪴 银河盆栽</span>
+              <span class="station-item">📡 通讯天线</span>
+              <span class="station-item">🛸 探测飞船</span>
+            </div>
+          </div>
+        </div>
+        <div class="spacestation-actions">
+          <button class="space-action-btn" onclick="navigateTo('challenge')">
+            <span>🎯</span> 挑战模式
+          </button>
+          <button class="space-action-btn" onclick="navigateTo('constellation')">
+            <span>🌌</span> 星空笔记本
+          </button>
+          <button class="space-action-btn">
+            <span>🎮</span> 游戏互动
+          </button>
+          <button class="space-action-btn">
+            <span>👥</span> 好友联盟
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== 页面6：挑战模式 ===== -->
+    <section id="screen-challenge" class="screen">
+      <header class="top-bar">
+        <button class="back-btn" onclick="navigateTo('spacestation')">← 返回空间站</button>
+        <h3 id="challenge-word-display">准备挑战...</h3>
+        <span class="challenge-progress-text" id="challenge-progress-text">1 / 10</span>
+      </header>
+
+      <!-- 左右导航按键 -->
+      <div class="challenge-nav-wrap">
+        <!-- 左侧：上一词 -->
+        <button class="challenge-nav-btn prev-word" id="btn-prev-word" onclick="prevChallengeWord()" title="上一个词汇">
+          <span class="nav-arrow">◀</span>
+          <span class="nav-label">上一词</span>
+        </button>
+
+        <!-- 左右并排主布局 -->
+        <div class="challenge-layout" id="challenge-layout">
+          <!-- 左侧：手语视频预览（与学习页一致） -->
+          <div class="challenge-left" id="challenge-left">
+            <div class="preview-label">📹 目标词汇 · 手语示范</div>
+            <div class="challenge-video-area" id="challenge-video-area">
+              <div class="animation-viewer" id="challenge-anim-viewer">
+                <canvas id="challenge-anim-canvas"></canvas>
+                <div class="anim-overlay-hint" id="challenge-anim-overlay">
+                  <span class="anim-phase-icon">🤚</span>
+                  <p class="anim-phase-text" id="challenge-anim-phase-label">观看手语示范</p>
+                </div>
+                <div class="anim-controls">
+                  <button class="anim-ctrl-btn" id="btn-challenge-anim-play" onclick="toggleChallengeAnimPlay()">▶ 播放</button>
+                  <button class="anim-ctrl-btn" id="btn-challenge-anim-replay" onclick="restartChallengeAnim()">🔄 重播</button>
+                  <span class="anim-speed-label" id="challenge-anim-phase-name">--</span>
+                </div>
+              </div>
+            </div>
+            <div class="model-word-label" id="model-word-label">--</div>
+          </div>
+
+          <!-- 右侧：摄像头 / 交互区 -->
+          <div class="challenge-right" id="challenge-right">
+            <!-- 未开始 -->
+            <div class="challenge-intro" id="challenge-intro">
+              <div class="challenge-intro-icon">🤚✨</div>
+              <p class="intro-main-text">观看左侧手语示范<br>记住词汇的打法！</p>
+              <div class="challenge-hint-list">
+                <div class="hint-item">
+                  <span class="hint-dot"></span>
+                  <span>点击「开始」比划手语</span>
+                </div>
+                <div class="hint-item">
+                  <span class="hint-dot"></span>
+                  <span>完成后点「打分」获取成绩</span>
+                </div>
+                <div class="hint-item reward-hint-item">
+                  <span class="hint-dot reward-dot"></span>
+                  <span>评分 ≥ <strong>80 分</strong> 解锁 3D 奖励 🎉</span>
+                </div>
+              </div>
+              <button class="challenge-start-btn" onclick="startChallenge()">
+                <span class="start-btn-icon">🚀</span>
+                <span class="start-btn-text">进入挑战</span>
+              </button>
+            </div>
+
+            <!-- 挑战进行中 -->
+            <div class="challenge-active" id="challenge-active" style="display:none;">
+              <div class="challenge-camera-frame" id="challenge-camera-frame">
+                <div class="challenge-camera-inner" id="challenge-camera-inner">
+                  <p>📷 摄像头画面区域</p>
+                  <small>点击「开始」后对着摄像头比划手语</small>
+                  <div class="recording-indicator" id="recording-indicator">⏺ 录制中...</div>
+                </div>
+              </div>
+              <!-- 控制按钮：开始 + 打分 -->
+              <div class="challenge-controls" id="challenge-controls">
+                <button class="challenge-ctrl-btn start-btn" id="btn-start-record" onclick="startRecording()">
+                  <span class="ctrl-icon">🎥</span>
+                  <span>开始</span>
+                </button>
+                <button class="challenge-ctrl-btn score-btn" id="btn-score" onclick="scoreChallenge()" disabled>
+                  <span class="ctrl-icon">⭐</span>
+                  <span>打分</span>
+                </button>
+              </div>
+              <!-- 计时器 -->
+              <div class="challenge-timer" id="challenge-timer">录制时长：<span id="timer-display">00:00</span></div>
+            </div>
+
+            <!-- 挑战结果 -->
+            <div class="challenge-result" id="challenge-result" style="display:none;">
+              <div class="result-icon" id="result-icon">🎯</div>
+              <div class="result-score" id="result-score">-- 分</div>
+              <div class="result-message" id="result-message">--</div>
+              <div class="result-actions">
+                <button class="action-btn primary" onclick="navigateTo('constellation')">📕 查看星空笔记本</button>
+                <button class="action-btn secondary" onclick="retryChallenge()">🔄 再试一次</button>
+                <button class="action-btn secondary" onclick="nextChallengeWord()">➡️ 下一个词汇</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 右侧：下一词 -->
+        <button class="challenge-nav-btn next-word" id="btn-next-word" onclick="nextChallengeWord()" title="下一个词汇">
+          <span class="nav-arrow">▶</span>
+          <span class="nav-label">下一词</span>
+        </button>
+      </div>
+
+      <!-- 底部词汇信息栏 -->
+      <div class="challenge-bottom-bar" id="challenge-bottom-bar">
+        <div class="challenge-word-info">
+          <span class="challenge-word-zh" id="challenge-word-zh">--</span>
+          <span class="challenge-word-py" id="challenge-word-py">--</span>
+        </div>
+        <div class="challenge-word-definition" id="challenge-word-definition">--</div>
+      </div>
+    </section>
+
+    <!-- ===== 页面7：星座图鉴 ===== -->
+    <section id="screen-constellation" class="screen">
+      <header class="top-bar">
+        <button class="back-btn" onclick="navigateTo('spacestation')">← 返回空间站</button>
+        <h3>🌌 星空笔记本</h3>
+        <span class="constellation-progress" id="constellation-progress">已点亮 0/0</span>
+      </header>
+      <div class="constellation-container">
+        <div class="constellation-tabs">
+          <button class="constellation-tab active" onclick="switchConstellationTab('learned')">✅ 已学会</button>
+          <button class="constellation-tab" onclick="switchConstellationTab('locked')">🔒 未解锁</button>
+        </div>
+        <div class="constellation-svg-area" id="constellation-svg-area">
+          <!-- JS 动态生成 SVG 星座图 -->
+        </div>
+        <div class="constellation-detail" id="constellation-detail" style="display:none;">
+          <div class="detail-card">
+            <div class="detail-word" id="detail-word">--</div>
+            <div class="detail-pinyin" id="detail-pinyin">--</div>
+            <div class="detail-model-area" id="detail-model-area">
+              <canvas id="detail-three-canvas" width="200" height="200"></canvas>
+            </div>
+            <div class="detail-definition" id="detail-definition">--</div>
+            <button class="action-btn primary" onclick="closeConstellationDetail()">关闭</button>
+          </div>
+        </div>
+        <div class="constellation-legend">
+          <span class="cl-item"><span class="cl-dot lit"></span> 已点亮</span>
+          <span class="cl-item"><span class="cl-dot"></span> 未解锁</span>
+          <span class="cl-item"><span class="cl-dot reward"></span> 有奖励动画</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== 奖励弹窗 Overlay（含 3D 模型）===== -->
+    <div class="reward-overlay" id="reward-overlay">
+      <div class="reward-particles" id="reward-particles"></div>
+      <div class="reward-content">
+        <div class="reward-badge">🎉</div>
+        <h2 class="reward-title" id="reward-title">太棒了！</h2>
+        <p class="reward-subtitle" id="reward-subtitle">你已掌握「桥」的手语！</p>
+        <!-- 3D 模型只在奖励弹窗中显示 -->
+        <div class="reward-model-area" id="reward-model-area">
+          <!-- model-viewer 由 JS 动态注入 -->
+        </div>
+        <div class="reward-score-show" id="reward-score-show">得分：87 分</div>
+        <div class="reward-medal" id="reward-medal">🏅 获得「建筑新星」勋章 +10 积分</div>
+        <button class="action-btn primary big-btn" onclick="closeReward()">继续挑战 →</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ============ Toast / 通知 ============ -->
+  <div id="toast" class="toast"></div>
+
+  <!-- model-viewer: 用于奖励弹窗的 3D 模型展示 -->
+  <script type="module" src="https://unpkg.com/@google/model-viewer@3.5.0/dist/model-viewer.min.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/stars.js"></script>
+  <script src="js/animations.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

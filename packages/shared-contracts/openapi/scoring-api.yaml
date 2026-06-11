@@ -1,0 +1,94 @@
+openapi: 3.1.0
+info:
+  title: Sign Language Universe Scoring API
+  version: 0.1.0
+paths:
+  /api/scoring/health:
+    get:
+      summary: Scoring service health check
+      responses:
+        "200":
+          description: Service health
+  /api/scoring/templates:
+    get:
+      summary: List available scoring templates
+      responses:
+        "200":
+          description: Available templates
+  /api/scoring/score:
+    post:
+      summary: Submit sign language frames or a video path for scoring
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ScoreRequest"
+      responses:
+        "200":
+          description: Score result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScoreResponse"
+components:
+  schemas:
+    FrameSlice:
+      type: object
+      required: [index, timestamp_ms, image_base64]
+      properties:
+        index:
+          type: integer
+          minimum: 0
+        timestamp_ms:
+          type: integer
+          minimum: 0
+        image_base64:
+          type: string
+    ScoreRequest:
+      type: object
+      required: [template_id, input_type]
+      properties:
+        template_id:
+          type: string
+          examples: ["flower", "jump"]
+        input_type:
+          type: string
+          enum: ["frame_slices", "video_path"]
+        frames:
+          type: array
+          items:
+            $ref: "#/components/schemas/FrameSlice"
+        video_path:
+          type: string
+        client_meta:
+          type: object
+          additionalProperties: true
+    ScoreResponse:
+      type: object
+      required: [request_id, template_id, score, level, score_valid, feedback, diagnostics]
+      properties:
+        request_id:
+          type: string
+        template_id:
+          type: string
+        score:
+          type:
+            - number
+            - "null"
+        level:
+          type: string
+        score_valid:
+          type: boolean
+        feedback:
+          type: array
+          items:
+            type: object
+            properties:
+              type:
+                type: string
+              message:
+                type: string
+        diagnostics:
+          type: object
+          additionalProperties: true

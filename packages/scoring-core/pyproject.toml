@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sign-language-scoring-core"
+version = "0.1.0"
+description = "Core scoring utilities for Sign Language Universe."
+requires-python = ">=3.10"
+dependencies = [
+  "numpy",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["scoring_core*"]

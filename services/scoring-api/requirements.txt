@@ -1,0 +1,10 @@
+fastapi
+uvicorn[standard]
+pydantic
+numpy
+
+# Optional runtime dependencies for full Holistic processing.
+# Install these in a suitable local/Coder/server environment when enabling the worker.
+opencv-python
+mediapipe
+Pillow

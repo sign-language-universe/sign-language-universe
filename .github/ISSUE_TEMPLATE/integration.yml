@@ -1,0 +1,24 @@
+name: Integration
+description: 前后端或模块集成任务
+title: "[Integration] "
+labels: ["area/integration"]
+body:
+  - type: textarea
+    id: modules
+    attributes:
+      label: 涉及模块
+      description: 例如 apps/web、services/scoring-api、packages/shared-contracts
+    validations:
+      required: true
+  - type: textarea
+    id: contract
+    attributes:
+      label: 接口或契约变化
+    validations:
+      required: true
+  - type: textarea
+    id: tests
+    attributes:
+      label: 集成验证方式
+    validations:
+      required: true

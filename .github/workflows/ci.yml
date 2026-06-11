@@ -1,0 +1,21 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  baseline:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - name: Check forbidden files
+        run: python scripts/ci/check_forbidden_files.py
+      - name: Python syntax check
+        run: python -m compileall packages/scoring-core services/scoring-api scripts
+      - name: Frontend static entry check
+        run: test -f apps/web/index.html

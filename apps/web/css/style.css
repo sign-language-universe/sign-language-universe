@@ -1,0 +1,1904 @@
+/* =============================================
+   手语小宇宙 — 样式表
+   Sign Language Universe CSS
+   设计语言：宇宙 · 星球 · 未来 · 空间
+   ============================================= */
+
+/* ---------- CSS 变量 ---------- */
+:root {
+  --bg-deep: #0a0a1a;
+  --bg-space: #0f0f2a;
+  --bg-card: rgba(20, 20, 55, 0.85);
+  --bg-card-hover: rgba(30, 30, 70, 0.9);
+  --text-primary: #e8e8f0;
+  --text-secondary: #a0a0c0;
+  --text-muted: #6868a0;
+  --accent-blue: #4da6ff;
+  --accent-purple: #9b59ff;
+  --accent-pink: #ff6b9d;
+  --accent-yellow: #ffd93d;
+  --accent-green: #4de8a0;
+  --accent-orange: #ff8c42;
+  --accent-cyan: #00e5ff;
+  --planet-lv1: #4de8a0;
+  --planet-lv2: #4da6ff;
+  --planet-lv3: #ff6b9d;
+  --gradient-cosmic: linear-gradient(135deg, #1a1a4e 0%, #0f0f2a 50%, #1a0a2e 100%);
+  --gradient-button: linear-gradient(135deg, #4da6ff, #9b59ff);
+  --radius: 16px;
+  --radius-sm: 10px;
+  --shadow-glow: 0 0 30px rgba(77, 166, 255, 0.2);
+  --font-title: 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  --font-body: 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  --transition: 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ---------- 基础重置 ---------- */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  width: 100%; height: 100%;
+  overflow: hidden;
+  font-family: var(--font-body);
+  background: var(--bg-deep);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---------- 星空画布 ---------- */
+#starCanvas {
+  position: fixed; top: 0; left: 0;
+  width: 100%; height: 100%;
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* ---------- 主容器 ---------- */
+#app {
+  position: relative; z-index: 1;
+  width: 100%; height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* ---------- 页面切换 ---------- */
+.screen {
+  display: none;
+  width: 100%; min-height: 100%;
+  padding: 20px;
+  flex-direction: column;
+  animation: fadeSlideIn 0.5s ease;
+}
+.screen.active { display: flex; }
+
+@keyframes fadeSlideIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ---------- 顶部导航栏 ---------- */
+.top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 8px;
+  background: var(--bg-card);
+  backdrop-filter: blur(20px);
+  border-radius: var(--radius);
+  margin-bottom: 20px;
+  position: sticky; top: 0; z-index: 10;
+}
+
+.back-btn, .icon-btn {
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.12);
+  color: var(--text-primary);
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: var(--transition);
+  font-family: var(--font-body);
+}
+.back-btn:hover, .icon-btn:hover {
+  background: rgba(255,255,255,0.15);
+  border-color: var(--accent-blue);
+}
+
+.mode-badge {
+  font-size: 13px;
+  padding: 4px 14px;
+  border-radius: 20px;
+  background: rgba(77,166,255,0.15);
+  color: var(--accent-blue);
+  font-weight: 600;
+}
+
+.progress-text {
+  font-size: 14px; color: var(--text-secondary);
+}
+
+.challenge-progress-text {
+  font-size: 14px; color: var(--accent-cyan);
+  font-weight: 600;
+}
+
+/* =============================================
+   启动页 - Splash
+   ============================================= */
+#screen-splash {
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+}
+
+.splash-content {
+  max-width: 480px; width: 100%;
+}
+
+.logo-area { margin-bottom: 48px; }
+
+.logo-planet {
+  width: 120px; height: 120px;
+  margin: 0 auto 24px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, #ffffff 0%, #ffd93d 15%, #ff6b9d 40%, #4da6ff 65%, #1a1a4e 100%);
+  box-shadow:
+    0 0 40px rgba(255,217,61,0.4),
+    0 0 80px rgba(155,89,255,0.25),
+    0 0 120px rgba(77,166,255,0.15),
+    inset 0 0 30px rgba(0,0,0,0.2);
+  position: relative;
+  animation: planetPulse 3s ease-in-out infinite;
+}
+.logo-planet::after {
+  content: '';
+  position: absolute;
+  inset: -12px;
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.12);
+  animation: ringRotate 12s linear infinite;
+}
+
+@keyframes planetPulse {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 40px rgba(255,217,61,0.4), 0 0 80px rgba(155,89,255,0.25); }
+  50% { transform: scale(1.06); box-shadow: 0 0 60px rgba(255,217,61,0.6), 0 0 100px rgba(155,89,255,0.35); }
+}
+
+@keyframes ringRotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.app-title {
+  font-family: var(--font-title);
+  font-size: 36px; font-weight: 800;
+  background: linear-gradient(135deg, var(--accent-yellow), var(--accent-pink), var(--accent-blue));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 8px;
+}
+
+.app-subtitle {
+  font-size: 16px; color: var(--text-secondary);
+  letter-spacing: 4px; text-transform: uppercase;
+  margin-bottom: 12px;
+}
+.app-desc {
+  font-size: 15px; color: var(--text-muted);
+}
+
+.mode-select {
+  display: flex; gap: 16px;
+  flex-direction: column;
+}
+
+.mode-btn {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 8px;
+  padding: 28px 24px;
+  border-radius: var(--radius);
+  border: 2px solid rgba(255,255,255,0.08);
+  background: var(--bg-card);
+  backdrop-filter: blur(20px);
+  cursor: pointer;
+  transition: var(--transition);
+  font-family: var(--font-body);
+  color: var(--text-primary);
+}
+.mode-btn:hover {
+  transform: translateY(-4px);
+  border-color: var(--accent-blue);
+  box-shadow: var(--shadow-glow);
+}
+.mode-btn.learning:hover { border-color: var(--accent-green); }
+.mode-btn.personal:hover { border-color: var(--accent-purple); }
+
+.mode-icon { font-size: 42px; }
+.mode-label { font-size: 20px; font-weight: 700; }
+.mode-desc { font-size: 13px; color: var(--text-secondary); }
+
+/* =============================================
+   星系页 - Galaxy（未来感星球设计）
+   ============================================= */
+.galaxy-container {
+  display: flex; flex-direction: column;
+  gap: 36px;
+  padding: 12px 0;
+}
+
+.galaxy-system {
+  position: relative;
+  padding: 28px 20px;
+  border-radius: var(--radius);
+  background: var(--bg-card);
+  border: 1px solid rgba(255,255,255,0.06);
+  transition: var(--transition);
+}
+
+.galaxy-system:hover {
+  border-color: rgba(255,255,255,0.15);
+  box-shadow: var(--shadow-glow);
+}
+
+.galaxy-label {
+  display: flex; align-items: center;
+  gap: 8px; margin-bottom: 20px;
+}
+.galaxy-level {
+  font-size: 12px; padding: 3px 10px; border-radius: 12px;
+  font-weight: 600;
+}
+.galaxy-level.lv1 { background: rgba(77,232,160,0.15); color: var(--planet-lv1); }
+.galaxy-level.lv2 { background: rgba(77,166,255,0.15); color: var(--planet-lv2); }
+.galaxy-level.lv3 { background: rgba(255,107,157,0.15); color: var(--planet-lv3); }
+
+.planet-grid {
+  display: flex; gap: 16px;
+  flex-wrap: wrap; justify-content: center;
+}
+
+.planet-card {
+  width: 110px; text-align: center;
+  cursor: pointer; transition: var(--transition);
+  position: relative;
+}
+.planet-card:hover .planet-icon {
+  transform: scale(1.12) translateY(-8px);
+}
+.planet-card:hover .planet-icon::before {
+  opacity: 1;
+}
+.planet-card.locked { opacity: 0.45; pointer-events: none; }
+.planet-card.locked .planet-icon { filter: grayscale(0.7); }
+.planet-card.locked .planet-icon::after { animation: none; opacity: 0.3; }
+
+/* ── 未来感星球 ═══════════════════════════════════════ */
+.planet-icon {
+  width: 80px; height: 80px;
+  margin: 0 auto 8px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 34px;
+  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  position: relative;
+  box-shadow:
+    inset 0 -4px 12px rgba(0,0,0,0.4),
+    inset 0 4px 8px rgba(255,255,255,0.1),
+    0 0 20px rgba(var(--p-glow, 255,255,255), 0.3);
+}
+
+/* 星球大气光晕环 */
+.planet-icon::after {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255,255,255,0.15);
+  animation: orbitSpin 8s linear infinite;
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+/* 星球暗面弧线 */
+.planet-icon::before {
+  content: '';
+  position: absolute;
+  inset: 6px;
+  border-radius: 50%;
+  background: radial-gradient(
+    ellipse at 60% 30%,
+    rgba(255,255,255,0.25) 0%,
+    transparent 60%
+  );
+  opacity: 0.5;
+  pointer-events: none;
+  transition: opacity 0.3s;
+}
+
+@keyframes orbitSpin {
+  from { transform: rotate(0deg) scale(1); }
+  50%  { transform: rotate(180deg) scale(1.05); }
+  to   { transform: rotate(360deg) scale(1); }
+}
+
+/* 各星球独特色彩方案 */
+.planet-icon.p1 { background: radial-gradient(circle at 35% 30%, #b7fffa, #4de8a0 40%, #1a5c3a 100%); }
+.planet-icon.p2 { background: radial-gradient(circle at 35% 30%, #e0f0ff, #4da6ff 40%, #1a3a6e 100%); }
+.planet-icon.p3 { background: radial-gradient(circle at 35% 30%, #ffe8d0, #ff8c42 40%, #6e3018 100%); }
+.planet-icon.p4 { background: radial-gradient(circle at 35% 30%, #ffe8f0, #ff6b9d 40%, #5c1a3a 100%); }
+.planet-icon.p5 { background: radial-gradient(circle at 35% 30%, #f0e0ff, #9b59ff 40%, #2e1a5c 100%); }
+.planet-icon.p6 { background: radial-gradient(circle at 35% 30%, #ffe8c0, #ffd93d 40%, #6e5218 100%); }
+.planet-icon.p7 { background: radial-gradient(circle at 35% 30%, #d0ffe0, #4de8a0 40%, #1a5c2e 100%); }
+.planet-icon.p8 { background: radial-gradient(circle at 35% 30%, #d0f0ff, #4da6ff 40%, #1a4a6e 100%); }
+
+/* 锁定遮罩样式 */
+.locked-overlay {
+  position: absolute; inset: 0;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.5);
+  backdrop-filter: blur(2px);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px;
+  z-index: 1;
+}
+
+.planet-name {
+  font-size: 13px; font-weight: 600;
+  color: var(--text-secondary);
+}
+.planet-word-count {
+  font-size: 11px; color: var(--text-muted);
+}
+
+.galaxy-legend {
+  display: flex; gap: 20px; justify-content: center;
+  margin-top: 16px; padding: 12px;
+  background: var(--bg-card); border-radius: var(--radius-sm);
+}
+.legend-item { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-secondary); }
+.legend-item .dot { width: 12px; height: 12px; border-radius: 50%; }
+.dot.lv1 { background: radial-gradient(circle at 30% 30%, #b7fffa, #4de8a0); box-shadow: 0 0 6px rgba(77,232,160,0.4); }
+.dot.lv2 { background: radial-gradient(circle at 30% 30%, #e0f0ff, #4da6ff); box-shadow: 0 0 6px rgba(77,166,255,0.4); }
+.dot.lv3 { background: radial-gradient(circle at 30% 30%, #ffe8f0, #ff6b9d); box-shadow: 0 0 6px rgba(255,107,157,0.4); }
+
+/* =============================================
+   学习卡片 - Learning
+   ============================================= */
+
+/* 外层包裹：左右导航键 + 内容 */
+.learning-outer-wrap {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  flex: 1;
+  min-height: 0;
+  max-width: 1100px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* 学习页导航按键 */
+.learning-nav-btn {
+  width: 52px;
+  min-width: 52px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 12px 4px;
+  border-radius: var(--radius);
+  border: 1px solid rgba(255,255,255,0.08);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-family: var(--font-body);
+  cursor: pointer;
+  transition: var(--transition);
+  backdrop-filter: blur(10px);
+  align-self: center;
+  height: 80px;
+}
+.learning-nav-btn:hover {
+  border-color: var(--accent-blue);
+  background: var(--bg-card-hover);
+  box-shadow: 0 0 20px rgba(77,166,255,0.2);
+  color: var(--text-primary);
+}
+.learning-nav-btn .nav-arrow {
+  font-size: 18px;
+  transition: transform 0.3s ease;
+}
+.learning-nav-btn:hover .nav-arrow { transform: scale(1.2); }
+.prev-word-btn:hover .nav-arrow { transform: translateX(-3px) scale(1.2); }
+.next-word-btn:hover .nav-arrow { transform: translateX(3px) scale(1.2); }
+.learning-nav-btn .nav-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+.learning-nav-btn:disabled {
+  opacity: 0.3;
+  pointer-events: none;
+}
+
+.learning-container {
+  flex: 1;
+  max-width: 520px;
+  min-width: 0;
+  margin: 0 auto;
+}
+
+.progress-bar {
+  width: 100%; height: 4px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 2px; margin-bottom: 20px;
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent-green), var(--accent-blue));
+  border-radius: 2px;
+  transition: width 0.5s ease;
+}
+
+.video-area {
+  width: 100%; aspect-ratio: 16/10;
+  background: var(--bg-card);
+  border-radius: var(--radius);
+  border: 1px solid rgba(255,255,255,0.08);
+  overflow: hidden;
+  margin-bottom: 20px;
+  position: relative;
+}
+
+/* ── 动画展示器 ── */
+.animation-viewer {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+  background: radial-gradient(ellipse at 50% 45%, rgba(30,30,70,0.6), #080818);
+}
+
+.animation-viewer canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* 动画阶段提示浮层 */
+.anim-overlay-hint {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+  pointer-events: none;
+  z-index: 2;
+  background: rgba(10,10,30,0.7);
+  backdrop-filter: blur(6px);
+  border-radius: 16px;
+  padding: 5px 14px;
+  border: 1px solid rgba(255,255,255,0.06);
+  transition: opacity 0.4s;
+}
+
+.anim-phase-icon {
+  font-size: 20px;
+  display: block;
+  line-height: 1;
+}
+
+.anim-phase-text {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin: 2px 0 0;
+  font-weight: 600;
+}
+
+/* 动画控制条 */
+.anim-controls {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  z-index: 2;
+  background: rgba(10,10,30,0.75);
+  backdrop-filter: blur(8px);
+  border-radius: 20px;
+  padding: 5px 12px;
+  border: 1px solid rgba(255,255,255,0.08);
+}
+
+.anim-ctrl-btn {
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.12);
+  color: var(--text-primary);
+  font-size: 11px;
+  padding: 5px 12px;
+  border-radius: 14px;
+  cursor: pointer;
+  transition: var(--transition);
+  font-family: var(--font-body);
+  white-space: nowrap;
+}
+
+.anim-ctrl-btn:hover {
+  background: rgba(77,166,255,0.2);
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 12px rgba(77,166,255,0.2);
+}
+
+.anim-ctrl-btn.playing {
+  background: rgba(77,232,160,0.15);
+  border-color: rgba(77,232,160,0.4);
+  color: var(--accent-green);
+}
+
+.anim-speed-label {
+  font-size: 10px;
+  color: var(--text-muted);
+  padding: 2px 8px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.video-placeholder {
+  width: 100%; height: 100%;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 12px;
+  background: radial-gradient(ellipse at center, rgba(77,166,255,0.1), transparent);
+}
+
+.ar-overlay-hint {
+  text-align: center;
+  color: var(--text-secondary);
+}
+.ar-overlay-hint .ar-icon { font-size: 42px; display: block; margin-bottom: 8px; }
+.ar-overlay-hint p { font-size: 16px; font-weight: 600; color: var(--text-primary); }
+.ar-overlay-hint small { font-size: 12px; color: var(--text-muted); }
+
+.video-controls {
+  display: flex; gap: 8px; margin-top: 8px;
+}
+.video-controls button {
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.12);
+  color: var(--text-primary);
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: var(--transition);
+  font-family: var(--font-body);
+}
+.video-controls button:hover {
+  background: rgba(255,255,255,0.15);
+}
+
+.word-info {
+  text-align: center; margin-bottom: 16px;
+}
+.word-title {
+  font-size: 32px; font-weight: 800;
+  color: var(--text-primary);
+}
+.word-pinyin {
+  font-size: 15px; color: var(--text-secondary);
+  margin-top: 4px;
+}
+
+.word-explanation {
+  display: flex; gap: 12px;
+  margin-bottom: 16px;
+}
+.explanation-image {
+  width: 100px; height: 100px;
+  flex-shrink: 0;
+  background: var(--bg-card);
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255,255,255,0.08);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+.explanation-text {
+  flex: 1;
+  background: var(--bg-card);
+  border-radius: var(--radius-sm);
+  padding: 14px;
+  border: 1px solid rgba(255,255,255,0.08);
+}
+.explanation-text p {
+  font-size: 14px; color: var(--text-secondary);
+  line-height: 1.6; margin-bottom: 6px;
+}
+.explanation-text strong { color: var(--text-primary); }
+
+.culture-tip {
+  display: flex; gap: 10px;
+  background: rgba(255,217,61,0.08);
+  border: 1px solid rgba(255,217,61,0.2);
+  border-radius: var(--radius-sm);
+  padding: 14px;
+  margin-bottom: 20px;
+}
+.tip-icon { font-size: 20px; flex-shrink: 0; }
+.tip-content strong { color: var(--accent-yellow); font-size: 14px; }
+.tip-content p {
+  font-size: 13px; color: var(--text-secondary);
+  margin-top: 4px; line-height: 1.5;
+}
+
+.learning-actions {
+  display: flex; gap: 12px;
+}
+.action-btn {
+  flex: 1; padding: 14px;
+  border-radius: var(--radius-sm);
+  border: none;
+  font-size: 15px; font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+  font-family: var(--font-body);
+}
+.action-btn.primary {
+  background: var(--gradient-button);
+  color: white;
+  box-shadow: 0 4px 16px rgba(77,166,255,0.3);
+}
+.action-btn.primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 24px rgba(77,166,255,0.4);
+}
+.action-btn.secondary {
+  background: rgba(255,255,255,0.08);
+  color: var(--text-primary);
+  border: 1px solid rgba(255,255,255,0.12);
+}
+.action-btn.secondary:hover {
+  background: rgba(255,255,255,0.15);
+}
+
+/* =============================================
+   检索页 - Search
+   ============================================= */
+.search-container {
+  max-width: 480px; margin: 0 auto; width: 100%;
+}
+.search-tabs {
+  display: flex; gap: 4px;
+  background: var(--bg-card);
+  border-radius: var(--radius-sm);
+  padding: 4px; margin-bottom: 16px;
+}
+.search-tab {
+  flex: 1; padding: 10px;
+  border: none; border-radius: 8px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 14px; cursor: pointer;
+  transition: var(--transition);
+  font-family: var(--font-body);
+}
+.search-tab.active {
+  background: rgba(77,166,255,0.2);
+  color: var(--accent-blue);
+  font-weight: 600;
+}
+
+.search-input-area {
+  display: flex; gap: 8px; margin-bottom: 20px;
+}
+.search-input {
+  flex: 1; padding: 12px 16px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255,255,255,0.1);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font-size: 15px;
+  font-family: var(--font-body);
+  outline: none;
+  transition: var(--transition);
+}
+.search-input:focus { border-color: var(--accent-blue); }
+.search-input::placeholder { color: var(--text-muted); }
+
+.search-btn {
+  padding: 12px 20px;
+  border-radius: var(--radius-sm);
+  border: none;
+  background: var(--gradient-button);
+  color: white;
+  font-size: 16px; cursor: pointer;
+  transition: var(--transition);
+}
+.search-btn:hover { opacity: 0.9; }
+
+.search-hint {
+  text-align: center; color: var(--text-muted);
+  padding: 40px 0; font-size: 14px;
+}
+
+/* =============================================
+   测评页 - Assessment
+   ============================================= */
+.assessment-container {
+  max-width: 520px; margin: 0 auto; width: 100%;
+}
+
+.assessment-type {
+  font-size: 14px; color: var(--text-secondary);
+}
+.question-progress {
+  font-size: 14px; color: var(--accent-blue);
+  font-weight: 600;
+}
+
+.section-title {
+  font-size: 20px; font-weight: 700;
+  margin-bottom: 16px; text-align: center;
+}
+
+.assessment-modes {
+  display: flex; gap: 16px; flex-direction: column;
+}
+
+.assessment-mode-btn {
+  display: flex; flex-direction: column;
+  align-items: center; gap: 8px;
+  padding: 24px;
+  border-radius: var(--radius);
+  border: 2px solid rgba(255,255,255,0.08);
+  background: var(--bg-card);
+  cursor: pointer;
+  transition: var(--transition);
+  font-family: var(--font-body);
+  color: var(--text-primary);
+}
+.assessment-mode-btn:hover {
+  border-color: var(--accent-blue);
+  transform: translateY(-2px);
+}
+.assessment-mode-btn strong { font-size: 18px; }
+.assessment-mode-btn p { font-size: 13px; color: var(--text-secondary); }
+.mode-icon-large { font-size: 40px; }
+
+/* 理解测评 */
+.quiz-video {
+  width: 100%; aspect-ratio: 16/10;
+  background: var(--bg-card);
+  border-radius: var(--radius);
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 20px;
+  color: var(--text-muted);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+
+.quiz-options {
+  display: flex; flex-direction: column; gap: 10px;
+}
+.quiz-option {
+  padding: 16px;
+  border-radius: var(--radius-sm);
+  border: 2px solid rgba(255,255,255,0.08);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font-size: 15px; cursor: pointer;
+  transition: var(--transition);
+  font-family: var(--font-body);
+  text-align: left;
+}
+.quiz-option:hover { border-color: var(--accent-blue); }
+.quiz-option.correct { border-color: var(--accent-green); background: rgba(77,232,160,0.1); }
+.quiz-option.wrong { border-color: var(--accent-pink); background: rgba(255,107,157,0.1); }
+
+/* 表达测评 - 动作捕捉 */
+.camera-placeholder { text-align: center; }
+.camera-placeholder > p {
+  font-size: 14px; color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+.camera-placeholder h2 {
+  font-size: 28px; font-weight: 800;
+  color: var(--accent-yellow);
+  margin-bottom: 16px;
+}
+
+.camera-frame {
+  width: 100%; aspect-ratio: 4/3;
+  border: 3px solid rgba(77,166,255,0.3);
+  border-radius: var(--radius);
+  overflow: hidden;
+  margin-bottom: 16px;
+  position: relative;
+  background: #000;
+}
+.camera-inner {
+  width: 100%; height: 100%;
+  display: flex; align-items: center; justify-content: center;
+  text-align: center;
+  padding: 20px;
+}
+.integration-hint {
+  color: var(--accent-green);
+  font-size: 13px;
+  line-height: 1.8;
+}
+.integration-hint strong {
+  display: block; font-size: 16px;
+  margin-bottom: 8px;
+  color: var(--accent-yellow);
+}
+
+.capture-controls {
+  display: flex; gap: 12px; justify-content: center;
+  margin-bottom: 20px;
+}
+.capture-btn {
+  padding: 12px 28px;
+  border-radius: 24px;
+  border: none;
+  font-size: 15px; font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+  font-family: var(--font-body);
+  background: var(--accent-green);
+  color: #000;
+}
+.capture-btn.stop {
+  background: var(--accent-pink);
+  color: white;
+}
+.capture-btn:hover { opacity: 0.85; }
+
+.score-display {
+  display: flex; flex-direction: column; gap: 10px;
+  padding: 16px;
+  background: var(--bg-card);
+  border-radius: var(--radius-sm);
+}
+.score-item {
+  display: flex; align-items: center; gap: 12px;
+}
+.score-item span {
+  width: 100px; flex-shrink: 0;
+  font-size: 13px; color: var(--text-secondary);
+}
+.score-bar {
+  flex: 1; height: 8px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 4px; overflow: hidden;
+}
+.score-fill {
+  height: 100%; border-radius: 4px;
+  transition: width 0.6s ease;
+  background: linear-gradient(90deg, var(--accent-green), var(--accent-blue));
+}
+
+/* =============================================
+   个人空间站 - Space Station
+   ============================================= */
+.spacestation-container {
+  max-width: 480px; margin: 0 auto; width: 100%;
+}
+
+.astronaut-area {
+  text-align: center; margin-bottom: 24px;
+  padding: 24px;
+  background: var(--bg-card);
+  border-radius: var(--radius);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+
+.astronaut-avatar {
+  width: 100px; height: 100px;
+  margin: 0 auto 16px;
+}
+.astronaut-body {
+  width: 100%; height: 100%;
+  position: relative;
+}
+.astronaut-face { font-size: 80px; line-height: 100px; }
+
+.astronaut-name {
+  font-size: 18px; font-weight: 700;
+  margin-bottom: 12px;
+}
+
+.astronaut-stats {
+  display: flex; gap: 20px; justify-content: center;
+}
+.stat {
+  display: flex; flex-direction: column;
+  align-items: center; gap: 2px;
+}
+.stat-val { font-size: 20px; font-weight: 800; color: var(--accent-yellow); }
+.stat-label { font-size: 11px; color: var(--text-muted); }
+
+.station-preview {
+  margin-bottom: 24px;
+}
+.station-3d-placeholder {
+  padding: 32px;
+  text-align: center;
+  background: var(--bg-card);
+  border-radius: var(--radius);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+.station-3d-placeholder p {
+  font-size: 16px; color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+.station-3d-placeholder small {
+  font-size: 12px; color: var(--text-muted);
+  display: block; margin-bottom: 12px;
+}
+.station-items { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+.station-item {
+  background: rgba(255,255,255,0.06);
+  padding: 6px 14px; border-radius: 20px;
+  font-size: 13px; color: var(--text-secondary);
+}
+
+.spacestation-actions {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.space-action-btn {
+  display: flex; flex-direction: column;
+  align-items: center; gap: 6px;
+  padding: 20px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255,255,255,0.08);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font-size: 14px; font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+  font-family: var(--font-body);
+}
+.space-action-btn:hover {
+  border-color: var(--accent-purple);
+  background: var(--bg-card-hover);
+}
+.space-action-btn span { font-size: 28px; }
+
+/* =============================================
+   Toast
+   ============================================= */
+.toast {
+  position: fixed; bottom: 40px; left: 50%;
+  transform: translateX(-50%);
+  background: var(--accent-green);
+  color: #000;
+  padding: 12px 28px;
+  border-radius: 24px;
+  font-size: 14px; font-weight: 600;
+  z-index: 100;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s, transform 0.3s;
+}
+.toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(-8px);
+}
+
+/* =============================================
+   响应式
+   ============================================= */
+@media (min-width: 768px) {
+  .mode-select { flex-direction: row; }
+  .assessment-modes { flex-direction: row; }
+  .planet-grid { justify-content: flex-start; }
+}
+
+@media (max-width: 400px) {
+  .word-explanation { flex-direction: column; }
+  .explanation-image { width: 100%; height: 80px; }
+  .planet-card { width: 80px; }
+  .planet-icon { width: 64px; height: 64px; font-size: 28px; }
+  .learning-nav-btn { width: 40px; min-width: 40px; }
+}
+
+/* =============================================
+   挑战模式 - Challenge Mode（重构）
+   ============================================= */
+
+/* ── 导航包裹层 ── */
+.challenge-nav-wrap {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  flex: 1;
+  min-height: 0;
+}
+
+/* ── 左右导航按键 ── */
+.challenge-nav-btn {
+  width: 52px;
+  min-width: 52px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 12px 4px;
+  border-radius: var(--radius);
+  border: 1px solid rgba(255,255,255,0.08);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-family: var(--font-body);
+  cursor: pointer;
+  transition: var(--transition);
+  backdrop-filter: blur(10px);
+}
+
+.challenge-nav-btn:hover {
+  border-color: var(--accent-blue);
+  background: var(--bg-card-hover);
+  box-shadow: 0 0 20px rgba(77,166,255,0.2);
+  color: var(--text-primary);
+}
+
+.challenge-nav-btn .nav-arrow {
+  font-size: 18px;
+  transition: transform 0.3s ease;
+}
+.challenge-nav-btn:hover .nav-arrow { transform: scale(1.2); }
+.challenge-nav-btn.prev-word:hover .nav-arrow { transform: translateX(-3px) scale(1.2); }
+.challenge-nav-btn.next-word:hover .nav-arrow { transform: translateX(3px) scale(1.2); }
+
+.challenge-nav-btn .nav-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  writing-mode: vertical-lr;
+  text-orientation: mixed;
+}
+
+/* ── 左右主布局 ── */
+.challenge-layout {
+  display: flex;
+  gap: 16px;
+  flex: 1;
+  min-width: 0;
+}
+
+/* ── 左侧：手语视频（与学习页风格一致）── */
+.challenge-left {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: var(--bg-card);
+  border-radius: var(--radius);
+  border: 1px solid rgba(255,255,255,0.08);
+  padding: 16px;
+  min-width: 0;
+}
+
+.preview-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+  letter-spacing: 1px;
+  text-align: center;
+  padding: 4px 12px;
+  background: rgba(77,166,255,0.08);
+  border-radius: 12px;
+  border: 1px solid rgba(77,166,255,0.15);
+}
+
+/* 挑战页手语视频区 */
+.challenge-video-area {
+  width: 100%;
+  aspect-ratio: 4/3;
+  background: var(--bg-card);
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255,255,255,0.08);
+  overflow: hidden;
+  position: relative;
+  background: radial-gradient(ellipse at center, rgba(77,166,255,0.08), rgba(5,5,16,0.95));
+}
+
+.challenge-video-placeholder {
+  width: 100%; height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 16px;
+}
+
+.challenge-video-hint {
+  text-align: center;
+  color: var(--text-secondary);
+}
+
+.cv-icon {
+  font-size: 36px;
+  display: block;
+  margin-bottom: 8px;
+  filter: drop-shadow(0 0 12px rgba(77,166,255,0.5));
+}
+
+.challenge-video-hint p {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.challenge-video-hint small {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.challenge-video-controls {
+  display: flex; gap: 8px;
+}
+
+.cv-ctrl-btn {
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: var(--text-secondary);
+  padding: 5px 12px;
+  border-radius: 16px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: var(--transition);
+  font-family: var(--font-body);
+}
+.cv-ctrl-btn:hover {
+  background: rgba(255,255,255,0.14);
+  color: var(--text-primary);
+}
+
+.model-word-label {
+  font-size: 26px; font-weight: 800;
+  color: var(--accent-yellow);
+  letter-spacing: 6px;
+  margin-top: 12px;
+}
+
+/* ── 右侧：摄像头 / 交互 ── */
+.challenge-right {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+/* ── 底部词汇信息栏 ── */
+.challenge-bottom-bar {
+  width: 100%;
+  max-width: 1200px;
+  margin: 12px auto 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 20px;
+  background: var(--bg-card);
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255,255,255,0.08);
+  flex-wrap: wrap;
+}
+
+.challenge-word-info {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.challenge-word-zh {
+  font-size: 22px; font-weight: 800;
+  color: var(--text-primary);
+}
+
+.challenge-word-py {
+  font-size: 13px; color: var(--text-secondary);
+}
+
+.challenge-word-definition {
+  font-size: 13px; color: var(--text-muted);
+  max-width: 600px;
+  line-height: 1.5;
+}
+
+/* ── 挑战介绍（美化版）── */
+.challenge-intro {
+  text-align: center;
+  padding: 24px 20px 28px;
+  background: var(--bg-card);
+  border-radius: var(--radius);
+  border: 1px solid rgba(255,255,255,0.08);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  position: relative;
+  overflow: hidden;
+}
+
+/* 背景装饰光晕 */
+.challenge-intro::before {
+  content: '';
+  position: absolute;
+  width: 200px; height: 200px;
+  background: radial-gradient(circle, rgba(77,166,255,0.08), transparent 70%);
+  top: -60px; right: -40px;
+  pointer-events: none;
+}
+
+.challenge-intro-icon {
+  font-size: 44px;
+  margin-bottom: 14px;
+  filter: drop-shadow(0 0 12px rgba(255,217,61,0.4));
+}
+
+.intro-main-text {
+  font-size: 14px; color: var(--text-secondary);
+  line-height: 1.7; margin-bottom: 16px;
+}
+
+/* 提示列表 */
+.challenge-hint-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 22px;
+  text-align: left;
+  width: 100%;
+  max-width: 240px;
+}
+
+.hint-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.hint-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: rgba(77,166,255,0.5);
+}
+
+.reward-hint-item {
+  color: var(--accent-yellow);
+}
+
+.reward-hint-item .hint-dot.reward-dot {
+  background: var(--accent-yellow);
+  box-shadow: 0 0 6px rgba(255,217,61,0.6);
+}
+
+/* ── 「进入挑战」按钮（精致版）── */
+.challenge-start-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 28px;
+  border-radius: 28px;
+  border: none;
+  background: linear-gradient(135deg, #4da6ff, #9b59ff);
+  color: white;
+  font-size: 14px;
+  font-weight: 700;
+  font-family: var(--font-body);
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-shadow: 0 4px 20px rgba(77,166,255,0.35), 0 0 0 0 rgba(77,166,255,0.3);
+  letter-spacing: 0.5px;
+  position: relative;
+  overflow: hidden;
+}
+
+.challenge-start-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.15), transparent);
+  border-radius: inherit;
+}
+
+.challenge-start-btn:hover {
+  transform: translateY(-2px) scale(1.04);
+  box-shadow: 0 8px 28px rgba(77,166,255,0.5), 0 0 0 4px rgba(77,166,255,0.15);
+}
+
+.challenge-start-btn:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.start-btn-icon {
+  font-size: 16px;
+}
+
+.start-btn-text {
+  letter-spacing: 1px;
+}
+
+/* ── 挑战进行中 ── */
+.challenge-active {
+  display: none;
+  flex-direction: column;
+  gap: 10px;
+  flex: 1;
+}
+
+.challenge-camera-frame {
+  width: 100%;
+  aspect-ratio: 4/3;
+  background: #000;
+  border: 2px solid rgba(77,166,255,0.25);
+  border-radius: var(--radius);
+  overflow: hidden;
+  position: relative;
+  box-shadow: 0 0 30px rgba(77,166,255,0.08), inset 0 0 30px rgba(0,0,0,0.5);
+}
+
+/* 摄像头扫描线装饰 */
+.challenge-camera-frame::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(77,166,255,0.6), transparent);
+  animation: scanLine 3s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 5;
+}
+
+@keyframes scanLine {
+  0% { top: 0; opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { top: 100%; opacity: 0; }
+}
+
+.challenge-camera-inner {
+  width: 100%; height: 100%;
+  display: flex; align-items: center; justify-content: center;
+  flex-direction: column;
+  text-align: center;
+  padding: 20px;
+  color: var(--text-muted);
+  font-size: 13px;
+  gap: 10px;
+}
+
+/* 四角扫描框装饰 */
+.challenge-camera-frame::before {
+  content: '';
+  position: absolute;
+  inset: 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(77,166,255,0.15);
+  pointer-events: none;
+  z-index: 5;
+}
+
+/* 录制指示灯 */
+.recording-indicator {
+  display: none;
+  padding: 5px 14px;
+  background: rgba(255,68,68,0.12);
+  border: 1px solid rgba(255,68,68,0.35);
+  border-radius: 20px;
+  font-size: 12px;
+  color: #ff6666;
+  font-weight: 600;
+  animation: recordBlink 1.2s ease-in-out infinite;
+}
+
+.recording-indicator.active {
+  display: inline-block;
+}
+
+@keyframes recordBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+/* ── 控制按钮：开始 + 打分 ── */
+.challenge-controls {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.challenge-ctrl-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 14px 10px;
+  border-radius: var(--radius);
+  border: 1.5px solid rgba(255,255,255,0.1);
+  font-size: 13px;
+  font-weight: 700;
+  font-family: var(--font-body);
+  cursor: pointer;
+  transition: var(--transition);
+  background: var(--bg-card);
+  color: var(--text-primary);
+}
+
+.challenge-ctrl-btn .ctrl-icon {
+  font-size: 24px;
+}
+
+.challenge-ctrl-btn.start-btn {
+  border-color: rgba(77,232,160,0.25);
+}
+.challenge-ctrl-btn.start-btn:hover {
+  background: rgba(77,232,160,0.12);
+  border-color: var(--accent-green);
+  box-shadow: 0 0 18px rgba(77,232,160,0.2);
+}
+
+.challenge-ctrl-btn.start-btn.recording {
+  border-color: rgba(255,68,68,0.45);
+  background: rgba(255,68,68,0.08);
+  box-shadow: 0 0 16px rgba(255,68,68,0.18);
+}
+
+.challenge-ctrl-btn.score-btn {
+  border-color: rgba(255,217,61,0.25);
+}
+.challenge-ctrl-btn.score-btn:hover:not(:disabled) {
+  background: rgba(255,217,61,0.12);
+  border-color: var(--accent-yellow);
+  box-shadow: 0 0 18px rgba(255,217,61,0.2);
+}
+
+.challenge-ctrl-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+/* 录制计时器 */
+.challenge-timer {
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-muted);
+  padding: 6px;
+}
+
+.challenge-timer span {
+  font-weight: 700;
+  color: var(--accent-cyan);
+  font-family: 'SF Mono', 'Cascadia Code', 'Consolas', monospace;
+}
+
+/* 挑战结果 */
+.challenge-result {
+  display: none;
+  text-align: center;
+  padding: 28px 16px;
+  background: var(--bg-card);
+  border-radius: var(--radius);
+  border: 1px solid rgba(255,255,255,0.08);
+  flex: 1;
+}
+
+.challenge-result.show {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.result-icon {
+  font-size: 52px;
+  margin-bottom: 8px;
+}
+
+.result-score {
+  font-size: 48px; font-weight: 900;
+  margin-bottom: 8px;
+}
+
+.result-score.low { color: var(--accent-pink); }
+.result-score.mid { color: var(--accent-yellow); }
+.result-score.high { color: var(--accent-green); }
+
+.result-message {
+  font-size: 14px; color: var(--text-secondary);
+  margin-bottom: 20px; line-height: 1.6;
+}
+
+.result-actions {
+  display: flex; gap: 10px; justify-content: center;
+  flex-wrap: wrap;
+}
+
+/* ── 响应式 ── */
+@media (max-width: 768px) {
+  .challenge-nav-wrap {
+    flex-direction: column;
+  }
+  .challenge-nav-btn {
+    width: 100%;
+    min-width: unset;
+    flex-direction: row;
+    padding: 10px 20px;
+    gap: 10px;
+    height: auto;
+  }
+  .challenge-nav-btn .nav-label {
+    writing-mode: horizontal-tb;
+    font-size: 12px;
+  }
+  .challenge-layout {
+    flex-direction: column;
+  }
+  .challenge-left {
+    max-height: 340px;
+  }
+  .challenge-video-area {
+    max-height: 260px;
+  }
+  .challenge-bottom-bar {
+    flex-direction: column;
+    text-align: center;
+    gap: 8px;
+  }
+  .challenge-word-definition {
+    max-width: 100%;
+  }
+  .learning-outer-wrap {
+    gap: 4px;
+  }
+}
+
+/* =============================================
+   星座图鉴 - Constellation
+   ============================================= */
+.screen-constellation {
+  align-items: center;
+}
+
+.constellation-container {
+  max-width: 520px; width: 100%;
+  display: flex; flex-direction: column; gap: 16px;
+}
+
+.constellation-progress {
+  font-size: 13px; color: var(--accent-blue);
+  font-weight: 600;
+}
+
+.constellation-tabs {
+  display: flex; gap: 4px;
+  background: var(--bg-card);
+  border-radius: var(--radius-sm);
+  padding: 4px;
+}
+
+.constellation-tab {
+  flex: 1; padding: 10px;
+  border: none; border-radius: 8px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 14px; cursor: pointer;
+  transition: var(--transition);
+  font-family: var(--font-body);
+}
+
+.constellation-tab.active {
+  background: rgba(77,166,255,0.2);
+  color: var(--accent-blue);
+  font-weight: 600;
+}
+
+/* SVG 星座区域 */
+.constellation-svg-area {
+  width: 100%;
+  aspect-ratio: 1/1;
+  max-height: 520px;
+  background: radial-gradient(circle at center, rgba(15,15,55,0.9), #050510);
+  border-radius: var(--radius);
+  border: 1px solid rgba(255,255,255,0.08);
+  position: relative;
+  overflow: hidden;
+}
+
+.constellation-svg-area svg {
+  width: 100%; height: 100%;
+  display: block;
+}
+
+/* 星座连线 */
+.constellation-line {
+  stroke: rgba(77,166,255,0.2);
+  stroke-width: 1;
+  fill: none;
+}
+
+.constellation-line.lit {
+  stroke: rgba(77,232,160,0.6);
+  stroke-width: 1.5;
+  filter: drop-shadow(0 0 4px rgba(77,232,160,0.4));
+}
+
+/* 星座星星 */
+.constellation-star {
+  cursor: pointer;
+  transition: r 0.3s ease;
+}
+.constellation-star:hover { r: 6; }
+
+.star-glow {
+  fill: none;
+  stroke: rgba(255,217,61,0.3);
+  stroke-width: 8;
+  opacity: 0;
+}
+
+.constellation-star.lit + .star-glow {
+  opacity: 1;
+  animation: starPulse 2s ease-in-out infinite;
+}
+
+@keyframes starPulse {
+  0%, 100% { opacity: 0.3; stroke-width: 6; }
+  50% { opacity: 0.7; stroke-width: 12; }
+}
+
+.star-label {
+  font-size: 10px;
+  fill: var(--text-muted);
+  text-anchor: middle;
+  pointer-events: none;
+}
+
+.star-label.lit {
+  fill: var(--accent-yellow);
+  font-weight: 600;
+}
+
+/* 星座详情弹窗 */
+.constellation-detail {
+  display: none;
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.7);
+  z-index: 150;
+  align-items: center; justify-content: center;
+  padding: 20px;
+}
+
+.constellation-detail.show { display: flex; }
+
+.detail-card {
+  background: var(--bg-space);
+  border-radius: var(--radius);
+  border: 1px solid rgba(255,255,255,0.12);
+  padding: 24px;
+  max-width: 360px; width: 100%;
+  text-align: center;
+  position: relative;
+}
+
+.detail-word {
+  font-size: 28px; font-weight: 800;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.detail-pinyin {
+  font-size: 14px; color: var(--text-secondary);
+  margin-bottom: 16px;
+}
+
+.detail-model-area {
+  width: 100%;
+  aspect-ratio: 1/1;
+  max-height: 200px;
+  background: #050510;
+  border-radius: var(--radius-sm);
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center; justify-content: center;
+}
+
+.detail-definition {
+  font-size: 13px; color: var(--text-secondary);
+  line-height: 1.6;
+  text-align: left;
+  padding: 12px;
+  background: rgba(255,255,255,0.04);
+  border-radius: var(--radius-sm);
+}
+
+.constellation-legend {
+  display: flex; gap: 16px; justify-content: center;
+  padding: 12px;
+  background: var(--bg-card);
+  border-radius: var(--radius-sm);
+  flex-wrap: wrap;
+}
+
+.cl-item {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 12px; color: var(--text-secondary);
+}
+
+.cl-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.15);
+}
+
+.cl-dot.lit { background: var(--accent-green); box-shadow: 0 0 8px rgba(77,232,160,0.5); }
+.cl-dot.reward { background: var(--accent-yellow); box-shadow: 0 0 8px rgba(255,217,61,0.5); }
+
+/* =============================================
+   奖励弹窗 - Reward Overlay（含 3D 模型）
+   ============================================= */
+.reward-overlay {
+  display: none;
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.92);
+  z-index: 300;
+  align-items: center; justify-content: center;
+  flex-direction: column;
+  padding: 20px;
+}
+
+.reward-overlay.active { display: flex; }
+
+/* 粒子爆炸效果 */
+.reward-particles {
+  position: absolute; inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.particle {
+  position: absolute;
+  border-radius: 50%;
+  animation: particleFly 1.8s ease-out forwards;
+  opacity: 0;
+}
+
+@keyframes particleFly {
+  0% {
+    opacity: 1;
+    transform: translate(0, 0) scale(1);
+  }
+  60% {
+    opacity: 0.8;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--tx), var(--ty)) scale(0);
+  }
+}
+
+/* 奖励内容 */
+.reward-content {
+  position: relative; z-index: 10;
+  text-align: center;
+  animation: rewardAppear 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+@keyframes rewardAppear {
+  0% { transform: scale(0.3) translateY(40px); opacity: 0; }
+  100% { transform: scale(1) translateY(0); opacity: 1; }
+}
+
+.reward-badge {
+  font-size: 72px;
+  margin-bottom: 8px;
+  animation: badgeBounce 0.8s ease-in-out 0.3s both;
+}
+
+@keyframes badgeBounce {
+  0% { transform: scale(0); }
+  50% { transform: scale(1.3); }
+  70% { transform: scale(0.9); }
+  100% { transform: scale(1); }
+}
+
+.reward-title {
+  font-size: 28px; font-weight: 800;
+  background: linear-gradient(135deg, var(--accent-yellow), var(--accent-pink));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 6px;
+}
+
+.reward-subtitle {
+  font-size: 15px; color: var(--text-secondary);
+  margin-bottom: 16px;
+}
+
+/* 奖励弹窗中的 3D 模型区域 */
+.reward-model-area {
+  width: 200px; height: 200px;
+  margin: 0 auto 16px;
+  background: radial-gradient(circle, rgba(77,166,255,0.1), transparent);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.reward-model-area::before {
+  content: '';
+  position: absolute; inset: -20px;
+  border-radius: 50%;
+  border: 1px solid rgba(77,166,255,0.15);
+  animation: ringRotate 8s linear infinite;
+}
+
+model-viewer {
+  width: 100%;
+  height: 100%;
+  --poster-color: transparent;
+}
+
+.reward-model-area .placeholder-cube {
+  font-size: 80px;
+}
+
+.reward-score-show {
+  font-size: 18px; color: var(--accent-yellow);
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.reward-medal {
+  font-size: 14px; color: var(--accent-green);
+  margin-bottom: 20px;
+}
+
+.big-btn {
+  padding: 14px 36px !important;
+  font-size: 15px !important;
+}
+
+/* =============================================
+   响应式补充
+   ============================================= */
+@media (max-width: 400px) {
+  .challenge-word-zh { font-size: 20px; }
+  .result-score { font-size: 36px; }
+  .reward-title { font-size: 22px; }
+  .reward-model-area { width: 150px; height: 150px; }
+  .constellation-svg-area { aspect-ratio: 4/5; }
+}
+
+/* cubeRotate 动画（占位模型旋转）*/
+@keyframes cubeRotate {
+  0%, 100% { transform: scale(1) rotate(0deg); }
+  25% { transform: scale(1.05) rotate(5deg); }
+  75% { transform: scale(1.05) rotate(-5deg); }
+}

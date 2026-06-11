@@ -1,0 +1,33 @@
+name: Feature
+description: 新功能或模块集成
+title: "[Feature] "
+labels: ["type/feature"]
+body:
+  - type: textarea
+    id: goal
+    attributes:
+      label: 目标
+      description: 这个功能要解决什么问题？
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: 验收标准
+      description: 完成后如何判断可验收？
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: 模块
+      options:
+        - frontend
+        - scoring
+        - integration
+        - content
+        - backend
+        - infra
+        - docs
+    validations:
+      required: true
