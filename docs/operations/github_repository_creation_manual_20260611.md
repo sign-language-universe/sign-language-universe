@@ -282,10 +282,82 @@ qa team 对 sign-language-universe 仓库有 Triage 权限
 
 补充说明：
 
-- GitHub 也支持嵌套 team，但本项目第一阶段不需要使用。
 - Organization owner 是组织级管理员，不等同于普通项目成员。
 - Repository Admin 是单个仓库的最高权限，也不应该默认给所有成员。
 - 推荐长期成员使用 `Organization member + team`，临时外部协作者再考虑 `Outside collaborator`。
+
+### 4.2 嵌套团队：Parent team 和 Child team
+
+GitHub 也支持在 team 下面再设置 team，通常叫 nested teams、parent team、child team。完整层级可以写成：
+
+```text
+Organization
+  -> Parent team
+    -> Child team
+      -> Member
+```
+
+如果未来项目扩大，可以设计成：
+
+```text
+sign-language-universe
+  -> engineering
+    -> frontend
+      -> 前端成员
+    -> scoring
+      -> 手语评分/算法/API 成员
+  -> product
+    -> content
+      -> 内容和课程资料成员
+    -> qa
+      -> 测试和验收成员
+```
+
+嵌套团队的关键规则：
+
+- Child team 会继承 parent team 的仓库访问权限。
+- Child team 的成员不是 parent team 的直接成员，但 parent team 页面可以显示 child team 的成员。
+- 给 parent team 配置仓库权限时要谨慎，因为它会影响下面所有 child teams。
+- Child team 可以拥有比 parent team 更细的额外仓库权限。
+- Secret team 不能放到 parent team 下，也不能再包含 child team。
+- 一个 team 只能有一个 parent team。
+
+创建或调整嵌套 team 的入口：
+
+```text
+创建新 team 时:
+Organization -> Teams -> New team -> Parent team
+
+调整已有 team 时:
+Organization -> Teams -> 选择 team -> Settings -> Parent team
+```
+
+使用嵌套 team 的适合场景：
+
+```text
+有多个仓库
+有多个产品线
+团队人数较多
+需要按大方向统一授权，再按小组细分职责
+```
+
+当前项目第一阶段不建议使用嵌套 team，继续保持扁平结构：
+
+```text
+sign-language-universe
+  -> maintainers
+  -> frontend
+  -> scoring
+  -> content
+  -> qa
+```
+
+原因：
+
+- 目前只有一个主仓库，扁平 team 已经够用。
+- 权限继承关系越简单，越不容易误授权。
+- `CODEOWNERS` 直接指向 `frontend`、`scoring`、`maintainers`，扁平结构更直观。
+- 后续如果出现多个仓库或成员明显增多，再升级为 nested teams 成本不高。
 
 ## 5. 邀请成员
 
