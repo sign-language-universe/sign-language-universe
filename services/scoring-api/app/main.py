@@ -47,7 +47,7 @@ SUPPORTED_TEMPLATES = [
     {"id": "friend", "label": "朋友", "aliases": ["pengyou", "朋友"], "available": True},
     {"id": "point", "label": "指示", "aliases": ["zhishi", "指示"], "available": True},
     {"id": "sing", "label": "唱歌", "aliases": ["changge", "唱歌"], "available": True},
-    {"id": "chan", "label": "馋", "aliases": ["馋"], "available": True},
+    {"id": "chan", "label": "馋", "aliases": ["馋", "谗（羡慕）", "chanxianmu"], "available": True},
     {"id": "nihao", "label": "你好", "aliases": ["ni-hao", "你好"], "available": True},
     {"id": "xiexie", "label": "谢谢", "aliases": ["xie-xie", "谢谢"], "available": True},
     {"id": "baba", "label": "爸爸", "aliases": ["爸爸"], "available": True},
@@ -333,6 +333,13 @@ def _find_template_path(template_id: str) -> Path | None:
     return next((path for path in candidates if path.exists() and path.is_file()), None)
 
 
+def _template_root_has_templates() -> bool:
+    if not TEMPLATE_ROOT:
+        return False
+    root = Path(TEMPLATE_ROOT).expanduser()
+    return root.exists() and any(root.rglob("*_holistic_results.json"))
+
+
 def _estimate_fps(request: ScoreRequest) -> float:
     if request.fps and math.isfinite(request.fps):
         return max(1.0, min(float(request.fps), 30.0))
@@ -475,7 +482,9 @@ def _template_similarity_response(
     target = _template_info(request.template_id)
     kwargs: dict[str, Any] = {"target_word": str(target.get("label") or request.template_id)}
     if SEMANTIC_PROFILE_JSON:
-        kwargs["semantic_profile_json"] = Path(SEMANTIC_PROFILE_JSON).expanduser()
+        semantic_profile_path = Path(SEMANTIC_PROFILE_JSON).expanduser()
+        if semantic_profile_path.exists():
+            kwargs["semantic_profile_json"] = semantic_profile_path
     standard = scoring_mvp.load_sequence(template_path, requested_mode="landmark")
     query = scoring_mvp.load_sequence(query_path, requested_mode="landmark")
     result = scoring_mvp.run_pair(standard, query, **kwargs)
@@ -583,7 +592,7 @@ def health() -> dict[str, Any]:
         "worker_enabled": worker_service.enabled,
         "worker_ready": worker_service.ready,
         "worker": worker_service.snapshot(),
-        "template_root_configured": bool(TEMPLATE_ROOT),
+        "template_root_configured": _template_root_has_templates(),
         "generated_at": datetime.now().isoformat(timespec="seconds"),
     }
 
@@ -600,7 +609,7 @@ def templates() -> dict[str, Any]:
                 "template_path": str(template_path) if template_path else None,
             }
         )
-    return {"templates": templates_payload, "template_root_configured": bool(TEMPLATE_ROOT)}
+    return {"templates": templates_payload, "template_root_configured": _template_root_has_templates()}
 
 
 @app.post("/api/scoring/worker/warmup")

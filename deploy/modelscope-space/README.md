@@ -1,3 +1,20 @@
+---
+# 详细文档见https://modelscope.cn/docs/%E5%88%9B%E7%A9%BA%E9%97%B4%E5%8D%A1%E7%89%87
+domain:
+- cv
+tags:
+- sign-language
+- scoring
+- fastapi
+- mediapipe
+datasets:
+  evaluation:
+  test:
+  train:
+models:
+license: Apache License 2.0
+---
+
 # Sign Language Universe Scoring API on ModelScope Space
 
 这是用于 ModelScope 魔搭 Docker 创空间的最小后端部署包，服务内容是：
@@ -11,6 +28,22 @@
 默认启动 Holistic worker，用于直接验证 ModelScope CPU 创空间是否能承载 MediaPipe Holistic。若资源不足或启动失败，可在创空间环境变量里显式关闭 worker。
 
 Dockerfile 固定使用 `mediapipe==0.10.18`，因为新版 MediaPipe 已不再暴露当前 worker 使用的 legacy `mp.solutions.holistic` 接口。
+
+生成创空间 bundle 时，如果本机存在旧仓库模板目录，`create_bundle.py` 会默认复制：
+
+```text
+/data/WYC/signLanguage/work/generated/scoring_mvp_run3/all_demo_step2_worker_cache_semantic_v1/results
+/data/WYC/signLanguage/work/generated/scoring_semantic_profiles/sign_semantic_weights.json
+```
+
+容器内默认路径为：
+
+```text
+SLU_TEMPLATE_ROOT=/app/templates/holistic
+SLU_SEMANTIC_PROFILE_JSON=/app/templates/sign_semantic_weights.json
+```
+
+模板存在时，评分模式会从 `holistic_capture_quality` 切换为 `holistic_template_similarity`，调用 `score_holistic_sequence_mvp.run_pair()` 的 DTW/semantic prototype scoring 路径。模板不存在时仍会返回捕获质量分。
 
 ## 端口
 
