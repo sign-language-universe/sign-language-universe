@@ -10,6 +10,9 @@
   const UPLOAD_JPEG_QUALITY = 0.7;
   const MOTION_SIG_WIDTH = 32;
   const MOTION_SIG_HEIGHT = 24;
+  const DEFAULT_CAPTURE_DURATION_SEC = 2.5;
+  const DEFAULT_CAPTURE_FPS = 10;
+  const DEFAULT_FRAME_WIDTH = 480;
   const HOLISTIC_CDN_BASE = 'https://cdn.jsdelivr.net/npm/@mediapipe/holistic';
   const HOLISTIC_SCRIPT_URL = `${HOLISTIC_CDN_BASE}/holistic.js`;
   const BROWSER_HOLISTIC_TIMEOUT_MS = 12000;
@@ -547,9 +550,9 @@
   function buildCapturePlan({ write = false } = {}) {
     const word = currentWordData().word;
     const rec = getCaptureRecommendation(word);
-    const durationSec = clampNumber(inputValue('scoring-duration-sec', 2.5), 1, 8, 2.5);
-    const uploadFps = Math.round(clampNumber(inputValue('scoring-capture-fps', 4), 1, 12, 4));
-    const frameWidth = Math.round(clampNumber(inputValue('scoring-frame-width', 320), 240, 960, 320));
+    const durationSec = clampNumber(inputValue('scoring-duration-sec', DEFAULT_CAPTURE_DURATION_SEC), 1, 8, DEFAULT_CAPTURE_DURATION_SEC);
+    const uploadFps = Math.round(clampNumber(inputValue('scoring-capture-fps', DEFAULT_CAPTURE_FPS), 1, 12, DEFAULT_CAPTURE_FPS));
+    const frameWidth = Math.round(clampNumber(inputValue('scoring-frame-width', DEFAULT_FRAME_WIDTH), 240, 960, DEFAULT_FRAME_WIDTH));
     const requestedDurationSec = durationSec;
     const requestedUploadFps = uploadFps;
     const targetFrames = Math.max(1, Math.min(MAX_FRAMES, Math.round(durationSec * uploadFps)));
