@@ -640,7 +640,115 @@ qa -> Triage
 6. 选择权限级别。
 7. 保存。
 
-### 6.1 权限级别怎么选
+### 6.1 Direct access 与 Organization access
+
+在仓库的 `Settings -> Collaborators & teams` 页面，GitHub 可能会显示两个访问来源：
+
+```text
+Direct access
+Organization access
+```
+
+它们的区别是：一个表示“直接在这个仓库上授权”，另一个表示“通过组织层级间接获得访问权”。
+
+#### Direct access
+
+`Direct access` 表示这个 team 或成员是直接被加到当前仓库上的。
+
+例如：
+
+```text
+sign-language-universe 仓库
+  -> maintainers team: Maintain
+  -> frontend team: Write
+  -> scoring team: Write
+  -> content team: Write
+  -> qa team: Triage
+```
+
+这些 team 是在当前仓库的 `Collaborators & teams` 页面直接添加的，所以属于当前仓库的直接授权。
+
+Direct access 的特点：
+
+- 可以在当前仓库页面直接修改权限级别。
+- 可以在当前仓库页面直接移除访问权限。
+- 适合给项目 team 配置明确的仓库权限。
+- 不建议长期给单个个人配置 direct access，除非是临时外部协作者、机器人账号或特殊负责人。
+
+当前项目推荐：
+
+```text
+主要使用 team 的 Direct access 管理仓库权限
+尽量避免给个人 Direct access
+```
+
+#### Organization access
+
+`Organization access` 表示成员能访问当前仓库，但权限不是直接在这个仓库上单独配置的，而是来自 Organization 层级。
+
+常见来源包括：
+
+```text
+Organization base permission
+Organization role
+Parent team 的继承权限
+其他组织级权限策略
+```
+
+例如：
+
+```text
+Organization base permission = Read
+  -> 所有 Organization member 默认能读组织内仓库
+
+engineering parent team = Write
+  -> frontend child team 继承 Write
+  -> frontend 成员能访问仓库
+```
+
+Organization access 的特点：
+
+- 当前仓库页面通常只能看到这个访问来源，不能总是在这里直接改掉。
+- 要修改它，通常需要回到 Organization 设置、组织角色、base permission 或 parent team 权限处修改。
+- 如果一个成员同时通过多个来源获得权限，GitHub 会按更高权限生效。
+
+当前项目建议：
+
+```text
+Organization base permission: No permission 或尽可能低
+主仓库访问: 通过 team 的 Direct access 授权
+个人 Direct access: 尽量少用
+Admin 权限: 只给极少数负责人
+```
+
+这样权限来源最清楚：
+
+```text
+谁能访问仓库，主要看他属于哪个 team
+某个 team 有什么权限，直接看仓库的 Direct access
+```
+
+#### 看到 Organization access 时怎么判断
+
+如果你在仓库访问页面看到某个成员出现在 `Organization access`，按下面顺序排查来源：
+
+1. 检查 Organization `Settings -> Member privileges -> Base permissions`。
+2. 检查该成员是否在某个已经授权的 team 里。
+3. 检查是否有 parent team 导致 child team 继承权限。
+4. 检查是否给该成员或 team 分配了 organization role。
+5. 如果显示 `Mixed roles`，说明同一个人从多个来源获得了不同权限，需要点开或悬停查看来源。
+
+对当前仓库，如果你希望权限最容易维护，最终应尽量形成：
+
+```text
+Direct access:
+  maintainers / frontend / scoring / content / qa
+
+Organization access:
+  尽量为空，或只保留确实需要的组织级默认访问
+```
+
+### 6.2 权限级别怎么选
 
 GitHub 仓库常见权限从低到高大致是：
 
