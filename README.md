@@ -36,6 +36,12 @@ docs/operations/github_pages_frontend_deploy_manual_20260611.md
 docs/operations/scoring_frontend_holistic_worker_deploy_manual_20260611.md
 ```
 
+ModelScope 魔搭 Docker 创空间部署评分 API / Holistic worker 说明见：
+
+```text
+docs/operations/modelscope_holistic_deploy_manual_20260611.md
+```
+
 Public 仓库发布与 Apache-2.0 授权说明见：
 
 ```text

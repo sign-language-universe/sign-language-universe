@@ -24,7 +24,7 @@ from pathlib import Path
 from typing import Any, Literal
 from uuid import uuid4
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
@@ -271,6 +271,16 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.get("/")
+def root() -> dict[str, Any]:
+    return {
+        "service": "Sign Language Universe Scoring API",
+        "version": APP_VERSION,
+        "health": "/api/scoring/health",
+        "docs": "/docs",
+    }
 
 
 def _template_info(template_id: str) -> dict[str, Any]:
@@ -573,6 +583,21 @@ def templates() -> dict[str, Any]:
             }
         )
     return {"templates": templates_payload, "template_root_configured": bool(TEMPLATE_ROOT)}
+
+
+@app.post("/api/scoring/worker/warmup")
+def warmup_worker(wait_for_ready_sec: float = Query(default=180.0, gt=0, le=300)) -> dict[str, Any]:
+    if not worker_service.enabled:
+        return {
+            "status": "disabled",
+            "worker": worker_service.snapshot(),
+            "message": "Set SLU_ENABLE_HOLISTIC_WORKER=true to enable Holistic worker startup.",
+        }
+    try:
+        response = worker_service.request({"cmd": "ping", "request_id": f"warmup_{uuid4().hex[:8]}"}, wait_for_ready_sec)
+        return {"status": "ok", "worker": worker_service.snapshot(), "response": response}
+    except Exception as exc:
+        return {"status": "error", "worker": worker_service.snapshot(), "error": str(exc)}
 
 
 @app.post("/api/scoring/score", response_model=ScoreResponse)

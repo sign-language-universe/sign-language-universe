@@ -3,6 +3,12 @@ info:
   title: Sign Language Universe Scoring API
   version: 0.2.0
 paths:
+  /:
+    get:
+      summary: Service landing endpoint
+      responses:
+        "200":
+          description: Service entrypoint metadata
   /api/scoring/health:
     get:
       summary: Scoring service health check
@@ -15,6 +21,20 @@ paths:
       responses:
         "200":
           description: Available templates
+  /api/scoring/worker/warmup:
+    post:
+      summary: Start and ping the optional Holistic worker
+      parameters:
+        - in: query
+          name: wait_for_ready_sec
+          schema:
+            type: number
+            minimum: 1
+            maximum: 300
+            default: 180
+      responses:
+        "200":
+          description: Worker warmup result
   /api/scoring/score:
     post:
       summary: Submit sign language frames or a video path for scoring
