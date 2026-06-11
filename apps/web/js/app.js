@@ -34,6 +34,10 @@ const AppState = {
 
 // ============ 页面导航 ============
 function navigateTo(screen, param) {
+  if (AppState.currentScreen === 'challenge' && screen !== 'challenge' && window.ScoringBridge?.stopAll) {
+    window.ScoringBridge.stopAll();
+  }
+
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
 
   const target = document.getElementById(`screen-${screen}`);
@@ -504,11 +508,13 @@ function initChallenge() {
   if (timerEl) timerEl.textContent = '00:00';
 
   resetCameraInner();
+  if (window.ScoringBridge?.resetForChallenge) window.ScoringBridge.resetForChallenge();
 }
 
 function resetCameraInner() {
   const el = document.getElementById('challenge-camera-inner');
   if (el) {
+    el.classList.remove('is-live');
     el.innerHTML =
       '<p>📷 摄像头画面区域</p><small>点击「开始」后对着摄像头比划手语</small>' +
       '<div class="recording-indicator" id="recording-indicator">⏺ 录制中...</div>';
@@ -564,6 +570,11 @@ function startChallenge() {
 
 // ── 开始录制 ──
 function startRecording() {
+  if (window.ScoringBridge?.startChallengeRecording) {
+    window.ScoringBridge.startChallengeRecording();
+    return;
+  }
+
   if (AppState.isRecording) {
     stopRecording();
   }
@@ -618,6 +629,11 @@ function stopRecording() {
 
 // ── 打分 ──
 function scoreChallenge() {
+  if (window.ScoringBridge?.scoreChallengeWithApi) {
+    window.ScoringBridge.scoreChallengeWithApi();
+    return;
+  }
+
   if (!AppState.isRecording) {
     showToast('⚠️ 请先点击「开始」录制手语');
     return;

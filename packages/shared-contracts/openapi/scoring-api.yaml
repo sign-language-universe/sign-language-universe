@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Sign Language Universe Scoring API
-  version: 0.1.0
+  version: 0.2.0
 paths:
   /api/scoring/health:
     get:
@@ -61,6 +61,20 @@ components:
             $ref: "#/components/schemas/FrameSlice"
         video_path:
           type: string
+        fps:
+          type: number
+          minimum: 1
+          description: Browser capture frame rate hint.
+        duration_ms:
+          type: integer
+          minimum: 0
+          description: Browser capture duration in milliseconds.
+        wait_for_ready_sec:
+          type: number
+          minimum: 1
+          maximum: 180
+          default: 45
+          description: Maximum time the API may wait for the Holistic worker.
         client_meta:
           type: object
           additionalProperties: true
@@ -78,6 +92,7 @@ components:
             - "null"
         level:
           type: string
+          description: "excellent/good/needs_practice/retry, or integration modes such as holistic_capture_quality/browser_frame_fallback."
         score_valid:
           type: boolean
         feedback:
