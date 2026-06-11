@@ -316,6 +316,19 @@
     `;
   }
 
+  function renderCaptureClosing() {
+    const cameraInner = document.getElementById('challenge-camera-inner');
+    if (!cameraInner) return;
+    cameraInner.classList.remove('is-live');
+    cameraInner.innerHTML = `
+      <div class="scoring-capture-complete">
+        <strong>采集结束</strong>
+        <span>摄像头已关闭</span>
+        <small>正在整理上传帧</small>
+      </div>
+    `;
+  }
+
   function stopUiTimer() {
     if (state.uiTimer) {
       clearInterval(state.uiTimer);
@@ -492,6 +505,10 @@
     if (runId !== state.captureRunId) return [];
     setTimerMs(state.captureDurationMs);
     setProgress(100);
+    stopUiTimer();
+    AppState.isRecording = false;
+    stopCameraStream();
+    renderCaptureClosing();
 
     const energies = candidates.map((item, idx) => {
       const left = candidates[Math.max(0, idx - 1)]?.energy || 0;
@@ -544,7 +561,10 @@
     show(`准备采集「${wordData.word}」`);
 
     const ok = await runCountdown(COUNTDOWN_SECONDS, runId);
-    if (!ok) return;
+    if (!ok) {
+      stopCameraStream();
+      return;
+    }
     setServiceStatus('checking', `正在采集候选帧：${state.capturePlan.candidateFrames} 帧`);
     const selected = await collectFrames(state.capturePlan, runId);
     if (runId !== state.captureRunId) return;
