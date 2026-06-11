@@ -333,6 +333,24 @@
                   <div class="recording-indicator" id="recording-indicator">⏺ 录制中...</div>
                 </div>
               </div>
+              <div class="scoring-capture-settings" id="scoring-capture-settings">
+                <label>
+                  <span>采集时长</span>
+                  <input id="scoring-duration-sec" type="number" min="1" max="8" step="0.5" value="3">
+                </label>
+                <label>
+                  <span>上传 FPS</span>
+                  <input id="scoring-capture-fps" type="number" min="1" max="12" step="1" value="5">
+                </label>
+                <label>
+                  <span>帧宽</span>
+                  <input id="scoring-frame-width" type="number" min="240" max="960" step="40" value="480">
+                </label>
+              </div>
+              <div class="scoring-capture-hint" id="scoring-capture-hint">采样参数待确认</div>
+              <div class="scoring-progress-wrap" aria-hidden="true">
+                <div class="scoring-progress-bar" id="scoring-progress-bar"></div>
+              </div>
               <!-- 控制按钮：开始 + 打分 -->
               <div class="challenge-controls" id="challenge-controls">
                 <button class="challenge-ctrl-btn start-btn" id="btn-start-record" onclick="startRecording()">
@@ -359,6 +377,13 @@
               <div class="result-icon" id="result-icon">🎯</div>
               <div class="result-score" id="result-score">-- 分</div>
               <div class="result-message" id="result-message">--</div>
+              <div class="scoring-result-details" id="scoring-result-details" hidden>
+                <div><span>评分模式</span><strong id="scoring-result-mode">--</strong></div>
+                <div><span>上传帧数</span><strong id="scoring-result-frames">--</strong></div>
+                <div><span>Worker</span><strong id="scoring-result-worker">--</strong></div>
+                <div><span>样本 ID</span><strong id="scoring-result-request">--</strong></div>
+                <p id="scoring-result-advice">--</p>
+              </div>
               <div class="result-actions">
                 <button class="action-btn primary" onclick="navigateTo('constellation')">📕 查看星空笔记本</button>
                 <button class="action-btn secondary" onclick="retryChallenge()">🔄 再试一次</button>

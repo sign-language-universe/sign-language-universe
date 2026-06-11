@@ -565,6 +565,7 @@ function startChallenge() {
   if (scoreBtn) scoreBtn.disabled = true;
 
   resetCameraInner();
+  if (window.ScoringBridge?.resetForChallenge) window.ScoringBridge.resetForChallenge();
   showToast('🎥 准备好后点击「开始」录制手语');
 }
 
