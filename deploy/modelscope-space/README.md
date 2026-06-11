@@ -10,6 +10,8 @@
 
 默认启动 Holistic worker，用于直接验证 ModelScope CPU 创空间是否能承载 MediaPipe Holistic。若资源不足或启动失败，可在创空间环境变量里显式关闭 worker。
 
+Dockerfile 固定使用 `mediapipe==0.10.18`，因为新版 MediaPipe 已不再暴露当前 worker 使用的 legacy `mp.solutions.holistic` 接口。
+
 ## 端口
 
 Docker 创空间要求应用监听：

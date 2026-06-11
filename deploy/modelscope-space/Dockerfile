@@ -32,7 +32,7 @@ RUN python -m pip install --no-cache-dir --upgrade pip setuptools wheel \
       numpy \
       Pillow \
       opencv-python-headless \
-      mediapipe \
+      mediapipe==0.10.18 \
     && python -m pip install --no-cache-dir -e /app/packages/scoring-core \
     && mkdir -p /tmp/sign-language-universe/scoring-api /tmp/sign-language-universe/logs
 

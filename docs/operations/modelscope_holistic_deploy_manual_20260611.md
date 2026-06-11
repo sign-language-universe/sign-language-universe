@@ -11,6 +11,8 @@
 1. 直接部署默认镜像，确认 `worker_enabled=true`，并测试 MediaPipe Holistic worker 是否能在创空间资源下正常启动。
 2. 如果资源不足或启动失败，再显式设置 `SLU_ENABLE_HOLISTIC_WORKER=false`，先保留基础 scoring API。
 
+Dockerfile 固定使用 `mediapipe==0.10.18`。不要直接升级到未验证的新版本；新版 MediaPipe 可能不再暴露当前 worker 依赖的 legacy `mp.solutions.holistic` 接口。
+
 ## 关键限制
 
 ModelScope Docker 创空间需要应用监听：
