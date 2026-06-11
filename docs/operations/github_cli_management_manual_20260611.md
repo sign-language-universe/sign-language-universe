@@ -111,7 +111,76 @@ gh auth refresh --scopes admin:org
 gh auth logout
 ```
 
-## 3. 基础检查命令
+## 3. 主管日常工作流总览
+
+作为仓库主管，`gh` 最常用来做这些事：
+
+```text
+查看 PR
+审阅并 approve 别人的 PR
+检查 CI
+合并 PR
+同步本地 main
+触发 GitHub Pages 部署
+查看 Actions 日志
+检查仓库 public/private 状态
+检查 team 和权限
+```
+
+推荐每天开始工作时执行：
+
+```bash
+cd /data/WYC/sign-language-universe
+git fetch --all --prune
+git switch main
+git pull --ff-only
+gh auth status
+gh pr list
+gh run list --limit 5
+```
+
+推荐的日常合并流程：
+
+```text
+1. 查看 PR 列表
+2. 打开 PR 看说明和 diff
+3. 检查 CI
+4. 本地 checkout PR 做必要验证
+5. approve
+6. squash merge
+7. 删除远端分支
+8. 本地 main 拉取最新
+```
+
+对应命令：
+
+```bash
+gh pr list
+gh pr view <PR编号> --web
+gh pr diff <PR编号>
+gh pr checks <PR编号>
+gh pr checkout <PR编号>
+
+# 本地验证，例如：
+python scripts/ci/check_forbidden_files.py
+python -m compileall packages/scoring-core services/scoring-api scripts
+
+gh pr review <PR编号> --approve -b "Reviewed and approved."
+gh pr merge <PR编号> --squash --delete-branch
+
+git switch main
+git pull --ff-only
+```
+
+注意：
+
+- 你可以 approve 别人提交的 PR。
+- 你不能 approve 自己提交的 PR，即使你是 owner。
+- 如果开启 `Require review from Code Owners`，有效 approval 需要来自对应 CODEOWNERS 成员。
+- 如果 PR 改的是 `apps/web/`，最好由 `frontend` 或 `maintainers` 中有权限的人 review。
+- 如果 PR 改的是 `packages/scoring-core/` 或 `services/scoring-api/`，最好由 `scoring` 或 `maintainers` 中有权限的人 review。
+
+## 4. 基础检查命令
 
 进入仓库：
 
@@ -144,7 +213,188 @@ gh repo view --web
 gh api user --jq '.login'
 ```
 
-## 4. Public 仓库管理
+## 5. PR 主管审阅和合并
+
+### 5.1 查看 PR
+
+```bash
+gh pr list
+```
+
+只看等待你 review 的 PR：
+
+```bash
+gh pr list --search "review-requested:@me"
+```
+
+查看某个 PR 详情：
+
+```bash
+gh pr view <PR编号>
+```
+
+网页打开：
+
+```bash
+gh pr view <PR编号> --web
+```
+
+查看改动：
+
+```bash
+gh pr diff <PR编号>
+```
+
+### 5.2 检查 CI
+
+```bash
+gh pr checks <PR编号>
+```
+
+如果失败，查看日志：
+
+```bash
+gh run list --limit 10
+gh run view <run-id> --log-failed
+```
+
+### 5.3 本地拉取 PR 验证
+
+```bash
+gh pr checkout <PR编号>
+```
+
+运行基础检查：
+
+```bash
+python scripts/ci/check_forbidden_files.py
+python -m compileall packages/scoring-core services/scoring-api scripts
+test -f apps/web/index.html
+```
+
+如果是前端改动，可启动本地预览：
+
+```bash
+cd apps/web
+python -m http.server 5173 --bind 127.0.0.1
+```
+
+浏览器打开：
+
+```text
+http://127.0.0.1:5173/
+```
+
+验证完回到仓库根目录：
+
+```bash
+cd /data/WYC/sign-language-universe
+```
+
+### 5.4 提交 review
+
+通过：
+
+```bash
+gh pr review <PR编号> --approve -b "Reviewed and approved."
+```
+
+要求修改：
+
+```bash
+gh pr review <PR编号> --request-changes -b "请按评论修改后再提交。"
+```
+
+只评论，不 approve：
+
+```bash
+gh pr review <PR编号> --comment -b "我看过了，留一个普通评论。"
+```
+
+### 5.5 合并 PR
+
+推荐使用 squash merge：
+
+```bash
+gh pr merge <PR编号> --squash --delete-branch
+```
+
+如果分支保护要求 CI 和 review，只有满足条件后才能 merge。
+
+合并后同步本地：
+
+```bash
+git switch main
+git pull --ff-only
+```
+
+### 5.6 什么时候不要直接用 CLI merge
+
+以下情况建议回到网页确认：
+
+- PR diff 很大。
+- PR 涉及权限、license、公开仓库、GitHub Actions。
+- PR 涉及真实数据、视频、3D 模型、外部素材。
+- CI 有失败或 pending。
+- Review comments 没有 resolve。
+- CODEOWNERS 没有触发或触发异常。
+
+## 6. 自己提交改动时的 PR 流程
+
+你自己的正式改动也建议走 PR，即使你是 owner。
+
+创建分支：
+
+```bash
+git switch main
+git pull --ff-only
+git switch -c docs/my-change
+```
+
+改文件后：
+
+```bash
+git status --short
+git add <文件>
+git commit -m "docs: describe change"
+git push -u origin docs/my-change
+```
+
+创建 PR：
+
+```bash
+gh pr create --base main --head docs/my-change --fill
+```
+
+打开网页：
+
+```bash
+gh pr view --web
+```
+
+注意：
+
+```text
+你不能 approve 自己的 PR。
+```
+
+如果当前阶段只有你一个 maintainer，建议分支保护暂时配置为：
+
+```text
+Require a pull request before merging: on
+Require status checks: on
+Require approvals: off
+Require review from Code Owners: off
+```
+
+等有第二个 maintainer 后，再开启：
+
+```text
+Require approvals: 1
+Require review from Code Owners
+```
+
+## 7. Public 仓库管理
 
 检查仓库是否 public：
 
@@ -169,7 +419,7 @@ gh repo edit sign-language-universe/sign-language-universe \
 
 推荐第一次改 public 仍然在 GitHub 网页上手动做，CLI 主要用于检查和后续自动化。
 
-## 5. GitHub Pages 管理
+## 8. GitHub Pages 管理
 
 当前仓库已添加 Pages workflow：
 
@@ -233,7 +483,7 @@ gh run view --log-failed
 https://sign-language-universe.github.io/sign-language-universe/
 ```
 
-## 6. Pull Request 流程
+## 9. Pull Request 流程
 
 查看 PR：
 
@@ -297,7 +547,7 @@ gh pr merge --squash --delete-branch
 
 如果团队要求必须网页 review 后合并，则不要直接用 CLI merge。
 
-## 7. Issue 管理
+## 10. Issue 管理
 
 查看 issue：
 
@@ -323,7 +573,7 @@ gh issue view <编号> --web
 gh issue edit <编号> --add-label bug
 ```
 
-## 8. Actions 与 CI
+## 11. Actions 与 CI
 
 查看所有 workflow：
 
@@ -355,7 +605,7 @@ gh run view <run-id> --log-failed
 gh run rerun <run-id> --failed
 ```
 
-## 9. 分支保护与仓库设置
+## 12. 分支保护与仓库设置
 
 查看默认分支：
 
@@ -386,7 +636,7 @@ Settings -> Branches -> Branch protection rules
 
 原因是网页更直观，适合初期团队管理；CLI/API 更适合后续自动化审计。
 
-## 10. Team 与权限检查
+## 13. Team 与权限检查
 
 列出 Organization teams：
 
@@ -425,9 +675,46 @@ admin:org
 CLI 用于检查和审计
 ```
 
-## 11. 常见问题
+## 14. 主管常用命令速查
 
-### 11.1 gh 提示未登录
+```bash
+# 登录和身份
+gh auth status
+gh api user --jq '.login'
+
+# 仓库
+gh repo view sign-language-universe/sign-language-universe
+gh repo view sign-language-universe/sign-language-universe --json visibility,isPrivate,url
+
+# PR
+gh pr list
+gh pr view <PR编号> --web
+gh pr diff <PR编号>
+gh pr checks <PR编号>
+gh pr checkout <PR编号>
+gh pr review <PR编号> --approve -b "Reviewed and approved."
+gh pr merge <PR编号> --squash --delete-branch
+
+# Actions
+gh workflow list
+gh run list --limit 10
+gh run view <run-id> --log-failed
+
+# Pages
+gh workflow run pages.yml
+gh run list --workflow pages.yml --limit 5
+gh api repos/sign-language-universe/sign-language-universe/pages
+
+# Team 检查
+gh api orgs/sign-language-universe/teams --jq '.[].slug'
+gh api orgs/sign-language-universe/teams/maintainers
+gh api orgs/sign-language-universe/teams/frontend
+gh api orgs/sign-language-universe/teams/scoring
+```
+
+## 15. 常见问题
+
+### 15.1 gh 提示未登录
 
 运行：
 
@@ -435,7 +722,7 @@ CLI 用于检查和审计
 gh auth login --hostname github.com --git-protocol ssh --web
 ```
 
-### 11.2 gh 命令提示权限不足
+### 15.2 gh 命令提示权限不足
 
 查看当前认证：
 
@@ -455,7 +742,7 @@ gh auth refresh --scopes repo,read:org,workflow
 gh auth refresh --scopes admin:org
 ```
 
-### 11.3 gh repo view 可以，但 gh api 失败
+### 15.3 gh repo view 可以，但 gh api 失败
 
 通常是 token scope 不足，或仓库/组织设置限制了 API 权限。
 
@@ -467,7 +754,7 @@ gh auth status
 
 再根据需要刷新 scope。
 
-### 11.4 命令找不到 gh
+### 15.4 命令找不到 gh
 
 确认：
 
@@ -488,7 +775,7 @@ ls -l ~/.local/bin/gh
 export PATH="$HOME/.local/bin:$PATH"
 ```
 
-## 12. 升级和卸载
+## 16. 升级和卸载
 
 升级时下载新版 release，然后更新 symlink。
 
@@ -512,7 +799,7 @@ rm -rf ~/.cache/codex-tools/gh-2.94.0
 gh auth logout
 ```
 
-## 13. 参考
+## 17. 参考
 
 - GitHub CLI manual: https://cli.github.com/manual/
 - gh auth login: https://cli.github.com/manual/gh_auth_login
