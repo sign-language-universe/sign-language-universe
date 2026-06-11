@@ -36,6 +36,12 @@ Public 仓库发布与 Apache-2.0 授权说明见：
 docs/operations/public_repository_release_manual_20260611.md
 ```
 
+GitHub CLI 本地安装与仓库管理说明见：
+
+```text
+docs/operations/github_cli_management_manual_20260611.md
+```
+
 ## 启动评分 API 骨架
 
 ```bash
