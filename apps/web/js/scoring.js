@@ -14,7 +14,6 @@
   const HOLISTIC_SCRIPT_URL = `${HOLISTIC_CDN_BASE}/holistic.js`;
   const BROWSER_HOLISTIC_TIMEOUT_MS = 12000;
   const BROWSER_HOLISTIC_FRAME_TIMEOUT_MS = 3500;
-  const BROWSER_HOLISTIC_TARGET_FRAMES = 24;
   const FACE_CORE_INDICES = [33, 133, 159, 145, 362, 263, 386, 374, 61, 291, 13, 14];
 
   const CAPTURE_RECOMMENDATIONS = {
@@ -49,6 +48,7 @@
     canvas: document.createElement('canvas'),
     frames: [],
     landmarkRows: [],
+    captureStillUrl: '',
     uiTimer: null,
     recordStartedAt: 0,
     capturePlan: null,
@@ -511,8 +511,7 @@
         blank_warmup_ms: state.browserHolisticWarmupMs,
         camera_warmup_ms: Math.round(performance.now() - warmStartedAt)
       };
-      plan.targetFrames = Math.max(plan.targetFrames, Math.min(MAX_FRAMES, BROWSER_HOLISTIC_TARGET_FRAMES));
-      plan.uploadFps = Math.min(12, Math.max(plan.uploadFps, Math.ceil(plan.targetFrames / plan.durationSec)));
+      plan.targetFrames = Math.max(1, Math.min(MAX_FRAMES, plan.targetFrames));
       plan.candidateFps = plan.targetFrames / plan.durationSec;
       plan.candidateFrames = plan.targetFrames;
       plan.captureTransport = 'web_holistic_landmarks';
@@ -548,34 +547,14 @@
   function buildCapturePlan({ write = false } = {}) {
     const word = currentWordData().word;
     const rec = getCaptureRecommendation(word);
-    let durationSec = clampNumber(inputValue('scoring-duration-sec', 2.5), 1, 8, 2.5);
-    let uploadFps = Math.round(clampNumber(inputValue('scoring-capture-fps', 4), 1, 12, 4));
+    const durationSec = clampNumber(inputValue('scoring-duration-sec', 2.5), 1, 8, 2.5);
+    const uploadFps = Math.round(clampNumber(inputValue('scoring-capture-fps', 4), 1, 12, 4));
     const frameWidth = Math.round(clampNumber(inputValue('scoring-frame-width', 320), 240, 960, 320));
     const requestedDurationSec = durationSec;
     const requestedUploadFps = uploadFps;
-    const originalFrames = Math.max(1, Math.round(durationSec * uploadFps));
-    let adjusted = false;
-
-    if (durationSec < rec.minDurationSec) {
-      durationSec = rec.minDurationSec;
-      adjusted = true;
-    }
-    if (uploadFps < rec.minFps) {
-      uploadFps = rec.minFps;
-      adjusted = true;
-    }
-    if (Math.round(durationSec * uploadFps) < rec.minFrames) {
-      uploadFps = Math.max(uploadFps, Math.ceil(rec.minFrames / durationSec));
-      if (uploadFps > 12) {
-        uploadFps = 12;
-        durationSec = Math.min(8, Math.ceil((rec.minFrames / uploadFps) * 2) / 2);
-      }
-      adjusted = true;
-    }
-
-    const targetFrames = Math.max(rec.minFrames, Math.min(MAX_FRAMES, Math.round(durationSec * uploadFps)));
-    const candidateFps = Math.max(uploadFps, Math.min(18, uploadFps * 2));
-    const candidateFrames = Math.max(targetFrames, Math.round(durationSec * candidateFps));
+    const targetFrames = Math.max(1, Math.min(MAX_FRAMES, Math.round(durationSec * uploadFps)));
+    const candidateFps = uploadFps;
+    const candidateFrames = targetFrames;
     if (write) {
       setInputValue('scoring-duration-sec', Number.isInteger(durationSec) ? durationSec : durationSec.toFixed(1));
       setInputValue('scoring-capture-fps', uploadFps);
@@ -592,23 +571,35 @@
       candidateFps,
       candidateFrames,
       minFrames: rec.minFrames,
-      originalFrames,
-      adjusted
+      recommendedDurationSec: rec.minDurationSec,
+      recommendedFps: rec.minFps,
+      originalFrames: targetFrames,
+      belowRecommendation: targetFrames < rec.minFrames,
+      belowTechnicalMinimum: targetFrames < 3
     };
+  }
+
+  function captureHintSuffix(plan) {
+    if (plan.belowTechnicalMinimum) {
+      return '少于 3 帧时通常无法提交正式评分，请适当增加时长或 FPS。';
+    }
+    if (plan.belowRecommendation) {
+      return '低于建议帧数，仍会按当前设置采集，但评分稳定性可能下降。';
+    }
+    return '已达到建议帧数。';
   }
 
   function updateCaptureHint(plan = buildCapturePlan()) {
     const hint = document.getElementById('scoring-capture-hint');
     if (!hint) return;
+    const currentText = `${plan.durationSec}s x ${plan.uploadFps}fps = ${plan.targetFrames} 帧`;
+    const recommendationText = `建议至少 ${plan.minFrames} 帧`;
+    const suffix = captureHintSuffix(plan);
     if (plan.captureTransport === 'web_holistic_landmarks') {
-      hint.textContent = `采样：浏览器本机提取 Holistic 关键点；${plan.durationSec}s 内采集 ${plan.targetFrames} 帧关键点，只上传姿态、双手和面部核心点。`;
+      hint.textContent = `采样：浏览器本机提取 Holistic 关键点；${recommendationText}；当前按设置采集 ${currentText}，只上传姿态、双手和面部核心点。${suffix}`;
       return;
     }
-    if (plan.adjusted) {
-      hint.textContent = `采样：${plan.word} 推荐 >=${plan.minFrames} 上传帧；当前 ${plan.requestedDurationSec}s x ${plan.requestedUploadFps}fps = ${plan.originalFrames} 帧，采集时自动调整为 ${plan.durationSec}s x ${plan.uploadFps}fps = ${plan.targetFrames} 帧。`;
-    } else {
-      hint.textContent = `采样：${plan.word} 推荐 >=${plan.minFrames} 上传帧；当前 ${plan.durationSec}s x ${plan.uploadFps}fps = ${plan.targetFrames} 帧。`;
-    }
+    hint.textContent = `采样：${plan.word} ${recommendationText}；当前按设置采集 ${currentText}。${suffix}`;
   }
 
   function setProgress(percent) {
@@ -686,30 +677,67 @@
     state.video = null;
   }
 
-  function renderCaptureComplete(selectedCount, plan) {
+  function escapeAttribute(value) {
+    return String(value || '')
+      .replace(/&/g, '&amp;')
+      .replace(/"/g, '&quot;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+  }
+
+  function captureLastVideoStill() {
+    const video = state.video;
+    if (!video || video.readyState < 2) return '';
+    try {
+      const sourceWidth = video.videoWidth || 640;
+      const sourceHeight = video.videoHeight || 480;
+      const width = Math.max(240, Math.min(480, sourceWidth));
+      const height = Math.max(1, Math.round(width * sourceHeight / sourceWidth));
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const context = canvas.getContext('2d');
+      if (!context) return '';
+      context.translate(width, 0);
+      context.scale(-1, 1);
+      context.drawImage(video, 0, 0, width, height);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.72);
+      canvas.width = 0;
+      canvas.height = 0;
+      return dataUrl;
+    } catch (error) {
+      return '';
+    }
+  }
+
+  function renderCameraStatus(title, line, detail, stillUrl = '', accent = 'var(--accent-green)') {
     const cameraInner = document.getElementById('challenge-camera-inner');
     if (!cameraInner) return;
     cameraInner.classList.remove('is-live');
+    const stillHtml = stillUrl
+      ? `<img class="scoring-capture-still" src="${escapeAttribute(stillUrl)}" alt="">`
+      : '';
     cameraInner.innerHTML = `
-      <div class="scoring-capture-complete">
-        <strong>采集完成</strong>
-        <span>上传 ${selectedCount} 帧 · ${formatTimerMs(Math.round(plan.durationSec * 1000))}</span>
-        <small>摄像头已关闭</small>
+      <div class="scoring-capture-complete${stillUrl ? ' has-still' : ''}">
+        ${stillHtml}
+        <strong style="color:${accent};">${title}</strong>
+        <span>${line}</span>
+        <small>${detail}</small>
       </div>
     `;
   }
 
-  function renderCaptureClosing() {
-    const cameraInner = document.getElementById('challenge-camera-inner');
-    if (!cameraInner) return;
-    cameraInner.classList.remove('is-live');
-    cameraInner.innerHTML = `
-      <div class="scoring-capture-complete">
-        <strong>采集结束</strong>
-        <span>摄像头已关闭</span>
-        <small>正在整理上传帧</small>
-      </div>
-    `;
+  function renderCaptureComplete(selectedCount, plan, stillUrl = '') {
+    renderCameraStatus(
+      '采集完成',
+      `采集 ${selectedCount} 帧 · ${formatTimerMs(Math.round(plan.durationSec * 1000))}`,
+      '摄像头已关闭',
+      stillUrl
+    );
+  }
+
+  function renderCaptureClosing(stillUrl = '') {
+    renderCameraStatus('采集结束', '摄像头已关闭', '正在整理上传帧', stillUrl);
   }
 
   function stopUiTimer() {
@@ -726,6 +754,7 @@
     stopCameraStream();
     state.frames = [];
     state.landmarkRows = [];
+    state.captureStillUrl = '';
     state.capturePlan = null;
     state.captureDurationMs = 0;
     state.scoringBusy = false;
@@ -904,17 +933,18 @@
           frameWeight: 1.0
         });
       }
-      if (countEl) countEl.textContent = `${candidates.length} 候选帧`;
+      if (countEl) countEl.textContent = `${candidates.length} 采集帧`;
     }
     const remainingMs = state.recordStartedAt + state.captureDurationMs - Date.now();
     if (remainingMs > 0) await new Promise(resolve => setTimeout(resolve, remainingMs));
     if (runId !== state.captureRunId) return [];
     setTimerMs(state.captureDurationMs);
     setProgress(100);
+    state.captureStillUrl = captureLastVideoStill();
     stopUiTimer();
     AppState.isRecording = false;
     stopCameraStream();
-    renderCaptureClosing();
+    renderCaptureClosing(state.captureStillUrl);
 
     const energies = candidates.map((item, idx) => {
       const left = candidates[Math.max(0, idx - 1)]?.energy || 0;
@@ -1022,7 +1052,7 @@
       stopCameraStream();
       return;
     }
-    setServiceStatus('checking', `正在采集候选帧：${state.capturePlan.candidateFrames} 帧`);
+    setServiceStatus('checking', `正在采集评分帧：${state.capturePlan.candidateFrames} 帧`);
     const selected = await collectFrames(state.capturePlan, runId);
     if (runId !== state.captureRunId) return;
     stopUiTimer();
@@ -1032,7 +1062,7 @@
     if (recIndicator) recIndicator.classList.remove('active');
     if (startBtn) startBtn.classList.remove('recording');
     if (scoreBtn) scoreBtn.disabled = true;
-    renderCaptureComplete(selected.length, state.capturePlan);
+    renderCaptureComplete(selected.length, state.capturePlan, state.captureStillUrl);
     const readyCount = Math.max(state.landmarkRows.length, state.frames.length);
     const routeText = state.landmarkRows.length >= 3 ? '关键点帧' : '上传帧';
     if (readyCount < 3) {
@@ -1040,7 +1070,7 @@
       show('采集帧不足，请重采');
       return;
     }
-    setServiceStatus('checking', `采集完成：候选 ${state.capturePlan.candidateFrames} 帧，${routeText} ${readyCount} 帧，正在自动评分`);
+    setServiceStatus('checking', `采集完成：按设置采集 ${state.capturePlan.candidateFrames} 帧，${routeText} ${readyCount} 帧，正在自动评分`);
     setAutoScoreStatus('采集完成，正在自动评分：0.0s', true);
     show('采集完成，正在自动评分');
     await new Promise(resolve => setTimeout(resolve, 160));
@@ -1134,10 +1164,78 @@
     return '评分完成';
   }
 
-  function resultFeedback(result) {
+  function primaryResultFeedback(result) {
     const feedback = Array.isArray(result.feedback) ? result.feedback : [];
     const primary = feedback.find(item => item && item.message);
     return primary ? primary.message : serviceTextFromResult(result);
+  }
+
+  function resultScoreValue(result) {
+    const score = Number(result?.score);
+    return Number.isFinite(score) ? score : 0;
+  }
+
+  function resultMetrics(result) {
+    return result?.diagnostics?.holistic_metrics
+      || result?.diagnostics?.browser_holistic
+      || {};
+  }
+
+  function resultCapturePlan(result) {
+    return result?.diagnostics?.client_meta?.capture_plan
+      || result?.diagnostics?.browser_holistic?.capture_plan
+      || state.capturePlan
+      || {};
+  }
+
+  function needsPracticeAdvice(result) {
+    return result?.score_valid === false || resultScoreValue(result) < 80;
+  }
+
+  function buildPracticeAdvice(result) {
+    if (!result || !needsPracticeAdvice(result)) return '';
+    const metrics = resultMetrics(result);
+    const plan = resultCapturePlan(result);
+    const frameCount = Number(resultFrameCount(result));
+    const minFrames = Number(plan.minFrames || 0);
+    const left = Number(metrics.left_hand_presence_ratio);
+    const right = Number(metrics.right_hand_presence_ratio);
+    const hand = Number(metrics.hand_presence_ratio);
+    const pose = Number(metrics.pose_presence_ratio);
+    const motion = Number(metrics.motion_energy_mean);
+    const suggestions = [];
+
+    if (Number.isFinite(frameCount) && minFrames && frameCount < minFrames) {
+      suggestions.push(`采样帧数偏少，建议至少 ${minFrames} 帧后再评分`);
+    }
+    if (result.score_valid === false) {
+      suggestions.push('请重采一次，确保动作从开始到结束都被完整录到');
+    }
+    if (Number.isFinite(left) && Number.isFinite(right) && Math.abs(left - right) >= 0.25) {
+      if (left < right) {
+        suggestions.push('注意左手手势，手指弯曲和手腕角度尽量贴近示范');
+      } else {
+        suggestions.push('注意右手手势，参考示范调整手形和手腕角度');
+      }
+    }
+    if (Number.isFinite(hand) && hand < 0.45) {
+      suggestions.push('双手尽量完整入画，靠近摄像头并避免互相遮挡');
+    }
+    if (Number.isFinite(pose) && pose < 0.35) {
+      suggestions.push('注意身体姿势，保持上半身、肩膀和手臂都在画面中');
+    }
+    if (Number.isFinite(motion) && motion < 1.5) {
+      suggestions.push('动作幅度略小，起止过程可以更清楚一些');
+    }
+    if (!suggestions.length) {
+      suggestions.push('对照左侧示范，重点检查手形、运动方向和动作起止节奏');
+    }
+    return `建议：${suggestions.slice(0, 2).join('；')}。`;
+  }
+
+  function resultFeedback(result) {
+    const practiceAdvice = buildPracticeAdvice(result);
+    return practiceAdvice || primaryResultFeedback(result);
   }
 
   function scoringModeLabel(mode) {
@@ -1169,7 +1267,9 @@
   function buildResultAdvice(result) {
     if (!result) return '--';
     const mode = result.diagnostics?.scoring_mode || result.level || '';
-    const metrics = result.diagnostics?.holistic_metrics || {};
+    const metrics = resultMetrics(result);
+    const practiceAdvice = buildPracticeAdvice(result);
+    if (practiceAdvice) return practiceAdvice;
     if (mode === 'web_holistic_template_similarity') {
       return '已在浏览器本机提取 Holistic 关键点，只上传关键点到服务器模板评分；该分数仍需结合真实用户标注继续校准。';
     }
@@ -1193,7 +1293,7 @@
     if (mode.includes('fallback')) {
       return '当前未使用 Holistic worker，仅按帧数、时长和画面变化给出流程预览分；正式评分需连接 HTTPS 评分 API 并启用 worker。';
     }
-    return resultFeedback(result);
+    return primaryResultFeedback(result);
   }
 
   function renderScoreDetails(result) {
@@ -1232,11 +1332,7 @@
     if (scoreBtn) scoreBtn.disabled = true;
     startScoringWaitStatus();
 
-    const cameraInner = document.getElementById('challenge-camera-inner');
-    if (cameraInner) {
-      cameraInner.classList.remove('is-live');
-      cameraInner.innerHTML = '<p style="color:var(--accent-cyan);">正在评分...</p><small>等待服务器返回评分结果</small>';
-    }
+    renderCameraStatus('正在评分...', '等待服务器返回评分结果', '请稍候，正在分析采集帧', state.captureStillUrl, 'var(--accent-cyan)');
 
     if (availableSampleCount() < 3) {
       finishChallengeScore(localPreviewScore('采集帧不足，请重新采集更完整动作。'));
