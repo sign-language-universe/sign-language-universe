@@ -50,11 +50,13 @@ body.theme-day {
 
 html, body {
   width: 100%; height: 100%;
+  min-height: 100%;
   overflow: hidden;
   font-family: var(--font-body);
   background: var(--bg-deep);
   color: var(--text-primary);
   -webkit-font-smoothing: antialiased;
+  -webkit-text-size-adjust: 100%;
 }
 
 body.theme-day {
@@ -121,8 +123,10 @@ body.theme-day .app-controls {
 #app {
   position: relative; z-index: 1;
   width: 100%; height: 100%;
+  min-height: 100dvh;
   overflow-y: auto;
   overflow-x: hidden;
+  overscroll-behavior-y: contain;
 }
 
 /* ---------- 页面切换 ---------- */
@@ -130,6 +134,7 @@ body.theme-day .app-controls {
   display: none;
   width: 100%; min-height: 100%;
   padding: 20px;
+  padding-bottom: calc(20px + env(safe-area-inset-bottom));
   flex-direction: column;
   animation: fadeSlideIn 0.5s ease;
 }
@@ -153,6 +158,16 @@ body.theme-day .app-controls {
   position: sticky; top: 0; z-index: 10;
 }
 
+.top-bar > * {
+  min-width: 0;
+}
+
+.top-bar h3 {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .back-btn, .icon-btn {
   background: rgba(255,255,255,0.08);
   border: 1px solid rgba(255,255,255,0.12);
@@ -163,6 +178,7 @@ body.theme-day .app-controls {
   cursor: pointer;
   transition: var(--transition);
   font-family: var(--font-body);
+  -webkit-tap-highlight-color: transparent;
 }
 .back-btn:hover, .icon-btn:hover {
   background: rgba(255,255,255,0.15);
@@ -2056,6 +2072,620 @@ body.theme-day .animation-viewer {
   }
   .learning-outer-wrap {
     gap: 4px;
+  }
+}
+
+@media (max-width: 640px) {
+  #app {
+    height: 100dvh;
+  }
+
+  .screen {
+    padding: 12px;
+    padding-bottom: calc(92px + env(safe-area-inset-bottom));
+    min-height: 100dvh;
+  }
+
+  .top-bar {
+    gap: 8px;
+    padding: 10px;
+    margin-bottom: 12px;
+    border-radius: 12px;
+    flex-wrap: wrap;
+  }
+
+  .top-bar h3 {
+    flex: 1 1 100%;
+    order: 3;
+    text-align: center;
+    font-size: 16px;
+    line-height: 1.25;
+  }
+
+  .back-btn,
+  .icon-btn {
+    min-height: 38px;
+    padding: 8px 12px;
+    border-radius: 14px;
+    font-size: 13px;
+  }
+
+  .progress-text,
+  .challenge-progress-text,
+  .assessment-type,
+  .question-progress,
+  .constellation-progress {
+    font-size: 12px;
+  }
+
+  .app-controls {
+    left: 50%;
+    right: auto;
+    bottom: max(12px, env(safe-area-inset-bottom));
+    transform: translateX(-50%);
+    max-width: calc(100vw - 24px);
+  }
+
+  .app-toggle-btn {
+    min-width: 68px;
+    height: 36px;
+    font-size: 12px;
+  }
+
+  #screen-splash {
+    justify-content: flex-start;
+    padding-top: 44px;
+  }
+
+  .splash-content {
+    max-width: 360px;
+  }
+
+  .logo-area {
+    margin-bottom: 28px;
+  }
+
+  .logo-planet {
+    width: 92px;
+    height: 92px;
+    margin-bottom: 18px;
+  }
+
+  .app-title {
+    font-size: 30px;
+  }
+
+  .app-subtitle {
+    font-size: 13px;
+    letter-spacing: 2px;
+  }
+
+  .app-desc {
+    font-size: 13px;
+  }
+
+  .mode-select {
+    gap: 12px;
+  }
+
+  .mode-btn {
+    padding: 20px 16px;
+    border-radius: 14px;
+  }
+
+  .mode-icon {
+    font-size: 34px;
+  }
+
+  .mode-label {
+    font-size: 18px;
+  }
+
+  .galaxy-container {
+    gap: 18px;
+    padding: 4px 0;
+  }
+
+  .galaxy-system {
+    padding: 16px 12px;
+    border-radius: 14px;
+  }
+
+  .galaxy-label {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 14px;
+  }
+
+  .planet-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px 10px;
+    justify-items: center;
+  }
+
+  .planet-card {
+    width: 100%;
+    max-width: 132px;
+  }
+
+  .planet-icon {
+    width: 68px;
+    height: 68px;
+    font-size: 29px;
+  }
+
+  .galaxy-legend {
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 12px;
+    padding: 10px;
+  }
+
+  .learning-outer-wrap {
+    flex-direction: column;
+    gap: 8px;
+    max-width: 520px;
+  }
+
+  .learning-nav-btn {
+    width: 100%;
+    min-width: 0;
+    height: 42px;
+    flex-direction: row;
+    align-self: stretch;
+    padding: 8px 14px;
+    border-radius: 12px;
+  }
+
+  .learning-nav-btn .nav-label {
+    font-size: 12px;
+    letter-spacing: 0;
+  }
+
+  .learning-container {
+    width: 100%;
+    max-width: none;
+  }
+
+  .progress-bar {
+    margin-bottom: 12px;
+  }
+
+  .video-area {
+    aspect-ratio: 4 / 3;
+    margin-bottom: 14px;
+  }
+
+  .anim-overlay-hint {
+    top: 8px;
+    max-width: calc(100% - 20px);
+    padding: 5px 10px;
+  }
+
+  .anim-controls {
+    left: 8px;
+    right: 8px;
+    bottom: 8px;
+    transform: none;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 6px 8px;
+  }
+
+  .anim-ctrl-btn {
+    min-height: 30px;
+    padding: 5px 10px;
+  }
+
+  .anim-speed-label {
+    width: 100%;
+    text-align: center;
+    padding: 0;
+  }
+
+  .word-info {
+    margin-bottom: 12px;
+  }
+
+  .word-title {
+    font-size: 28px;
+  }
+
+  .word-explanation {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .explanation-image {
+    width: 100%;
+    height: 76px;
+  }
+
+  .explanation-text,
+  .culture-tip {
+    padding: 12px;
+  }
+
+  .learning-actions {
+    flex-direction: column;
+  }
+
+  .action-btn {
+    min-height: 44px;
+    padding: 12px;
+  }
+
+  .search-tabs {
+    gap: 3px;
+  }
+
+  .search-tab {
+    padding: 9px 6px;
+    font-size: 13px;
+  }
+
+  .search-input-area {
+    gap: 6px;
+  }
+
+  .search-input,
+  .scoring-api-input,
+  .scoring-capture-settings input {
+    font-size: 16px;
+  }
+
+  .search-btn {
+    min-width: 46px;
+    padding: 12px 14px;
+  }
+
+  .assessment-container,
+  .spacestation-container,
+  .search-container {
+    max-width: none;
+  }
+
+  .assessment-mode-btn {
+    padding: 18px 14px;
+  }
+
+  .quiz-video {
+    aspect-ratio: 4 / 3;
+    margin-bottom: 14px;
+  }
+
+  .quiz-option {
+    padding: 13px;
+    font-size: 14px;
+  }
+
+  .camera-frame {
+    aspect-ratio: 3 / 4;
+  }
+
+  .capture-controls {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .capture-btn {
+    width: 100%;
+    min-height: 44px;
+  }
+
+  .score-item {
+    display: grid;
+    grid-template-columns: 92px minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .astronaut-area,
+  .station-3d-placeholder {
+    padding: 18px 14px;
+  }
+
+  .astronaut-stats {
+    gap: 10px;
+  }
+
+  .spacestation-actions {
+    gap: 8px;
+  }
+
+  .space-action-btn {
+    min-height: 88px;
+    padding: 14px 10px;
+  }
+
+  .challenge-nav-wrap {
+    gap: 8px;
+  }
+
+  .challenge-nav-btn {
+    min-height: 40px;
+    padding: 8px 14px;
+    border-radius: 12px;
+  }
+
+  .challenge-layout {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .challenge-left {
+    padding: 12px;
+    border-radius: 14px;
+  }
+
+  .preview-label {
+    margin-bottom: 8px;
+    letter-spacing: 0;
+  }
+
+  .challenge-video-area {
+    aspect-ratio: 4 / 3;
+    max-height: none;
+  }
+
+  .model-word-label {
+    margin-top: 8px;
+    font-size: 22px;
+    letter-spacing: 3px;
+  }
+
+  .challenge-intro {
+    padding: 18px 14px 20px;
+    min-height: 280px;
+  }
+
+  .challenge-intro-icon {
+    font-size: 36px;
+    margin-bottom: 10px;
+  }
+
+  .challenge-hint-list {
+    max-width: 100%;
+  }
+
+  .challenge-camera-frame {
+    aspect-ratio: 3 / 4;
+    max-height: min(62dvh, 520px);
+  }
+
+  .challenge-controls {
+    gap: 8px;
+  }
+
+  .challenge-ctrl-btn {
+    min-height: 70px;
+    padding: 10px 8px;
+    border-radius: 12px;
+  }
+
+  .scoring-capture-settings {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .scoring-capture-settings label {
+    font-size: 11px;
+  }
+
+  .scoring-capture-settings input {
+    height: 38px;
+    padding: 0 7px;
+  }
+
+  .scoring-service-row {
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 6px;
+  }
+
+  .scoring-api-btn {
+    grid-column: 2;
+    width: 100%;
+    min-height: 38px;
+  }
+
+  .scoring-camera-overlay {
+    left: 8px;
+    right: 8px;
+    bottom: 8px;
+  }
+
+  .scoring-countdown-overlay span {
+    width: 86px;
+    height: 86px;
+    font-size: 38px;
+  }
+
+  .challenge-bottom-bar {
+    margin-top: 8px;
+    padding: 12px;
+    align-items: flex-start;
+    text-align: left;
+  }
+
+  .challenge-word-info {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .challenge-word-definition {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .challenge-result {
+    padding: 20px 12px;
+    min-height: 280px;
+  }
+
+  .result-icon {
+    font-size: 42px;
+  }
+
+  .result-score {
+    font-size: 40px;
+  }
+
+  .result-actions {
+    width: 100%;
+    flex-direction: column;
+  }
+
+  .scoring-result-details {
+    grid-template-columns: 1fr;
+    padding: 10px;
+  }
+
+  .constellation-container {
+    max-width: none;
+  }
+
+  .constellation-svg-area {
+    aspect-ratio: 4 / 5;
+    max-height: none;
+  }
+
+  .detail-card {
+    max-width: min(360px, calc(100vw - 28px));
+    padding: 18px;
+  }
+
+  .reward-overlay {
+    padding: 14px;
+  }
+
+  .reward-content {
+    width: min(100%, 360px);
+  }
+
+  .reward-badge {
+    font-size: 58px;
+  }
+
+  .reward-title {
+    font-size: 28px;
+  }
+
+  .reward-model-area {
+    width: 180px;
+    height: 180px;
+  }
+
+  .toast {
+    width: calc(100vw - 24px);
+    bottom: calc(64px + env(safe-area-inset-bottom));
+    padding: 11px 16px;
+    text-align: center;
+  }
+}
+
+@media (max-width: 420px) {
+  .screen {
+    padding: 10px;
+    padding-bottom: calc(100px + env(safe-area-inset-bottom));
+  }
+
+  .top-bar {
+    padding: 8px;
+  }
+
+  .back-btn,
+  .icon-btn {
+    min-height: 36px;
+    padding: 7px 10px;
+    font-size: 12px;
+  }
+
+  .app-controls {
+    width: calc(100vw - 24px);
+    justify-content: center;
+  }
+
+  .app-toggle-btn {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .mode-btn {
+    padding: 18px 14px;
+  }
+
+  .planet-grid {
+    gap: 12px 8px;
+  }
+
+  .planet-card {
+    max-width: 116px;
+  }
+
+  .planet-icon {
+    width: 60px;
+    height: 60px;
+    font-size: 26px;
+  }
+
+  .word-title {
+    font-size: 26px;
+  }
+
+  .score-item {
+    grid-template-columns: 84px minmax(0, 1fr);
+  }
+
+  .spacestation-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .space-action-btn {
+    min-height: 76px;
+  }
+
+  .challenge-intro {
+    min-height: 250px;
+  }
+
+  .challenge-camera-frame {
+    max-height: min(58dvh, 460px);
+  }
+
+  .challenge-ctrl-btn {
+    min-height: 64px;
+  }
+
+  .scoring-capture-settings {
+    grid-template-columns: 1fr;
+  }
+
+  .scoring-service-row {
+    grid-template-columns: 1fr;
+  }
+
+  .scoring-status-badge,
+  .scoring-api-btn {
+    grid-column: auto;
+  }
+
+  .result-score {
+    font-size: 34px;
+  }
+
+  .reward-title {
+    font-size: 24px;
+  }
+
+  .reward-model-area {
+    width: 150px;
+    height: 150px;
+  }
+
+  .toast {
+    bottom: calc(72px + env(safe-area-inset-bottom));
   }
 }
 
