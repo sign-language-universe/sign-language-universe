@@ -6,6 +6,8 @@
 
 用 ModelScope 魔搭 Docker 创空间部署 `services/scoring-api`，让 GitHub Pages 前端可以连接国内可访问的 HTTPS 评分 API。
 
+当前项目默认推荐使用 `deploy/modelscope-space-lite/`：浏览器 Web Holistic 提取 `landmark_rows`，ModelScope lite 后端只做模板评分。本文档描述的是保留的 full Docker / 服务端 Holistic worker 路线，主要用于验证、对比和回退，不是当前线上演示主路径。
+
 当前 Dockerfile 已默认开启 Holistic worker，以绕开部分平台环境变量未注入运行容器的问题。建议按下面顺序验证：
 
 1. 直接部署默认镜像，确认 `worker_enabled=true`，并测试 MediaPipe Holistic worker 是否能在创空间资源下正常启动。

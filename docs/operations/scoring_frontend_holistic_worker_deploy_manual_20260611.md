@@ -4,11 +4,26 @@
 
 ## 结论
 
-GitHub 可以直接部署完整静态网页，但不能直接运行 Holistic worker。
+GitHub 可以直接部署完整静态网页，但不能直接运行 Python/FastAPI/MediaPipe worker。当前项目默认采用：
+
+```text
+GitHub Pages 静态前端
+  -> 浏览器 Web Holistic 提取 landmark_rows
+  -> ModelScope lite Docker FastAPI 后端
+  -> 旧模板库 + score_holistic_sequence_mvp.run_pair()
+```
+
+正式演示默认 API：
+
+```text
+https://scottwyc-sign-language-universe-lite.ms.show
+```
 
 - GitHub Pages：部署 `apps/web` 的 HTML/CSS/JS/3D 模型等静态资源。
 - GitHub Actions：自动检查代码并把 `apps/web` 发布到 Pages。
-- Holistic worker：属于 Python/FastAPI/MediaPipe 后端长进程，需要部署在服务器、Coder 工作区、云主机或容器平台。
+- Web Holistic：在浏览器端运行，负责提取关键点。
+- ModelScope lite 后端：不安装服务端 MediaPipe worker，只接收 `landmark_rows` 并做模板评分。
+- Holistic worker：仍可作为 full Docker 或自托管服务器回退路线，需要部署在服务器、Coder 工作区、云主机或容器平台。
 - 前端和后端通过 HTTPS API 地址连接。
 
 GitHub 官方文档对 Pages 的定位是静态站点托管，处理的是仓库里的 HTML、CSS、JavaScript 等静态文件；Actions runner 是执行 workflow job 的机器，不是长期在线的业务服务。因此 worker 不应部署在 Pages 或 GitHub-hosted runner 上。
@@ -24,10 +39,12 @@ GitHub 官方文档对 Pages 的定位是静态站点托管，处理的是仓库
 前端：
 
 - `apps/web/js/scoring.js`
-- 挑战模式调用浏览器摄像头，按 5fps 抽取 JPEG 帧。
+- 挑战模式调用浏览器摄像头，默认按 `2.5s / 10fps / 480px` 采集。
+- 页面访问后预加载 Web Holistic，优先在浏览器端提取 `landmark_rows`。
 - 调用 `POST /api/scoring/score`。
-- 页面上可填写评分 API 地址，例如 `https://api.example.com`。
-- API 不可用时返回“本地预览评分”，保证演示流程不中断。
+- 页面默认连接 ModelScope lite API，也可填写其他评分 API 地址，例如 `https://api.example.com`。
+- 可评分词在 API 不可用时返回“本地预览评分”，保证演示流程不中断。
+- 挑战模式覆盖全部 `47` 个学习词汇；当前只有模板库覆盖的 `10` 个词开放录制评分，未覆盖词会提示“评分模板待上线”。
 - 不依赖 demo 视频，目标示范继续使用现有 Canvas 动画。
 
 后端：

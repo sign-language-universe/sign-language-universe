@@ -29,8 +29,96 @@ const AppState = {
   collectedWordsList: [],
 
   // 奖励弹窗
-  rewardVisible: false
+  rewardVisible: false,
+
+  // UI 偏好
+  theme: window.localStorage.getItem('signUniverseTheme') || 'night',
+  soundEnabled: window.localStorage.getItem('signUniverseSound') !== 'off'
 };
+
+function playUiSound(kind = 'notice') {
+  if (!AppState.soundEnabled) return;
+  const AudioContextCtor = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContextCtor) return;
+  if (!playUiSound.ctx) playUiSound.ctx = new AudioContextCtor();
+  const ctx = playUiSound.ctx;
+  if (ctx.state === 'suspended') ctx.resume();
+
+  const patterns = {
+    tap: [520],
+    notice: [660, 880],
+    success: [523, 659, 784],
+    reward: [523, 659, 784, 1046],
+    error: [220, 165]
+  };
+  const notes = patterns[kind] || patterns.notice;
+  notes.forEach((freq, index) => {
+    const oscillator = ctx.createOscillator();
+    const gain = ctx.createGain();
+    const start = ctx.currentTime + index * 0.055;
+    oscillator.type = kind === 'error' ? 'sawtooth' : 'sine';
+    oscillator.frequency.setValueAtTime(freq, start);
+    gain.gain.setValueAtTime(0.0001, start);
+    gain.gain.exponentialRampToValueAtTime(0.045, start + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.11);
+    oscillator.connect(gain).connect(ctx.destination);
+    oscillator.start(start);
+    oscillator.stop(start + 0.13);
+  });
+}
+
+function applyTheme(theme) {
+  const nextTheme = theme === 'day' ? 'day' : 'night';
+  AppState.theme = nextTheme;
+  window.localStorage.setItem('signUniverseTheme', nextTheme);
+  document.body.classList.toggle('theme-day', nextTheme === 'day');
+  const btn = document.getElementById('theme-toggle-btn');
+  if (btn) {
+    btn.setAttribute('aria-pressed', String(nextTheme === 'day'));
+    btn.innerHTML = nextTheme === 'day'
+      ? '<span>☀️</span><span>日间</span>'
+      : '<span>🌙</span><span>夜间</span>';
+  }
+  window.dispatchEvent(new CustomEvent('signUniverseThemeChanged', { detail: { theme: nextTheme } }));
+}
+
+function toggleTheme() {
+  applyTheme(AppState.theme === 'day' ? 'night' : 'day');
+  playUiSound('tap');
+}
+
+function applySoundPreference() {
+  const btn = document.getElementById('sound-toggle-btn');
+  if (!btn) return;
+  btn.setAttribute('aria-pressed', String(AppState.soundEnabled));
+  btn.innerHTML = AppState.soundEnabled
+    ? '<span>🔊</span><span>音效</span>'
+    : '<span>🔇</span><span>静音</span>';
+}
+
+function toggleSound() {
+  AppState.soundEnabled = !AppState.soundEnabled;
+  window.localStorage.setItem('signUniverseSound', AppState.soundEnabled ? 'on' : 'off');
+  applySoundPreference();
+  if (AppState.soundEnabled) playUiSound('success');
+}
+
+function initUiPreferences() {
+  applyTheme(AppState.theme);
+  applySoundPreference();
+}
+
+function currentChallengeWord() {
+  const total = CHALLENGE_WORDS.length;
+  if (!total) return null;
+  const idx = Math.max(0, Math.min(AppState.challengeIndex, total - 1));
+  AppState.challengeIndex = idx;
+  return CHALLENGE_WORDS[idx];
+}
+
+function isChallengeScoringReady(wordData) {
+  return Boolean(wordData && wordData.scoringReady !== false);
+}
 
 // ============ 页面导航 ============
 function navigateTo(screen, param) {
@@ -131,7 +219,7 @@ function renderLearning() {
   document.getElementById('progress-fill').style.width = `${((idx + 1) / words.length) * 100}%`;
 
   const collectBtn = document.getElementById('btn-collect');
-  if (AppState.collectedWords.has(word.id)) {
+  if (AppState.collectedWords.has(word.word)) {
     collectBtn.style.color = 'var(--accent-yellow)';
     collectBtn.textContent = '⭐';
   } else {
@@ -166,6 +254,23 @@ function initLearningAnimation(word) {
   const player = getAnimationPlayer(canvas);
   _learningAnimPlayer = player;
   _learningAnimLoaded = true;
+  const hasAnimation = typeof hasSignAnimation === 'function' ? hasSignAnimation(word) : true;
+  const viewer = document.getElementById('learning-anim-viewer');
+  if (viewer) viewer.classList.toggle('no-animation', !hasAnimation);
+
+  if (!hasAnimation) {
+    player.stop();
+    player.load(word);
+    const phaseEl = document.getElementById('anim-phase-name');
+    const labelEl = document.getElementById('anim-phase-label');
+    const playBtn = document.getElementById('btn-anim-play');
+    const replayBtn = document.getElementById('btn-anim-replay');
+    if (phaseEl) phaseEl.textContent = '暂无专属动画';
+    if (labelEl) labelEl.textContent = `${word} · 请阅读打法说明`;
+    if (playBtn) { playBtn.textContent = '▶ 播放'; playBtn.classList.remove('playing'); playBtn.disabled = true; }
+    if (replayBtn) replayBtn.disabled = true;
+    return;
+  }
 
   // 监听阶段变化更新标签
   player.onPhaseChange((phaseName) => {
@@ -182,6 +287,9 @@ function initLearningAnimation(word) {
   // 更新播放按钮状态
   const playBtn = document.getElementById('btn-anim-play');
   if (playBtn) { playBtn.textContent = '⏸ 暂停'; playBtn.classList.add('playing'); }
+  const replayBtn = document.getElementById('btn-anim-replay');
+  if (playBtn) playBtn.disabled = false;
+  if (replayBtn) replayBtn.disabled = false;
 }
 
 function toggleAnimPlay() {
@@ -245,11 +353,11 @@ function toggleCollect() {
   if (!words) return;
   const word = words[AppState.currentWordIndex];
   if (!word) return;
-  if (AppState.collectedWords.has(word.id)) {
-    AppState.collectedWords.delete(word.id);
+  if (AppState.collectedWords.has(word.word)) {
+    AppState.collectedWords.delete(word.word);
     showToast('已取消收藏');
   } else {
-    AppState.collectedWords.add(word.id);
+    AppState.collectedWords.add(word.word);
     showToast('⭐ 已加入星空笔记本');
   }
   renderLearning();
@@ -301,6 +409,23 @@ function initChallengeAnimation(word) {
 
   const player = getAnimationPlayer(canvas);
   _challengeAnimPlayer = player;
+  const hasAnimation = typeof hasSignAnimation === 'function' ? hasSignAnimation(word) : true;
+  const viewer = document.getElementById('challenge-anim-viewer');
+  if (viewer) viewer.classList.toggle('no-animation', !hasAnimation);
+
+  if (!hasAnimation) {
+    player.stop();
+    player.load(word);
+    const phaseEl = document.getElementById('challenge-anim-phase-name');
+    const labelEl = document.getElementById('challenge-anim-phase-label');
+    const playBtn = document.getElementById('btn-challenge-anim-play');
+    const replayBtn = document.getElementById('btn-challenge-anim-replay');
+    if (phaseEl) phaseEl.textContent = '暂无专属动画';
+    if (labelEl) labelEl.textContent = `${word} · 请阅读打法说明`;
+    if (playBtn) { playBtn.textContent = '▶ 播放'; playBtn.classList.remove('playing'); playBtn.disabled = true; }
+    if (replayBtn) replayBtn.disabled = true;
+    return;
+  }
 
   player.onPhaseChange((phaseName) => {
     const phaseEl = document.getElementById('challenge-anim-phase-name');
@@ -315,6 +440,9 @@ function initChallengeAnimation(word) {
 
   const playBtn = document.getElementById('btn-challenge-anim-play');
   if (playBtn) { playBtn.textContent = '⏸ 暂停'; playBtn.classList.add('playing'); }
+  const replayBtn = document.getElementById('btn-challenge-anim-replay');
+  if (playBtn) playBtn.disabled = false;
+  if (replayBtn) replayBtn.disabled = false;
 }
 
 function toggleChallengeAnimPlay() {
@@ -466,7 +594,8 @@ function initChallenge() {
   stopRecording();
 
   const total = CHALLENGE_WORDS.length;
-  const idx = AppState.challengeIndex % total;
+  const idx = Math.max(0, Math.min(AppState.challengeIndex, total - 1));
+  AppState.challengeIndex = idx;
 
   document.getElementById('challenge-progress-text').textContent = `${idx + 1} / ${total}`;
 
@@ -478,11 +607,32 @@ function initChallenge() {
   if (result) { result.style.display = 'none'; result.classList.remove('show'); }
 
   const wordData = CHALLENGE_WORDS[idx];
+  const scoringReady = isChallengeScoringReady(wordData);
   document.getElementById('challenge-word-display').textContent = `挑战：${wordData.word}`;
   document.getElementById('challenge-word-zh').textContent = wordData.word;
   document.getElementById('challenge-word-py').textContent = wordData.pinyin;
   document.getElementById('model-word-label').textContent = wordData.word;
   document.getElementById('challenge-word-definition').textContent = wordData.definition;
+
+  const statusNote = document.getElementById('challenge-status-note');
+  if (statusNote) {
+    statusNote.className = `challenge-status-note ${scoringReady ? 'ready' : 'pending'}`;
+    statusNote.textContent = scoringReady
+      ? `${wordData.statusLabel} · 当前可录制评分`
+      : `${wordData.statusLabel} · 暂不能录制评分，等待数据库上线`;
+  }
+  const introText = document.getElementById('challenge-intro-main-text');
+  if (introText) {
+    introText.innerHTML = scoringReady
+      ? '观看左侧手语示范<br>记住词汇的打法！'
+      : '该词汇已纳入挑战词表<br>评分模板上线后即可录制';
+  }
+  const enterBtn = document.getElementById('btn-enter-challenge');
+  if (enterBtn) {
+    enterBtn.disabled = !scoringReady;
+    enterBtn.querySelector('.start-btn-icon').textContent = scoringReady ? '🚀' : '⏳';
+    enterBtn.querySelector('.start-btn-text').textContent = scoringReady ? '进入挑战' : '等待上线';
+  }
 
   // 更新左侧视频提示文字
   const videoHintText = document.getElementById('challenge-video-hint-text');
@@ -499,6 +649,7 @@ function initChallenge() {
   if (startBtn) {
     startBtn.innerHTML = '<span class="ctrl-icon">🎥</span><span>开始</span>';
     startBtn.classList.remove('recording');
+    startBtn.disabled = !scoringReady;
   }
   if (scoreBtn) scoreBtn.disabled = true;
 
@@ -546,6 +697,12 @@ function updateNavButtons() {
 
 // ── 进入挑战 ──
 function startChallenge() {
+  const wordData = currentChallengeWord();
+  if (!isChallengeScoringReady(wordData)) {
+    showToast(`「${wordData.word}」评分模板待上线，暂不能录制打分`, 'error');
+    return;
+  }
+
   document.getElementById('challenge-intro').style.display = 'none';
   AppState.isChallengeActive = true;
 
@@ -560,6 +717,7 @@ function startChallenge() {
   if (startBtn) {
     startBtn.innerHTML = '<span class="ctrl-icon">🎥</span><span>开始</span>';
     startBtn.classList.remove('recording');
+    startBtn.disabled = false;
   }
   const scoreBtn = document.getElementById('btn-score');
   if (scoreBtn) scoreBtn.disabled = true;
@@ -571,6 +729,12 @@ function startChallenge() {
 
 // ── 开始录制 ──
 function startRecording() {
+  const wordData = currentChallengeWord();
+  if (!isChallengeScoringReady(wordData)) {
+    showToast(`「${wordData.word}」评分模板待上线，暂不能录制打分`, 'error');
+    return;
+  }
+
   if (window.ScoringBridge?.startChallengeRecording) {
     window.ScoringBridge.startChallengeRecording();
     return;
@@ -614,7 +778,6 @@ function startRecording() {
     }
   }, 1000);
 
-  const wordData = CHALLENGE_WORDS[AppState.challengeIndex % CHALLENGE_WORDS.length];
   showToast('🎥 开始录制，比划「' + wordData.word + '」');
 }
 
@@ -630,6 +793,12 @@ function stopRecording() {
 
 // ── 打分 ──
 function scoreChallenge() {
+  const wordData = currentChallengeWord();
+  if (!isChallengeScoringReady(wordData)) {
+    showToast(`「${wordData.word}」评分模板待上线，暂不能评分`, 'error');
+    return;
+  }
+
   if (window.ScoringBridge?.scoreChallengeWithApi) {
     window.ScoringBridge.scoreChallengeWithApi();
     return;
@@ -659,8 +828,6 @@ function scoreChallenge() {
   if (cameraInner) {
     cameraInner.innerHTML = '<p style="color:var(--accent-cyan);">⏳ 评估中...</p><small>分析手形 · 动作轨迹 · 面部表情</small>';
   }
-
-  const wordData = CHALLENGE_WORDS[AppState.challengeIndex % CHALLENGE_WORDS.length];
 
   setTimeout(() => {
     const active = document.getElementById('challenge-active');
@@ -697,8 +864,9 @@ function showResult(score) {
 
   resultEl.style.display = 'flex';
   resultEl.classList.add('show');
+  playUiSound(score >= 60 ? 'success' : 'error');
 
-  const wordData = CHALLENGE_WORDS[AppState.challengeIndex % CHALLENGE_WORDS.length];
+  const wordData = currentChallengeWord();
   AppState.collectedWords.add(wordData.word);
 }
 
@@ -725,7 +893,7 @@ function retryChallenge() {
 
 // ============ 🎉 奖励弹窗（含 3D 模型）============
 function showReward(score) {
-  const wordData = CHALLENGE_WORDS[AppState.challengeIndex % CHALLENGE_WORDS.length];
+  const wordData = currentChallengeWord();
   const overlay = document.getElementById('reward-overlay');
 
   document.getElementById('reward-title').textContent = '太棒了！';
@@ -769,6 +937,7 @@ function showReward(score) {
 
   // 显示弹窗
   overlay.classList.add('active');
+  playUiSound('reward');
 
   // 粒子效果
   createParticles();
@@ -793,8 +962,10 @@ function closeReward() {
   resultIcon.textContent = '🌟';
   resultScore.textContent = `${AppState.challengeScore} 分`;
   resultScore.className = 'result-score high';
-  const wordData = CHALLENGE_WORDS[AppState.challengeIndex % CHALLENGE_WORDS.length];
-  resultMsg.textContent = `你成功解锁了「${wordData.word}」的 3D 奖励！继续加油～`;
+  const wordData = currentChallengeWord();
+  resultMsg.textContent = wordData.hasRewardModel
+    ? `你成功解锁了「${wordData.word}」的 3D 奖励！继续加油～`
+    : `你成功点亮了「${wordData.word}」的星光奖励！继续加油～`;
 }
 
 function createParticles() {
@@ -830,7 +1001,9 @@ function getModelPath(modelKey) {
 
 // ============ 🌌 星座图鉴 ============
 function renderConstellation() {
-  AppState.collectedWordsList = Array.from(AppState.collectedWords);
+  AppState.collectedWordsList = CHALLENGE_WORDS
+    .filter(word => AppState.collectedWords.has(word.word))
+    .map(word => word.word);
   updateConstellationProgress();
   renderConstellationSVG();
   switchConstellationTab(AppState.constellationTab);
@@ -845,7 +1018,18 @@ function updateConstellationProgress() {
 function renderConstellationSVG() {
   const svgArea = document.getElementById('constellation-svg-area');
   const learnedSet = new Set(AppState.collectedWordsList);
-  const total = CHALLENGE_WORDS.length;
+  const visibleWords = CHALLENGE_WORDS.filter(word =>
+    AppState.constellationTab === 'learned' ? learnedSet.has(word.word) : !learnedSet.has(word.word)
+  );
+  const total = visibleWords.length;
+
+  if (!total) {
+    const emptyText = AppState.constellationTab === 'learned'
+      ? '完成挑战后，词汇会在这里点亮'
+      : '全部挑战词汇都已点亮';
+    svgArea.innerHTML = `<div class="constellation-empty">${emptyText}</div>`;
+    return;
+  }
 
   let svg = `<svg viewBox="0 0 400 400" width="100%" height="100%" style="max-height:400px;">`;
 
@@ -858,7 +1042,7 @@ function renderConstellationSVG() {
   }
 
   const cx = 200, cy = 200, rBase = 80;
-  CHALLENGE_WORDS.forEach((w, i) => {
+  visibleWords.forEach((w, i) => {
     const angle = (Math.PI * 2 / total) * i - Math.PI / 2;
     const r = rBase + (i % 3) * 35;
     const x = cx + Math.cos(angle) * r;
@@ -893,7 +1077,9 @@ function renderConstellationSVG() {
 function switchConstellationTab(tab) {
   AppState.constellationTab = tab;
   document.querySelectorAll('.constellation-tab').forEach(t => t.classList.remove('active'));
-  if (event && event.target) event.target.classList.add('active');
+  const tabButtons = Array.from(document.querySelectorAll('.constellation-tab'));
+  const activeIndex = tab === 'locked' ? 1 : 0;
+  if (tabButtons[activeIndex]) tabButtons[activeIndex].classList.add('active');
   renderConstellationSVG();
 }
 
@@ -934,21 +1120,22 @@ function closeConstellationDetail() {
 }
 
 // ============ Toast 通知 ============
-function showToast(message) {
+function showToast(message, sound = 'notice') {
   const toast = document.getElementById('toast');
   toast.textContent = message;
   toast.classList.add('show');
+  playUiSound(sound);
   clearTimeout(toast._timeout);
   toast._timeout = setTimeout(() => { toast.classList.remove('show'); }, 2000);
 }
 
 // ============ 初始化 ============
 document.addEventListener('DOMContentLoaded', () => {
+  initUiPreferences();
   navigateTo('splash');
   console.log('🪐 手语小宇宙 Demo v4 已就绪');
   console.log('✨ 本次更新：');
-  console.log('  1. 10个词汇展示动画（含手语手势 + 视觉叠加效果）');
-  console.log('  2. 学习页：Canvas 动画 + 播放/暂停/重播控制');
-  console.log('  3. 挑战页：同步动画展示 + 独立控制');
-  console.log('  4. 动画基于 Demo词汇.docx 语义说明精确制作');
+  console.log('  1. 挑战模式覆盖全部学习词汇，未上线模板词显示待上线');
+  console.log('  2. 默认采用 Web Holistic + ModelScope lite 后端评分路线');
+  console.log('  3. 新增日间/夜间模式与可关闭音效');
 });

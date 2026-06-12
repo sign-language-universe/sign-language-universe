@@ -17,7 +17,7 @@ license: Apache License 2.0
 
 # Sign Language Universe Lite Scoring API
 
-这是用于新建 ModelScope 魔搭 Docker 创空间的轻量后端部署包。
+这是当前推荐线上演示使用的 ModelScope 魔搭 Docker 创空间轻量后端部署包。
 
 它面向 GitHub Pages 前端的浏览器 Holistic 路线：
 
@@ -90,7 +90,13 @@ SLU_SCORING_OUTPUT_ROOT=/tmp/sign-language-universe/scoring-api
 
 ## 连接 GitHub Pages 前端
 
-在 GitHub Pages 页面挑战模式中，将“评分 API 地址”填为新的 lite 创空间地址：
+当前 `apps/web` 已默认连接正式 lite 创空间：
+
+```text
+https://scottwyc-sign-language-universe-lite.ms.show
+```
+
+如果新建了另一个 lite 创空间，才需要在 GitHub Pages 页面挑战模式中手动覆盖“评分 API 地址”：
 
 ```text
 <your-lite-modelscope-space-url>

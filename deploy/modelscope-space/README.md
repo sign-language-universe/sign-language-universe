@@ -17,7 +17,9 @@ license: Apache License 2.0
 
 # Sign Language Universe Scoring API on ModelScope Space
 
-这是用于 ModelScope 魔搭 Docker 创空间的最小后端部署包，服务内容是：
+这是保留用于验证服务端 Holistic worker 的 full Docker 后端部署包。当前线上演示默认使用 `deploy/modelscope-space-lite/`，本目录不作为默认主路径。
+
+本部署包服务内容是：
 
 - FastAPI scoring API
 - `/api/scoring/health`
@@ -99,7 +101,7 @@ curl -X POST '<your-modelscope-space-url>/api/scoring/worker/warmup?wait_for_rea
 
 ## 连接 GitHub Pages 前端
 
-在 GitHub Pages 页面挑战模式中，将“评分 API 地址”填为：
+GitHub Pages 前端默认已经连接 ModelScope lite API。只有在需要测试 full Docker、服务端 Holistic worker 或图片帧回退路径时，才在挑战模式中将“评分 API 地址”临时改为：
 
 ```text
 <your-modelscope-space-url>

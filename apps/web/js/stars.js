@@ -16,6 +16,10 @@
   // 流星
   let meteors = [];
 
+  function isDayTheme() {
+    return document.body.classList.contains('theme-day');
+  }
+
   function resize() {
     width = canvas.width = window.innerWidth;
     height = canvas.height = window.innerHeight;
@@ -64,16 +68,23 @@
 
     // 绘制星空渐变背景
     const gradient = ctx.createRadialGradient(width/2, height/2, 0, width/2, height/2, Math.max(width, height) * 0.7);
-    gradient.addColorStop(0, 'rgba(15, 15, 55, 0.3)');
-    gradient.addColorStop(0.5, 'rgba(10, 10, 30, 0.5)');
-    gradient.addColorStop(1, 'rgba(5, 5, 15, 0.8)');
+    if (isDayTheme()) {
+      gradient.addColorStop(0, 'rgba(177, 221, 255, 0.35)');
+      gradient.addColorStop(0.55, 'rgba(235, 247, 255, 0.55)');
+      gradient.addColorStop(1, 'rgba(201, 230, 255, 0.72)');
+    } else {
+      gradient.addColorStop(0, 'rgba(15, 15, 55, 0.3)');
+      gradient.addColorStop(0.5, 'rgba(10, 10, 30, 0.5)');
+      gradient.addColorStop(1, 'rgba(5, 5, 15, 0.8)');
+    }
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, width, height);
 
     // 群星闪烁
     for (const star of stars) {
       star.twinkle += star.twinkleSpeed;
-      const alpha = star.opacity * (0.6 + 0.4 * Math.sin(star.twinkle));
+      const themeScale = isDayTheme() ? 0.35 : 1;
+      const alpha = star.opacity * (0.6 + 0.4 * Math.sin(star.twinkle)) * themeScale;
       ctx.beginPath();
       ctx.arc(star.x, star.y, star.r, 0, Math.PI * 2);
       ctx.fillStyle = star.color.replace(')', `, ${alpha})`).replace('rgb', 'rgba');
@@ -90,14 +101,21 @@
       ctx.beginPath();
       ctx.moveTo(m.x, m.y);
       ctx.lineTo(m.x - m.length * 0.5, m.y - m.length);
-      ctx.strokeStyle = `rgba(255, 255, 255, ${m.opacity})`;
+      ctx.strokeStyle = isDayTheme()
+        ? `rgba(77, 166, 255, ${m.opacity * 0.45})`
+        : `rgba(255, 255, 255, ${m.opacity})`;
       ctx.lineWidth = 1.5;
       ctx.stroke();
 
       // 流星头部光晕
       const glow = ctx.createRadialGradient(m.x, m.y, 0, m.x, m.y, 4);
-      glow.addColorStop(0, `rgba(255, 255, 255, ${m.opacity})`);
-      glow.addColorStop(1, 'rgba(255, 255, 255, 0)');
+      if (isDayTheme()) {
+        glow.addColorStop(0, `rgba(77, 166, 255, ${m.opacity * 0.45})`);
+        glow.addColorStop(1, 'rgba(77, 166, 255, 0)');
+      } else {
+        glow.addColorStop(0, `rgba(255, 255, 255, ${m.opacity})`);
+        glow.addColorStop(1, 'rgba(255, 255, 255, 0)');
+      }
       ctx.fillStyle = glow;
       ctx.beginPath();
       ctx.arc(m.x, m.y, 4, 0, Math.PI * 2);
@@ -121,4 +139,5 @@
     stars.length = 0;
     createStars();
   });
+  window.addEventListener('signUniverseThemeChanged', drawStars);
 })();
