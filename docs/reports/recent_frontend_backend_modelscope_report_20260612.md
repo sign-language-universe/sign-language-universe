@@ -133,7 +133,10 @@ apps/web/index.html
   - 加载失败时提示回退上传压缩帧
 - Web Holistic 进入不可用状态时，显示“重新加载 Web Holistic”按钮。
 - 用户点击重试按钮后，前端会清理失败状态、移除失败残留的 `<script>` 标签，并重新加载和预热 Holistic。
+- 为改善手机端和国内网络稳定性，`apps/web/vendor/mediapipe/holistic/` 已随前端同源部署 MediaPipe Holistic 最小运行资源，默认优先从 GitHub Pages 本站加载，失败后再尝试 jsDelivr 和 unpkg。
+- 手机端首次下载 wasm/model 可能较慢，前端已把首次预热超时放宽到 `60s`、摄像头画面预热放宽到 `15s`、普通单帧处理放宽到 `10s`，并在状态行显示当前资源来源。
 - `index.html` 已增加：
+  - `preload` 同源 `vendor/mediapipe/holistic/holistic.js`
   - `dns-prefetch` 到 `cdn.jsdelivr.net`
   - `preconnect` 到 `https://cdn.jsdelivr.net`
 
@@ -824,10 +827,10 @@ Web Holistic 快的主要原因：
 
 当前 Web Holistic 可能不可用的主要情况：
 
-- `cdn.jsdelivr.net` 脚本加载失败或超过 `12s`。
+- 同源 Holistic 静态资源、jsDelivr 和 unpkg 均加载失败，或 wasm/model 下载过慢。
 - 脚本加载后没有正确暴露 `window.Holistic`。
 - 首次预热或摄像头画面预热失败。
-- 单帧处理超过 `3.5s`。
+- 首次预热超过 `60s`、摄像头画面预热超过 `15s` 或普通单帧处理超过 `10s`。
 - 浏览器不支持或限制 WebAssembly/WebGL/MediaPipe 相关能力。
 - 页面后台运行或低性能设备导致执行被明显限速。
 
@@ -835,6 +838,7 @@ Web Holistic 快的主要原因：
 
 - 当 Web Holistic 状态进入 offline 时，显示“重新加载 Web Holistic”按钮。
 - 用户点击后，前端会清理 `browserHolisticUnavailable`、loading promise、pending frame 等状态。
+- 前端按“同源本地资源 -> jsDelivr -> unpkg”的顺序尝试资源源，并把失败原因保留在状态行和 diagnostics 中。
 - 如果失败的 `<script>` 标签残留在页面中，重试前会移除该标签，避免“假重试”。
 - 重试成功后恢复 Web Holistic landmark 上传路线。
 - 重试仍失败时，前端继续保留压缩帧或本地 fallback 评分路径。
@@ -847,8 +851,8 @@ Web Holistic 快的主要原因：
 2. **前端低分建议仍是启发式**  
    目前前端根据帧数、手部覆盖、姿态覆盖和动作变化生成建议。若要达到旧方案中“逐关节偏差”的精度，需要后端返回更细粒度的 joint-level diagnostics。
 
-3. **Web Holistic 依赖浏览器和网络环境**  
-   首次加载依赖 CDN。国内网络环境下可能偶发慢或失败，但浏览器缓存会改善二次加载；当前页面已提供手动重试按钮。
+3. **Web Holistic 依赖浏览器和设备能力**
+   当前已优先使用 GitHub Pages 同源静态资源，减少 CDN 失败风险；但低性能手机、WebAssembly/WebGL 限制、浏览器后台限速仍可能导致预热或单帧处理失败。当前页面已提供手动重试按钮。
 
 4. **刷新页面不能保留 JS 实例**  
    刷新会销毁 Holistic 实例，但资源可缓存，刷新后会自动重建。
@@ -867,7 +871,7 @@ Web Holistic 快的主要原因：
   - 浏览器 Holistic 模板评分
   - 捕获质量分
   - 本地预览分
-- 在 Web Holistic 重试失败后，进一步提示可能原因，例如 CDN 网络、浏览器兼容或设备性能。
+- 在 Web Holistic 重试失败后，进一步提示可能原因，例如同源资源下载、浏览器兼容或设备性能。
 - 扩展模板数据库，让更多学习词从“待上线”转为可评分。
 - 给暂无专属动画的词逐步补充 Canvas 示范动画或视频示范素材。
 
