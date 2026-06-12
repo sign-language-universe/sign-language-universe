@@ -51,14 +51,15 @@ ModelScope lite API：<https://scottwyc-sign-language-universe-lite.ms.show>
 | #21 | `14c0831` | 新增近期前后端更新与 ModelScope 部署报告 | 形成 Markdown 与 Word 版阶段报告 |
 | #22 | `e872472` | 默认连接 ModelScope lite 评分 API | 前端默认 API 指向 lite 空间，保留手动覆盖能力 |
 | #23 | `b758340` | 增加 Web Holistic 失败重试按钮 | Web Holistic offline 时显示重试按钮，清理失败状态后重新加载 |
+| #25 | `cb18fdc` | 默认 Web Holistic lite 打分流程并优化挑战前端 | 统一默认方案、挑战词表覆盖 47 个学习词、日间模式、音效、OpenAPI 和文档同步 |
 
-截至本报告上一次 main 合并验证的最新实现提交：
+截至本报告本次更新覆盖的最新 main 实现提交：
 
 ```text
-b758340 Merge pull request #23 from sign-language-universe/feat/web-holistic-retry
+cb18fdc 默认 Web Holistic lite 打分流程并优化挑战前端
 ```
 
-本次报告还覆盖当前工作分支新增的挑战词表全覆盖、模板待上线提示、日间/夜间模式、音效、OpenAPI 契约和默认方案文档更新；这些内容会在本分支 PR 合并后进入 `main`。
+PR #25 已将挑战词表全覆盖、模板待上线提示、日间/夜间模式、音效、OpenAPI 契约和默认方案文档更新合并进入 `main`。
 
 ## 3. 当前整体架构
 
