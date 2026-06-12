@@ -1671,6 +1671,34 @@ html, body {
   color: var(--accent-pink);
 }
 
+.scoring-holistic-retry-btn {
+  justify-self: center;
+  min-height: 28px;
+  padding: 0 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255,107,157,0.38);
+  background: rgba(255,107,157,0.1);
+  color: var(--text-primary);
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.scoring-holistic-retry-btn:hover:not(:disabled) {
+  border-color: var(--accent-pink);
+  background: rgba(255,107,157,0.16);
+}
+
+.scoring-holistic-retry-btn:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+.scoring-holistic-retry-btn[hidden] {
+  display: none;
+}
+
 .scoring-auto-note {
   color: var(--accent-cyan);
 }

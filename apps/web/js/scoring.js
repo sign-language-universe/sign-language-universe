@@ -188,9 +188,16 @@
 
   function setWebHolisticStatus(kind, text) {
     const note = document.getElementById('scoring-web-holistic-note');
-    if (!note) return;
-    note.className = `scoring-web-holistic-note ${kind}`;
-    note.textContent = text;
+    const retryBtn = document.getElementById('scoring-holistic-retry-btn');
+    if (note) {
+      note.className = `scoring-web-holistic-note ${kind}`;
+      note.textContent = text;
+    }
+    if (retryBtn) {
+      retryBtn.hidden = kind !== 'offline';
+      retryBtn.disabled = false;
+      retryBtn.textContent = '重新加载 Web Holistic';
+    }
   }
 
   function webHolisticReadyText(extraText = '') {
@@ -257,16 +264,60 @@
   }
 
   function loadScriptOnce(src, timeoutMs = BROWSER_HOLISTIC_TIMEOUT_MS) {
-    if (document.querySelector(`script[src="${src}"]`)) return Promise.resolve();
+    const existing = document.querySelector(`script[src="${src}"]`);
+    if (existing && window.Holistic) return Promise.resolve();
+    if (existing) existing.remove();
     return withTimeout(new Promise((resolve, reject) => {
       const script = document.createElement('script');
       script.src = src;
       script.async = true;
       script.crossOrigin = 'anonymous';
       script.onload = () => resolve();
-      script.onerror = () => reject(new Error(`脚本加载失败：${src}`));
+      script.onerror = () => {
+        script.remove();
+        reject(new Error(`脚本加载失败：${src}`));
+      };
       document.head.appendChild(script);
     }), timeoutMs, '浏览器 Holistic 脚本加载超时');
+  }
+
+  function resetBrowserHolisticForRetry() {
+    if (state.browserHolisticPending?.reject) {
+      state.browserHolisticPending.reject(new Error('Web Holistic 正在重新加载'));
+    }
+    document.querySelectorAll(`script[src="${HOLISTIC_SCRIPT_URL}"]`).forEach(script => {
+      if (!window.Holistic) script.remove();
+    });
+    state.browserHolisticPending = null;
+    state.browserHolistic = null;
+    state.browserHolisticLoading = null;
+    state.browserHolisticPreloadPromise = null;
+    state.browserHolisticWarmupPromise = null;
+    state.browserHolisticUnavailable = false;
+    state.browserHolisticActive = false;
+    state.browserHolisticReady = false;
+    state.browserHolisticPreloadMs = null;
+    state.browserHolisticWarmupMs = null;
+    state.browserHolisticStats = null;
+  }
+
+  async function retryBrowserHolistic() {
+    const retryBtn = document.getElementById('scoring-holistic-retry-btn');
+    if (retryBtn) {
+      retryBtn.hidden = false;
+      retryBtn.disabled = true;
+      retryBtn.textContent = '重新加载中...';
+    }
+    resetBrowserHolisticForRetry();
+    setWebHolisticStatus('checking', 'Web Holistic 正在重新加载并预热');
+    const holistic = await preloadBrowserHolistic();
+    if (holistic) {
+      show('Web Holistic 已重新加载');
+      return holistic;
+    }
+    setWebHolisticStatus('offline', 'Web Holistic 仍不可用，可稍后重试');
+    show('Web Holistic 仍不可用，已保留回退评分路径');
+    return null;
   }
 
   async function ensureBrowserHolistic() {
@@ -1376,6 +1427,7 @@
     checkHealth,
     saveApiBaseFromInput,
     preloadBrowserHolistic,
+    retryBrowserHolistic,
     updateCaptureHint
   };
 
