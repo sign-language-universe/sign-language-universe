@@ -31,13 +31,19 @@ http://127.0.0.1:5173
 
 ## 连接评分 API
 
-GitHub Pages 只托管 `apps/web` 静态文件，不能运行 Holistic worker。挑战页的“评分 API 地址”留空时会请求同源 `/api/scoring/*`；如果前端在 GitHub Pages，通常需要填写独立 HTTPS API 地址，例如：
+GitHub Pages 只托管 `apps/web` 静态文件，不能运行 Holistic worker。当前挑战页默认连接 ModelScope lite 评分 API：
+
+```text
+https://scottwyc-sign-language-universe-lite.ms.show
+```
+
+如需临时切换到其他后端，可以在挑战页的“评分 API 地址”输入独立 HTTPS API 地址，例如：
 
 ```text
 https://api.example.com
 ```
 
-也可以通过 URL 参数临时指定：
+也可以通过 URL 参数指定，URL 参数优先级高于默认值和浏览器本地缓存：
 
 ```text
 https://sign-language-universe.github.io/sign-language-universe/?api=https://api.example.com

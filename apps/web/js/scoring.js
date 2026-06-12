@@ -5,6 +5,7 @@
 
 (function () {
   const STORAGE_KEY = 'signUniverseScoringApiBase';
+  const DEFAULT_SCORING_API_BASE = 'https://scottwyc-sign-language-universe-lite.ms.show';
   const MAX_FRAMES = 90;
   const COUNTDOWN_SECONDS = 3;
   const UPLOAD_JPEG_QUALITY = 0.7;
@@ -95,7 +96,8 @@
       return normalized;
     }
     if (state.apiBase !== null) return state.apiBase;
-    state.apiBase = normalizeApiBase(window.localStorage.getItem(STORAGE_KEY) || '');
+    const stored = normalizeApiBase(window.localStorage.getItem(STORAGE_KEY) || '');
+    state.apiBase = stored || DEFAULT_SCORING_API_BASE;
     return state.apiBase;
   }
 
