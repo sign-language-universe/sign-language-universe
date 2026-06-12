@@ -7,9 +7,27 @@
 - `apps/web/`：团队前端静态 Demo，来源于已有 `sign-language-universe` 前端资料。
 - `apps/scoring-demo/`：手语打分模块早期静态 Demo，来源于 `/data/WYC/signLanguage/work/web/static`。
 - `packages/scoring-core/`：手语评分核心算法代码，来源于 `/data/WYC/signLanguage/work/scripts` 的可维护子集。
-- `services/scoring-api/`：评分 API 服务入口，支持浏览器帧提交、可选 Holistic worker、可选服务器模板评分和降级预览评分。
+- `services/scoring-api/`：评分 API 服务入口，当前默认接收浏览器 Web Holistic 的 `landmark_rows`，并保留浏览器帧提交、可选 Holistic worker、服务器模板评分和降级预览评分。
 - `packages/shared-contracts/`：前后端共享 API 契约。
 - `docs/`：产品、架构、评分模块、AI 上下文和运维文档。
+
+## 默认线上方案
+
+当前团队仓库默认采用：
+
+```text
+GitHub Pages 静态前端
+  -> 浏览器 Web Holistic 提取 landmarks
+  -> ModelScope lite Docker FastAPI 后端
+  -> 旧仓库模板库 + score_holistic_sequence_mvp.run_pair()
+```
+
+- 前端默认评分 API：`https://scottwyc-sign-language-universe-lite.ms.show`
+- 前端默认采集参数：`2.5s / 10fps / 480px`
+- 前端优先上传 `landmark_rows`，不上传图片帧。
+- `deploy/modelscope-space-lite/` 是当前推荐线上演示后端，不安装 MediaPipe worker。
+- `deploy/modelscope-space/` 保留为 full Docker 验证和服务端 Holistic worker 回退路线。
+- 挑战模式覆盖全部 `47` 个学习词汇；当前模板数据库只覆盖 `10` 个可评分词，这 10 个词排在挑战列表前面；其他词显示“评分模板待上线”并禁用录制评分入口。
 
 ## 本地预览前端
 
@@ -30,13 +48,13 @@ GitHub Pages 部署说明见：
 docs/operations/github_pages_frontend_deploy_manual_20260611.md
 ```
 
-前端评分、Holistic worker 与 GitHub Pages/API 部署说明见：
+前端评分、Web Holistic、ModelScope lite API 与 GitHub Pages 部署说明见：
 
 ```text
 docs/operations/scoring_frontend_holistic_worker_deploy_manual_20260611.md
 ```
 
-ModelScope 魔搭 Docker 创空间部署评分 API / Holistic worker 说明见：
+ModelScope 魔搭 Docker 创空间部署评分 API 说明见：
 
 ```text
 docs/operations/modelscope_holistic_deploy_manual_20260611.md

@@ -8,11 +8,14 @@
 - `GET /api/scoring/templates`
 - `POST /api/scoring/score`
 
-`app/main.py` 已接入 `app/holistic_worker_daemon.py` 常驻 Holistic worker。公开仓库不包含 demo 视频和生成模板，因此服务按以下顺序评分：
+当前推荐线上方案是：GitHub Pages 前端在浏览器中运行 Web Holistic，向本服务提交 `landmark_rows`；ModelScope lite Docker 后端读取模板库并运行旧评分算法。`app/main.py` 也保留 `app/holistic_worker_daemon.py` 常驻 Holistic worker，用于 full Docker 或自托管服务器回退验证。
 
-1. 已配置 `SLU_TEMPLATE_ROOT`：worker 抽取用户帧 Holistic，和服务器模板 JSON 做原型相似度评分。
-2. 未配置模板但 worker 可用：返回 Holistic 捕获质量分。
-3. worker 不可用或未安装依赖：返回浏览器帧预览分，并在 `diagnostics.scoring_mode` 标注为 `browser_frame_fallback`。
+服务按以下顺序评分：
+
+1. 已配置 `SLU_TEMPLATE_ROOT` 且请求包含 `landmark_rows`：直接和服务器模板 JSON 做原型相似度评分，返回 `web_holistic_template_similarity`。
+2. 已配置 `SLU_TEMPLATE_ROOT` 且请求为 `frame_slices`：在 full 后端中可由 worker 抽取用户帧 Holistic，再做模板相似度评分。
+3. 未配置模板但存在浏览器或 worker 关键点：返回 Holistic 捕获质量分。
+4. worker 不可用、模板缺失或依赖未安装：返回明确标注的 fallback 分，并在 `diagnostics.scoring_mode` 标明原因。
 
 `app/legacy_backend.py` 是旧后端入口，仅用于追溯和后续拆解，不建议直接作为团队生产入口。
 
@@ -29,7 +32,7 @@ uvicorn app.main:app --app-dir services/scoring-api --host 127.0.0.1 --port 5080
 ## 环境变量
 
 ```bash
-# 显式启用 Holistic worker；默认 false，只保留浏览器帧预览评分
+# 显式启用服务端 Holistic worker；ModelScope lite 默认 false
 export SLU_ENABLE_HOLISTIC_WORKER=true
 
 # worker 输出目录，默认是 work/generated/scoring-api
@@ -42,7 +45,7 @@ export SLU_TEMPLATE_ROOT=/srv/sign-language-universe/templates/holistic
 export SLU_SEMANTIC_PROFILE_JSON=/srv/sign-language-universe/templates/sign_semantic_weights.json
 ```
 
-如果使用 GitHub Pages 前端，后端需要单独部署到支持 HTTPS 的服务器或容器平台。Pages 不能运行 FastAPI、MediaPipe 或常驻 worker。
+如果使用 GitHub Pages 前端，后端需要单独部署到支持 HTTPS 的服务器或容器平台。当前默认使用 ModelScope lite API：`https://scottwyc-sign-language-universe-lite.ms.show`。Pages 不能运行 FastAPI、MediaPipe 或常驻 worker。
 
 ## 下一步
 

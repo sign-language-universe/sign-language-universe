@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Sign Language Universe Scoring API
-  version: 0.2.0
+  version: 0.3.0
 paths:
   /:
     get:
@@ -37,7 +37,7 @@ paths:
           description: Worker warmup result
   /api/scoring/score:
     post:
-      summary: Submit sign language frames or a video path for scoring
+      summary: Submit browser Holistic landmarks, sign language frames, or a video path for scoring
       requestBody:
         required: true
         content:
@@ -65,6 +65,68 @@ components:
           minimum: 0
         image_base64:
           type: string
+    LandmarkPoint:
+      oneOf:
+        - type: array
+          minItems: 3
+          items:
+            type: number
+        - type: object
+          additionalProperties: true
+          properties:
+            x:
+              type: number
+            y:
+              type: number
+            z:
+              type: number
+            visibility:
+              type: number
+            presence:
+              type: number
+    LandmarkRow:
+      type: object
+      required: [index, timestamp_ms]
+      properties:
+        index:
+          type: integer
+          minimum: 0
+        timestamp_ms:
+          type: integer
+          minimum: 0
+        pose_landmarks:
+          type: array
+          items:
+            $ref: "#/components/schemas/LandmarkPoint"
+        left_hand_landmarks:
+          type: array
+          items:
+            $ref: "#/components/schemas/LandmarkPoint"
+        right_hand_landmarks:
+          type: array
+          items:
+            $ref: "#/components/schemas/LandmarkPoint"
+        face_landmarks:
+          type: array
+          items:
+            $ref: "#/components/schemas/LandmarkPoint"
+        face_core_landmarks:
+          type: array
+          items:
+            $ref: "#/components/schemas/LandmarkPoint"
+        frame_weight:
+          type: number
+          exclusiveMinimum: 0
+          default: 1
+        image_width:
+          type: integer
+          minimum: 1
+        image_height:
+          type: integer
+          minimum: 1
+        processing_ms:
+          type: integer
+          minimum: 0
     ScoreRequest:
       type: object
       required: [template_id, input_type]
@@ -74,11 +136,16 @@ components:
           examples: ["flower", "jump"]
         input_type:
           type: string
-          enum: ["frame_slices", "video_path"]
+          enum: ["landmark_rows", "frame_slices", "video_path"]
         frames:
           type: array
           items:
             $ref: "#/components/schemas/FrameSlice"
+        landmark_rows:
+          type: array
+          description: Browser-side MediaPipe Holistic landmarks. This is the default GitHub Pages path.
+          items:
+            $ref: "#/components/schemas/LandmarkRow"
         video_path:
           type: string
         fps:

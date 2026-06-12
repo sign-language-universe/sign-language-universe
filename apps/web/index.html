@@ -12,6 +12,15 @@
   <!-- ============ 星空背景画布 ============ -->
   <canvas id="starCanvas"></canvas>
 
+  <div class="app-controls" aria-label="显示和音效设置">
+    <button class="app-toggle-btn" id="theme-toggle-btn" type="button" onclick="toggleTheme()" aria-pressed="false" title="切换日间/夜间模式">
+      <span>🌙</span><span>夜间</span>
+    </button>
+    <button class="app-toggle-btn" id="sound-toggle-btn" type="button" onclick="toggleSound()" aria-pressed="true" title="开启或关闭音效">
+      <span>🔊</span><span>音效</span>
+    </button>
+  </div>
+
   <!-- ============ 页面容器 ============ -->
   <div id="app">
 
@@ -267,7 +276,7 @@
       <header class="top-bar">
         <button class="back-btn" onclick="navigateTo('spacestation')">← 返回空间站</button>
         <h3 id="challenge-word-display">准备挑战...</h3>
-        <span class="challenge-progress-text" id="challenge-progress-text">1 / 10</span>
+        <span class="challenge-progress-text" id="challenge-progress-text">1 / 47</span>
       </header>
 
       <!-- 左右导航按键 -->
@@ -305,7 +314,8 @@
             <!-- 未开始 -->
             <div class="challenge-intro" id="challenge-intro">
               <div class="challenge-intro-icon">🤚✨</div>
-              <p class="intro-main-text">观看左侧手语示范<br>记住词汇的打法！</p>
+              <p class="intro-main-text" id="challenge-intro-main-text">观看左侧手语示范<br>记住词汇的打法！</p>
+              <div class="challenge-status-note ready" id="challenge-status-note">评分模板已上线</div>
               <div class="challenge-hint-list">
                 <div class="hint-item">
                   <span class="hint-dot"></span>
@@ -320,7 +330,7 @@
                   <span>评分 ≥ <strong>80 分</strong> 解锁 3D 奖励 🎉</span>
                 </div>
               </div>
-              <button class="challenge-start-btn" onclick="startChallenge()">
+              <button class="challenge-start-btn" id="btn-enter-challenge" onclick="startChallenge()">
                 <span class="start-btn-icon">🚀</span>
                 <span class="start-btn-text">进入挑战</span>
               </button>

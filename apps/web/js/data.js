@@ -242,18 +242,62 @@ const MODEL_MAP = {
 };
 
 // =============================================
-//  挑战模式词汇列表（10个手语词汇）
-//  评分>80 时奖励弹窗出现对应 3D 模型
+//  挑战模式词汇
+//  列表覆盖全部学习词汇；只有模板库已覆盖的词开放正式评分。
 // =============================================
-const CHALLENGE_WORDS = [
-  { word: '香蕉', pinyin: 'xiāng jiāo', definition: '左手竖着的食指表示香蕉，右手从左手食指上往下做剥皮动作。', model: '香蕉' },
-  { word: '花',   pinyin: 'huā',        definition: '一手撮合、指尖朝上模仿花朵含苞的样子，手缓缓向上同时慢慢张开，模仿开花。', model: '花' },
-  { word: '汽车', pinyin: 'qì chē',     definition: '双手模拟开车的动作，两手虚握想象手心内是方向盘，双手左右转动。', model: '汽车' },
-  { word: '虎',   pinyin: 'hǔ',         definition: '左手食指在前额比出"王"字，随后双手五指弯曲向前按动，模仿老虎兽爪。', model: '虎' },
-  { word: '月亮', pinyin: 'yuè liàng',  definition: '双手向两边移动，两根手指距离逐渐变窄，模拟弯月形状。', model: '月亮' },
-  { word: '跳',   pinyin: 'tiào',       definition: '右手食、中指模拟人的两条腿，在左手"地面"上交替弹跳。', model: '跳' },
-  { word: '朋友', pinyin: 'péng yǒu',   definition: '两根大拇指模拟两个人的头，两个人的头互相碰两下，象征亲密。', model: '朋友' },
-  { word: '指示', pinyin: 'zhǐ shì',    definition: '一手伸出食指，指向某个方向或物体，表示指示、指引的意思。', model: '指示' },
-  { word: '唱歌', pinyin: 'chàng gē',   definition: '头部左右晃动，双手拇指和食指同时从喉部向外移出，表示发出声音。', model: '唱歌' },
-  { word: '馋',   pinyin: 'chán',       definition: '一手伸食指在嘴角处向下滑动，模仿口水从嘴角流出的样子，表示嘴馋。', model: '馋' }
+const SCORING_READY_WORD_LIST = [
+  '香蕉', '花', '汽车', '虎', '月亮', '跳', '朋友', '指示', '唱歌', '馋'
 ];
+const SCORING_READY_WORDS = new Set(SCORING_READY_WORD_LIST);
+
+const CHALLENGE_WORD_EXTRAS = {
+  '香蕉': { model: '香蕉', hasRewardModel: true },
+  '花': { model: '花', hasRewardModel: true },
+  '汽车': { model: '汽车', hasRewardModel: true },
+  '虎': { model: '虎', hasRewardModel: true },
+  '月亮': { model: '月亮', hasRewardModel: false },
+  '跳': { model: '跳', hasRewardModel: true },
+  '朋友': { model: '朋友', hasRewardModel: false },
+  '指示': { model: '指示', hasRewardModel: false },
+  '唱歌': { model: '唱歌', hasRewardModel: false },
+  '馋': { model: '馋', hasRewardModel: false }
+};
+
+function buildChallengeWords() {
+  const words = [];
+  const seen = new Set();
+  Object.values(VOCABULARY_DATA).forEach(level => {
+    level.planets.forEach(planet => {
+      planet.words.forEach(item => {
+        if (seen.has(item.word)) return;
+        seen.add(item.word);
+        const extra = CHALLENGE_WORD_EXTRAS[item.word] || {};
+        const scoringReady = SCORING_READY_WORDS.has(item.word);
+        words.push({
+          ...item,
+          level: level.level,
+          planet: planet.name,
+          originalOrder: words.length,
+          model: extra.model || item.word,
+          scoringReady,
+          hasRewardModel: Boolean(extra.hasRewardModel && MODEL_MAP[extra.model]?.glbPath),
+          statusLabel: scoringReady ? '评分模板已上线' : '评分模板待上线',
+          statusText: scoringReady
+            ? '可以使用 Web Holistic + ModelScope lite 后端进行模板评分。'
+            : '这个学习词汇还没有标准动作模板，暂时不能录制打分；可先学习打法，等待评分数据库上线。'
+        });
+      });
+    });
+  });
+  return words
+    .sort((a, b) => {
+      if (a.scoringReady !== b.scoringReady) return a.scoringReady ? -1 : 1;
+      if (a.scoringReady) {
+        return SCORING_READY_WORD_LIST.indexOf(a.word) - SCORING_READY_WORD_LIST.indexOf(b.word);
+      }
+      return a.originalOrder - b.originalOrder;
+    })
+    .map(({ originalOrder, ...word }) => word);
+}
+
+const CHALLENGE_WORDS = buildChallengeWords();

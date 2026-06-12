@@ -1654,7 +1654,12 @@ class AnimationPlayer {
     this.currentWord = word;
     this.animData = ANIMATIONS[word];
     if (!this.animData) {
-      this.animData = ANIMATIONS['香蕉']; // fallback
+      this.animData = null;
+      this._lastPhase = null;
+      const ctx = this.ctx;
+      const dpr = window.devicePixelRatio || 1;
+      ctx.clearRect(0, 0, this.W / dpr, this.H / dpr);
+      return;
     }
     this.seek(0);
   }
@@ -1756,12 +1761,18 @@ class AnimationPlayer {
   }
 }
 
-// ============ 全局实例 ============
-let animationPlayer = null;
+function hasSignAnimation(word) {
+  return Boolean(ANIMATIONS[word]);
+}
 
 function getAnimationPlayer(canvas) {
-  if (!animationPlayer) {
-    animationPlayer = new AnimationPlayer(canvas);
+  if (!getAnimationPlayer.players) {
+    getAnimationPlayer.players = new WeakMap();
   }
-  return animationPlayer;
+  let player = getAnimationPlayer.players.get(canvas);
+  if (!player) {
+    player = new AnimationPlayer(canvas);
+    getAnimationPlayer.players.set(canvas, player);
+  }
+  return player;
 }

@@ -162,6 +162,11 @@
     return words[AppState.challengeIndex % words.length];
   }
 
+  function currentWordScoringReady() {
+    const wordData = currentWordData();
+    return wordData.scoringReady !== false;
+  }
+
   function templateIdForWord(word) {
     return WORD_TEMPLATE_IDS[word] || word;
   }
@@ -1069,6 +1074,11 @@
 
   async function startChallengeRecording() {
     if (state.scoringBusy) return;
+    const wordData = currentWordData();
+    if (!currentWordScoringReady()) {
+      show(`「${wordData.word}」评分模板待上线，暂不能录制打分`);
+      return;
+    }
     state.captureRunId++;
     const runId = state.captureRunId;
     stopUiTimer();
@@ -1100,7 +1110,6 @@
     const scoreBtn = document.getElementById('btn-score');
     if (scoreBtn) scoreBtn.disabled = true;
     updateTimerUi();
-    const wordData = currentWordData();
     show(`准备采集「${wordData.word}」`);
 
     const ok = await runCountdown(COUNTDOWN_SECONDS, runId);
@@ -1370,6 +1379,11 @@
 
   async function scoreChallengeWithApi() {
     if (state.scoringBusy) return;
+    const wordData = currentWordData();
+    if (!currentWordScoringReady()) {
+      show(`「${wordData.word}」评分模板待上线，暂不能评分`);
+      return;
+    }
     if (!AppState.isRecording && availableSampleCount() === 0) {
       show('请先点击「开始」录制手语');
       return;

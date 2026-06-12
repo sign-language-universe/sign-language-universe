@@ -12,17 +12,24 @@ ModelScope lite API：<https://scottwyc-sign-language-universe-lite.ms.show>
 近期工作围绕“手语学习宇宙”的打分闭环完成了三条主线：
 
 1. **GitHub Pages 前端打分模块可用化**  
-   前端挑战页已经接入摄像头采集、Web Holistic 预加载、浏览器端关键点提取、自动评分、低分建议、采样参数控制和结果诊断展示。默认采集参数已调整为 `2.5s / 10fps / 480px`，默认约采集 `25` 帧。
+   前端挑战页已经接入摄像头采集、Web Holistic 预加载、浏览器端关键点提取、自动评分、低分建议、采样参数控制、结果诊断展示和 Web Holistic 失败重试。默认采集参数已调整为 `2.5s / 10fps / 480px`，默认约采集 `25` 帧。本次补充后，挑战模式覆盖全部 `47` 个学习词汇，但仅对模板数据库已覆盖的 `10` 个词开放录制评分，其他词明确提示“评分模板待上线”。
 
 2. **评分后端标准化与旧算法迁移**  
    `services/scoring-api` 已提供统一 FastAPI 入口，支持 `landmark_rows` 和 `frame_slices` 两类输入。后端已接入旧仓库 `/data/WYC/signLanguage` 中已有的 Holistic 模板相似度算法，即 `score_holistic_sequence_mvp.run_pair()`，并保留 worker、模板、捕获质量和 fallback 多种评分路径。
 
 3. **ModelScope 魔搭创空间双部署路线**  
-   已保留一个完整 Docker 空间用于验证服务端 Holistic worker，同时新增一个 lite Docker 空间用于浏览器 Web Holistic 路线。当前推荐线上演示使用 lite 空间：前端只上传关键点，后端只做模板 DTW/semantic prototype scoring，不再在服务器运行 MediaPipe Holistic。
+   已保留一个完整 Docker 空间用于验证服务端 Holistic worker，同时新增一个 lite Docker 空间用于浏览器 Web Holistic 路线。当前推荐线上演示使用 lite 空间，且前端默认评分 API 已指向该 lite 空间：前端只上传关键点，后端只做模板 DTW/semantic prototype scoring，不再在服务器运行 MediaPipe Holistic。
+
+4. **前端体验补充优化**
+   新增日间/夜间模式切换、可关闭音效、无专属动画词汇的明确占位提示，并修复学习页/挑战页动画播放器共用全局实例导致的潜在 canvas 指向问题。
 
 截至本报告生成时：
 
 - GitHub Pages 前端已部署最新版本，页面默认参数为 `2.5s / 10fps / 480px`。
+- GitHub Pages 前端默认评分 API 已设置为 `https://scottwyc-sign-language-universe-lite.ms.show`，普通用户不再需要手动填写。
+- Web Holistic 加载失败时，页面会显示“重新加载 Web Holistic”按钮，允许用户在当前页面生命周期内手动重试。
+- 当前挑战词表已从学习词库自动派生，覆盖 `47` 个学习词；其中 `10` 个词有模板可评分，`37` 个词等待评分数据库上线。
+- 当前项目说明、部署说明和 API 契约已统一把“GitHub Pages + Web Holistic + ModelScope lite Docker 后端”作为默认模式。
 - full API 健康检查在线，`version=0.3.0`，`worker_enabled=true`，`template_root_configured=true`。
 - lite API 健康检查在线，`version=0.3.0`，`worker_enabled=false`，`template_root_configured=true`。
 - lite API 的 `/api/scoring/templates` 显示旧模板中已有 `10` 个词条配置完成。
@@ -41,12 +48,17 @@ ModelScope lite API：<https://scottwyc-sign-language-universe-lite.ms.show>
 | #18 | `e2c687e` | 优化打分页 Web Holistic 预加载与自动评分 | 页面访问后预加载 Web Holistic，录制完成自动评分 |
 | #19 | `3601441` | 优化打分采样帧数、低分建议和录制结束画面 | 尊重用户设置帧数、低分建议、最后一帧冻结画面 |
 | #20 | `939bff3` | 调整打分默认采集参数 | 默认参数改为 `2.5s / 10fps / 480px` |
+| #21 | `14c0831` | 新增近期前后端更新与 ModelScope 部署报告 | 形成 Markdown 与 Word 版阶段报告 |
+| #22 | `e872472` | 默认连接 ModelScope lite 评分 API | 前端默认 API 指向 lite 空间，保留手动覆盖能力 |
+| #23 | `b758340` | 增加 Web Holistic 失败重试按钮 | Web Holistic offline 时显示重试按钮，清理失败状态后重新加载 |
 
-当前 `main` 最新提交：
+截至本报告上一次 main 合并验证的最新实现提交：
 
 ```text
-939bff3 Merge pull request #20 from sign-language-universe/chore/scoring-default-capture-params
+b758340 Merge pull request #23 from sign-language-universe/feat/web-holistic-retry
 ```
+
+本次报告还覆盖当前工作分支新增的挑战词表全覆盖、模板待上线提示、日间/夜间模式、音效、OpenAPI 契约和默认方案文档更新；这些内容会在本分支 PR 合并后进入 `main`。
 
 ## 3. 当前整体架构
 
@@ -55,9 +67,10 @@ ModelScope lite API：<https://scottwyc-sign-language-universe-lite.ms.show>
 ```text
 GitHub Pages 静态前端
   |
-  | 1. 页面访问后预加载 @mediapipe/holistic
-  | 2. 用户点击开始，浏览器摄像头采集
-  | 3. 浏览器本机提取 Holistic landmarks
+  | 1. 默认连接 ModelScope lite API
+  | 2. 页面访问后预加载 @mediapipe/holistic
+  | 3. 用户点击开始，浏览器摄像头采集
+  | 4. 浏览器本机提取 Holistic landmarks
   v
 landmark_rows JSON
   |
@@ -95,6 +108,7 @@ ModelScope full FastAPI
 - **浏览器端 Holistic**：负责快速关键点提取，减少图片上传和服务端 MediaPipe 冷启动成本。
 - **lite 后端**：负责模板库、旧算法、评分版本和诊断输出，避免把权威评分逻辑完全散落到前端。
 - **full 后端**：保留为服务端 Holistic worker 验证和回退方案，不作为当前推荐主路径。
+- **默认连接策略**：普通用户直接打开 GitHub Pages 即可连接 lite API；开发者仍可通过输入框或 `?api=` 参数切换后端。
 
 ## 4. 前端更新详情
 
@@ -116,6 +130,8 @@ apps/web/index.html
   - 正在加载并预热
   - 已就绪并常驻
   - 加载失败时提示回退上传压缩帧
+- Web Holistic 进入不可用状态时，显示“重新加载 Web Holistic”按钮。
+- 用户点击重试按钮后，前端会清理失败状态、移除失败残留的 `<script>` 标签，并重新加载和预热 Holistic。
 - `index.html` 已增加：
   - `dns-prefetch` 到 `cdn.jsdelivr.net`
   - `preconnect` 到 `https://cdn.jsdelivr.net`
@@ -126,7 +142,39 @@ apps/web/index.html
 - 刷新后会自动重建实例；脚本和模型资源通常可走浏览器缓存。
 - 页面不刷新、不关闭时，Holistic 实例在当前页面生命周期内复用。
 
-### 4.2 浏览器端关键点提取与上传
+### 4.2 默认连接 ModelScope lite 评分 API
+
+文件：
+
+```text
+apps/web/js/scoring.js
+apps/web/README.md
+```
+
+已实现：
+
+- 前端默认评分 API：
+
+```text
+https://scottwyc-sign-language-universe-lite.ms.show
+```
+
+- 新用户首次访问时，评分 API 输入框会自动填入 lite API。
+- 用户不需要再手动添加评分 API 地址。
+- 仍保留覆盖能力，优先级如下：
+
+```text
+URL ?api=... 参数 > 浏览器 localStorage 中的自定义非空地址 > 默认 lite API
+```
+
+设计原因：
+
+- 当前推荐路线是 Web Holistic + lite 后端。
+- lite 后端启动快、依赖少，不运行服务端 MediaPipe。
+- 对普通用户来说，默认接入可以减少配置门槛。
+- 对开发者来说，输入框和 URL 参数仍可切换到本地 API、full API 或其他测试 API。
+
+### 4.3 浏览器端关键点提取与上传
 
 已实现：
 
@@ -145,7 +193,7 @@ apps/web/index.html
 - 如果 Web Holistic 加载失败或处理失败，前端可回退为压缩 JPEG 帧路径。
 - 如果评分 API 不可用，前端仍返回明确标注的本地预览分，保证演示流程不中断。
 
-### 4.3 录制与自动评分流程
+### 4.4 录制与自动评分流程
 
 已实现：
 
@@ -164,7 +212,7 @@ apps/web/index.html
 - 录制完成后摄像头长时间保持开启。
 - 用户必须手动点击“打分”才能进入评分。
 
-### 4.4 采样帧数逻辑调整
+### 4.5 采样帧数逻辑调整
 
 最新改动：
 
@@ -197,7 +245,7 @@ apps/web/index.html
 - 少于 `3` 帧时通常无法提交有效评分。
 - 低于建议帧数时仍允许录制，但提示评分稳定性可能下降。
 
-### 4.5 低分建议
+### 4.6 低分建议
 
 文件：
 
@@ -223,7 +271,7 @@ apps/web/js/scoring.js
 
 低分结果页会优先展示这类可执行建议，而不是只显示“模板评分完成”一类系统状态。
 
-### 4.6 录制结束画面发白优化
+### 4.7 录制结束画面发白优化
 
 问题：
 
@@ -247,6 +295,56 @@ apps/web/js/scoring.js
 
 - 从实时画面自然冻结到暗化状态画面。
 - 减少摄像头停止时的白屏闪烁。
+
+### 4.8 挑战模式词汇覆盖与评分覆盖分离
+
+问题：
+
+- 早期 `CHALLENGE_WORDS` 是单独写死的 10 个词。
+- 学习页词库实际已有 47 个词，挑战模式没有完整覆盖学习内容。
+- 如果直接把无模板词也送入评分，会让用户误以为 fallback 分就是正式评分。
+
+本次处理：
+
+- `CHALLENGE_WORDS` 改为从 `VOCABULARY_DATA` 自动生成。
+- 挑战导航覆盖全部 47 个学习词，并将当前可评分的 10 个模板词排在前面。
+- 新增 `SCORING_READY_WORDS`，只标记当前模板数据库已覆盖的 10 个可评分词：
+
+```text
+香蕉、花、汽车、虎、月亮、跳、朋友、指示、唱歌、馋
+```
+
+- 其他 37 个词在挑战页显示：
+
+```text
+评分模板待上线 · 暂不能录制评分，等待数据库上线
+```
+
+- 待上线词的“进入挑战 / 开始录制 / 自动评分”入口会被禁用或拦截，不提交到后端，也不返回本地预览分。
+- 无专属 Canvas 示范动画的词显示“暂无专属动画”，不再错误 fallback 到“香蕉”动画。
+
+设计原因：
+
+- 学习覆盖和评分覆盖必须区分。
+- 对学习产品来说，用户可以浏览全部词汇。
+- 对评分产品来说，只有有标准动作模板的词才能给出可信模板评分。
+
+### 4.9 日间模式、音效与动画播放器修复
+
+新增前端体验：
+
+- 右下角新增日间/夜间模式切换。
+- 用户主题偏好保存到 `localStorage`。
+- 星空背景会随主题变浅或变深。
+- 新增可关闭音效，默认开启，用户偏好保存到 `localStorage`。
+- 音效使用 Web Audio 生成，不新增音频资源文件。
+
+动画播放器修复：
+
+- 旧实现使用全局单个 `animationPlayer`。
+- 学习页和挑战页都使用 Canvas 动画时，存在复用旧 canvas 的潜在问题。
+- 现改为每个 canvas 独立 `AnimationPlayer` 实例。
+- 无专属动画的词不再 fallback 到错误词汇动画。
 
 ## 5. 后端更新详情
 
@@ -575,7 +673,7 @@ apps/web/index.html
 
 ### 7.3 最近部署验证
 
-PR #20 合并后：
+PR #23 合并后：
 
 - CI 成功。
 - GitHub Pages 部署成功。
@@ -592,7 +690,33 @@ scoring-frame-width value="480"
 DEFAULT_CAPTURE_DURATION_SEC = 2.5
 DEFAULT_CAPTURE_FPS = 10
 DEFAULT_FRAME_WIDTH = 480
+DEFAULT_SCORING_API_BASE = https://scottwyc-sign-language-universe-lite.ms.show
+retryBrowserHolistic
 ```
+
+- 线上 `index.html` 已确认包含：
+
+```text
+scoring-holistic-retry-btn
+重新加载 Web Holistic
+```
+
+本次仓库补充更新后，前端源码还新增：
+
+```text
+SCORING_READY_WORDS
+buildChallengeWords()
+theme-toggle-btn
+sound-toggle-btn
+hasSignAnimation()
+```
+
+对应含义：
+
+- 挑战词表从学习词库自动生成。
+- 只有模板库覆盖词允许录制评分。
+- 用户可切换日间/夜间模式和音效开关。
+- 无专属动画词不再错误播放其他词动画。
 
 ## 8. 当前推荐使用方式
 
@@ -607,20 +731,15 @@ https://sign-language-universe.github.io/sign-language-universe/
 进入挑战模式：
 
 1. 页面会自动加载 Web Holistic。
-2. API 地址填写：
+2. 页面默认连接 ModelScope lite API，不需要手动填写评分 API 地址。
+3. 切换到想练习的词汇。
+4. 如果词汇显示“评分模板已上线”，点击“开始”并按示范完成手语动作，录制结束后自动评分。
+5. 如果词汇显示“评分模板待上线”，当前只能查看学习说明，暂不能录制评分。
+
+如果需要切换到其他 API，可以手动填写“评分 API 地址”，也可以使用 URL 参数：
 
 ```text
-https://scottwyc-sign-language-universe-lite.ms.show
-```
-
-3. 点击“开始”。
-4. 按示范完成手语动作。
-5. 录制结束后自动评分。
-
-也可以使用 URL 参数：
-
-```text
-https://sign-language-universe.github.io/sign-language-universe/?api=https://scottwyc-sign-language-universe-lite.ms.show
+https://sign-language-universe.github.io/sign-language-universe/?api=https://api.example.com
 ```
 
 ### 8.2 开发者本地联调
@@ -700,16 +819,35 @@ Web Holistic 快的主要原因：
 阶段 3：后端保留权威评分、日志和数据闭环
 ```
 
+### 9.3 Web Holistic 不可用与重试策略
+
+当前 Web Holistic 可能不可用的主要情况：
+
+- `cdn.jsdelivr.net` 脚本加载失败或超过 `12s`。
+- 脚本加载后没有正确暴露 `window.Holistic`。
+- 首次预热或摄像头画面预热失败。
+- 单帧处理超过 `3.5s`。
+- 浏览器不支持或限制 WebAssembly/WebGL/MediaPipe 相关能力。
+- 页面后台运行或低性能设备导致执行被明显限速。
+
+已实现的重试策略：
+
+- 当 Web Holistic 状态进入 offline 时，显示“重新加载 Web Holistic”按钮。
+- 用户点击后，前端会清理 `browserHolisticUnavailable`、loading promise、pending frame 等状态。
+- 如果失败的 `<script>` 标签残留在页面中，重试前会移除该标签，避免“假重试”。
+- 重试成功后恢复 Web Holistic landmark 上传路线。
+- 重试仍失败时，前端继续保留压缩帧或本地 fallback 评分路径。
+
 ## 10. 当前限制
 
 1. **模板覆盖有限**  
-   当前已配置旧模板的词条为 10 个，其他词条还没有模板 JSON。
+   挑战模式现在覆盖全部 47 个学习词，但当前已配置旧模板的词条仍为 10 个。其他 37 个词会显示“评分模板待上线”，暂不允许录制评分。
 
 2. **前端低分建议仍是启发式**  
    目前前端根据帧数、手部覆盖、姿态覆盖和动作变化生成建议。若要达到旧方案中“逐关节偏差”的精度，需要后端返回更细粒度的 joint-level diagnostics。
 
 3. **Web Holistic 依赖浏览器和网络环境**  
-   首次加载依赖 CDN。国内网络环境下可能偶发慢或失败，但浏览器缓存会改善二次加载。
+   首次加载依赖 CDN。国内网络环境下可能偶发慢或失败，但浏览器缓存会改善二次加载；当前页面已提供手动重试按钮。
 
 4. **刷新页面不能保留 JS 实例**  
    刷新会销毁 Holistic 实例，但资源可缓存，刷新后会自动重建。
@@ -724,13 +862,13 @@ Web Holistic 快的主要原因：
 
 ### 11.1 短期
 
-- 在前端默认 API 地址或引导中优先推荐 lite API。
 - 给挑战页增加“当前评分模式”更显眼的展示，区分：
   - 浏览器 Holistic 模板评分
   - 捕获质量分
   - 本地预览分
-- 对 Web Holistic 加载失败增加更友好的重试按钮。
-- 把当前 10 个模板词条与前端挑战词表做明确映射，避免用户选择无模板词后误解评分结果。
+- 在 Web Holistic 重试失败后，进一步提示可能原因，例如 CDN 网络、浏览器兼容或设备性能。
+- 扩展模板数据库，让更多学习词从“待上线”转为可评分。
+- 给暂无专属动画的词逐步补充 Canvas 示范动画或视频示范素材。
 
 ### 11.2 中期
 
@@ -803,4 +941,3 @@ MODELSCOPE_API_TOKEN="$MODELSCOPE_TOKEN" \
 ```
 
 不要使用 `--tail`，当前 CLI 路径下该参数不可用。
-
