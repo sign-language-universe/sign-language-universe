@@ -14,10 +14,17 @@
   const DEFAULT_CAPTURE_DURATION_SEC = 2.5;
   const DEFAULT_CAPTURE_FPS = 10;
   const DEFAULT_FRAME_WIDTH = 480;
-  const HOLISTIC_CDN_BASE = 'https://cdn.jsdelivr.net/npm/@mediapipe/holistic';
-  const HOLISTIC_SCRIPT_URL = `${HOLISTIC_CDN_BASE}/holistic.js`;
-  const BROWSER_HOLISTIC_TIMEOUT_MS = 12000;
-  const BROWSER_HOLISTIC_FRAME_TIMEOUT_MS = 3500;
+  const HOLISTIC_PACKAGE_VERSION = '0.5.1675471629';
+  const HOLISTIC_LOCAL_BASE = new URL('vendor/mediapipe/holistic', document.baseURI).href.replace(/\/$/, '');
+  const HOLISTIC_ASSET_SOURCES = [
+    { id: 'local', label: '同源本地资源', base: HOLISTIC_LOCAL_BASE },
+    { id: 'jsdelivr', label: 'jsDelivr CDN', base: `https://cdn.jsdelivr.net/npm/@mediapipe/holistic@${HOLISTIC_PACKAGE_VERSION}` },
+    { id: 'unpkg', label: 'unpkg CDN', base: `https://unpkg.com/@mediapipe/holistic@${HOLISTIC_PACKAGE_VERSION}` }
+  ];
+  const BROWSER_HOLISTIC_SCRIPT_TIMEOUT_MS = 20000;
+  const BROWSER_HOLISTIC_WARMUP_TIMEOUT_MS = 60000;
+  const BROWSER_HOLISTIC_CAMERA_WARMUP_TIMEOUT_MS = 15000;
+  const BROWSER_HOLISTIC_FRAME_TIMEOUT_MS = 10000;
   const FACE_CORE_INDICES = [33, 133, 159, 145, 362, 263, 386, 374, 61, 291, 13, 14];
 
   const CAPTURE_RECOMMENDATIONS = {
@@ -72,6 +79,8 @@
     browserHolisticPreloadMs: null,
     browserHolisticWarmupMs: null,
     browserHolisticStats: null,
+    browserHolisticSource: null,
+    browserHolisticErrors: [],
     scoringWaitTimer: null,
     scoringStartedAt: 0
   };
@@ -186,6 +195,22 @@
     return `${(Math.max(0, Number(ms) || 0) / 1000).toFixed(1)}s`;
   }
 
+  function holisticSourceLabel(source = state.browserHolisticSource) {
+    return source?.label || HOLISTIC_ASSET_SOURCES[0].label;
+  }
+
+  function holisticSourceScriptUrl(source) {
+    return `${source.base}/holistic.js`;
+  }
+
+  function holisticErrorSummary(errors = state.browserHolisticErrors) {
+    return errors
+      .filter(Boolean)
+      .map(item => String(item).replace(/\s+/g, ' ').trim())
+      .slice(-2)
+      .join('；');
+  }
+
   function finiteNumber(value, fallback = 0) {
     const number = Number(value);
     return Number.isFinite(number) ? number : fallback;
@@ -212,16 +237,17 @@
     const warmupText = state.browserHolisticWarmupMs !== null
       ? `预热 ${formatSeconds(state.browserHolisticWarmupMs)}`
       : '已预热';
-    return `Web Holistic 已就绪并常驻 · ${preloadText} · ${warmupText}${extraText}`;
+    return `Web Holistic 已就绪并常驻 · ${holisticSourceLabel()} · ${preloadText} · ${warmupText}${extraText}`;
   }
 
   function syncWebHolisticStatus() {
     if (state.browserHolisticReady && state.browserHolistic) {
       setWebHolisticStatus('ready', webHolisticReadyText());
     } else if (state.browserHolisticPreloadPromise || state.browserHolisticLoading || state.browserHolisticWarmupPromise) {
-      setWebHolisticStatus('checking', 'Web Holistic 正在加载并预热');
+      setWebHolisticStatus('checking', `Web Holistic 正在加载并预热 · ${holisticSourceLabel()}`);
     } else if (state.browserHolisticUnavailable) {
-      setWebHolisticStatus('offline', 'Web Holistic 不可用，将回退上传压缩帧');
+      const detail = holisticErrorSummary();
+      setWebHolisticStatus('offline', detail ? `Web Holistic 不可用，将回退上传压缩帧 · ${detail}` : 'Web Holistic 不可用，将回退上传压缩帧');
     } else {
       setWebHolisticStatus('checking', 'Web Holistic 准备中');
     }
@@ -268,15 +294,16 @@
     });
   }
 
-  function loadScriptOnce(src, timeoutMs = BROWSER_HOLISTIC_TIMEOUT_MS) {
+  function loadScriptOnce(src, timeoutMs = BROWSER_HOLISTIC_SCRIPT_TIMEOUT_MS) {
+    if (window.Holistic) return Promise.resolve();
     const existing = document.querySelector(`script[src="${src}"]`);
-    if (existing && window.Holistic) return Promise.resolve();
     if (existing) existing.remove();
     return withTimeout(new Promise((resolve, reject) => {
       const script = document.createElement('script');
       script.src = src;
       script.async = true;
       script.crossOrigin = 'anonymous';
+      script.dataset.sluHolisticScript = 'true';
       script.onload = () => resolve();
       script.onerror = () => {
         script.remove();
@@ -286,24 +313,37 @@
     }), timeoutMs, '浏览器 Holistic 脚本加载超时');
   }
 
-  function resetBrowserHolisticForRetry() {
+  function disposeBrowserHolisticInstance(message = 'Web Holistic 正在重新加载') {
     if (state.browserHolisticPending?.reject) {
-      state.browserHolisticPending.reject(new Error('Web Holistic 正在重新加载'));
+      state.browserHolisticPending.reject(new Error(message));
     }
-    document.querySelectorAll(`script[src="${HOLISTIC_SCRIPT_URL}"]`).forEach(script => {
-      if (!window.Holistic) script.remove();
-    });
+    if (state.browserHolistic && typeof state.browserHolistic.close === 'function') {
+      try {
+        state.browserHolistic.close();
+      } catch (error) {
+        // MediaPipe close() can throw after a failed wasm init; retry path should continue.
+      }
+    }
     state.browserHolisticPending = null;
     state.browserHolistic = null;
     state.browserHolisticLoading = null;
+    state.browserHolisticActive = false;
+    state.browserHolisticReady = false;
+  }
+
+  function resetBrowserHolisticForRetry() {
+    disposeBrowserHolisticInstance();
+    document.querySelectorAll('script[data-slu-holistic-script="true"]').forEach(script => {
+      if (!window.Holistic) script.remove();
+    });
     state.browserHolisticPreloadPromise = null;
     state.browserHolisticWarmupPromise = null;
     state.browserHolisticUnavailable = false;
-    state.browserHolisticActive = false;
-    state.browserHolisticReady = false;
     state.browserHolisticPreloadMs = null;
     state.browserHolisticWarmupMs = null;
     state.browserHolisticStats = null;
+    state.browserHolisticSource = null;
+    state.browserHolisticErrors = [];
   }
 
   async function retryBrowserHolistic() {
@@ -314,71 +354,76 @@
       retryBtn.textContent = '重新加载中...';
     }
     resetBrowserHolisticForRetry();
-    setWebHolisticStatus('checking', 'Web Holistic 正在重新加载并预热');
+    setWebHolisticStatus('checking', `Web Holistic 正在重新加载并预热 · ${HOLISTIC_ASSET_SOURCES[0].label}`);
     const holistic = await preloadBrowserHolistic();
     if (holistic) {
       show('Web Holistic 已重新加载');
       return holistic;
     }
-    setWebHolisticStatus('offline', 'Web Holistic 仍不可用，可稍后重试');
+    setWebHolisticStatus('offline', `Web Holistic 仍不可用，可稍后重试 · ${holisticErrorSummary()}`);
     show('Web Holistic 仍不可用，已保留回退评分路径');
     return null;
+  }
+
+  async function createBrowserHolisticFromSource(source) {
+    const startedAt = performance.now();
+    state.browserHolisticSource = source;
+    state.browserHolisticLoading = (async () => {
+      await loadScriptOnce(holisticSourceScriptUrl(source));
+      if (!window.Holistic) throw new Error('浏览器 Holistic SDK 未正确加载');
+      const holistic = new window.Holistic({
+        locateFile: file => `${source.base}/${file}`
+      });
+      holistic.setOptions({
+        modelComplexity: 1,
+        smoothLandmarks: true,
+        enableSegmentation: false,
+        refineFaceLandmarks: false,
+        minDetectionConfidence: 0.5,
+        minTrackingConfidence: 0.5
+      });
+      holistic.onResults(results => {
+        const pending = state.browserHolisticPending;
+        if (!pending) return;
+        state.browserHolisticPending = null;
+        pending.resolve(results);
+      });
+      state.browserHolistic = holistic;
+      state.browserHolisticStats = {
+        ...(state.browserHolisticStats || {}),
+        sdk: '@mediapipe/holistic',
+        package_version: HOLISTIC_PACKAGE_VERSION,
+        asset_source: source.id,
+        asset_label: source.label,
+        asset_base: source.base,
+        sdk_load_ms: Math.round(performance.now() - startedAt)
+      };
+      state.browserHolisticPreloadMs = state.browserHolisticStats.sdk_load_ms;
+      return holistic;
+    })();
+    try {
+      return await state.browserHolisticLoading;
+    } finally {
+      state.browserHolisticLoading = null;
+    }
   }
 
   async function ensureBrowserHolistic() {
     if (state.browserHolistic) return state.browserHolistic;
     if (state.browserHolisticUnavailable) return null;
-    if (!state.browserHolisticLoading) {
-      state.browserHolisticLoading = (async () => {
-        const startedAt = performance.now();
-        await loadScriptOnce(HOLISTIC_SCRIPT_URL);
-        if (!window.Holistic) throw new Error('浏览器 Holistic SDK 未正确加载');
-        const holistic = new window.Holistic({
-          locateFile: file => `${HOLISTIC_CDN_BASE}/${file}`
-        });
-        holistic.setOptions({
-          modelComplexity: 1,
-          smoothLandmarks: true,
-          enableSegmentation: false,
-          refineFaceLandmarks: false,
-          minDetectionConfidence: 0.5,
-          minTrackingConfidence: 0.5
-        });
-        holistic.onResults(results => {
-          const pending = state.browserHolisticPending;
-          if (!pending) return;
-          state.browserHolisticPending = null;
-          pending.resolve(results);
-        });
-        state.browserHolistic = holistic;
-        state.browserHolisticStats = {
-          ...(state.browserHolisticStats || {}),
-          sdk_load_ms: Math.round(performance.now() - startedAt)
-        };
-        state.browserHolisticPreloadMs = state.browserHolisticStats.sdk_load_ms;
-        return holistic;
-      })().catch(error => {
-        state.browserHolisticUnavailable = true;
-        state.browserHolistic = null;
-        throw error;
-      }).finally(() => {
-        state.browserHolisticLoading = null;
-      });
-    }
-    return state.browserHolisticLoading;
+    return preloadBrowserHolistic();
   }
 
-  async function sendBrowserHolisticImage(image) {
-    const holistic = await ensureBrowserHolistic();
-    if (!holistic) return null;
+  function sendHolisticImage(holistic, image, options = {}) {
     if (state.browserHolisticPending) {
       throw new Error('浏览器 Holistic 仍在处理上一帧');
     }
+    const timeoutMs = options.timeoutMs || BROWSER_HOLISTIC_FRAME_TIMEOUT_MS;
     return new Promise((resolve, reject) => {
       const timer = window.setTimeout(() => {
         if (state.browserHolisticPending) state.browserHolisticPending = null;
         reject(new Error('浏览器 Holistic 单帧处理超时'));
-      }, BROWSER_HOLISTIC_FRAME_TIMEOUT_MS);
+      }, timeoutMs);
       state.browserHolisticPending = {
         resolve: results => {
           window.clearTimeout(timer);
@@ -389,52 +434,97 @@
           reject(error);
         }
       };
-      Promise.resolve(holistic.send({ image })).catch(error => {
-        if (state.browserHolisticPending) {
-          window.clearTimeout(timer);
-          state.browserHolisticPending = null;
-          reject(error);
-        }
-      });
+      try {
+        Promise.resolve(holistic.send({ image })).catch(error => {
+          if (state.browserHolisticPending) {
+            window.clearTimeout(timer);
+            state.browserHolisticPending = null;
+            reject(error);
+          }
+        });
+      } catch (error) {
+        window.clearTimeout(timer);
+        state.browserHolisticPending = null;
+        reject(error);
+      }
     });
+  }
+
+  async function sendBrowserHolisticImage(image, options = {}) {
+    const holistic = await ensureBrowserHolistic();
+    if (!holistic) return null;
+    return sendHolisticImage(holistic, image, options);
+  }
+
+  function createWarmupCanvas() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 96;
+    canvas.height = 96;
+    const context = canvas.getContext('2d');
+    context.fillStyle = '#111';
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    return canvas;
   }
 
   async function warmupBrowserHolistic() {
     if (state.browserHolisticReady && state.browserHolistic) return state.browserHolistic;
     if (state.browserHolisticWarmupPromise) return state.browserHolisticWarmupPromise;
     state.browserHolisticWarmupPromise = (async () => {
-      const holistic = await ensureBrowserHolistic();
-      if (!holistic) return null;
-      const startedAt = performance.now();
-      const canvas = document.createElement('canvas');
-      canvas.width = 96;
-      canvas.height = 96;
-      const context = canvas.getContext('2d');
-      context.fillStyle = '#111';
-      context.fillRect(0, 0, canvas.width, canvas.height);
-      await sendBrowserHolisticImage(canvas);
-      canvas.width = 0;
-      canvas.height = 0;
-      state.browserHolisticReady = true;
-      state.browserHolisticWarmupMs = Math.round(performance.now() - startedAt);
-      state.browserHolisticStats = {
-        ...(state.browserHolisticStats || {}),
-        enabled: true,
-        route: 'preloaded_web_holistic',
-        warmup_ms: state.browserHolisticWarmupMs
-      };
-      setWebHolisticStatus('ready', webHolisticReadyText());
-      return holistic;
+      const errors = [];
+      for (const source of HOLISTIC_ASSET_SOURCES) {
+        disposeBrowserHolisticInstance(`正在切换 Web Holistic 资源源：${source.label}`);
+        state.browserHolisticUnavailable = false;
+        state.browserHolisticSource = source;
+        setWebHolisticStatus('checking', `Web Holistic 正在加载并预热 · ${source.label}`);
+        const startedAt = performance.now();
+        const canvas = createWarmupCanvas();
+        try {
+          const holistic = await createBrowserHolisticFromSource(source);
+          await sendHolisticImage(holistic, canvas, { timeoutMs: BROWSER_HOLISTIC_WARMUP_TIMEOUT_MS });
+          state.browserHolisticReady = true;
+          state.browserHolisticWarmupMs = Math.round(performance.now() - startedAt);
+          state.browserHolisticStats = {
+            ...(state.browserHolisticStats || {}),
+            enabled: true,
+            route: 'preloaded_web_holistic',
+            warmup_ms: state.browserHolisticWarmupMs,
+            source_fallback_errors: errors.slice()
+          };
+          setWebHolisticStatus('ready', webHolisticReadyText());
+          return holistic;
+        } catch (error) {
+          const message = `${source.label}: ${error.message}`;
+          errors.push(message);
+          state.browserHolisticErrors = errors.slice();
+          state.browserHolisticStats = {
+            ...(state.browserHolisticStats || {}),
+            enabled: false,
+            route: 'frame_slices',
+            preload_error: message,
+            source_fallback_errors: errors.slice()
+          };
+          disposeBrowserHolisticInstance(`Web Holistic ${source.label} 加载失败`);
+          setWebHolisticStatus('checking', `Web Holistic 正在尝试备用资源 · ${holisticErrorSummary(errors)}`);
+        } finally {
+          canvas.width = 0;
+          canvas.height = 0;
+        }
+      }
+      throw new Error(holisticErrorSummary(errors) || '所有 Web Holistic 资源均不可用');
     })().catch(error => {
       state.browserHolisticReady = false;
       state.browserHolisticUnavailable = true;
+      state.browserHolisticErrors = state.browserHolisticErrors.length
+        ? state.browserHolisticErrors
+        : [error.message];
       state.browserHolisticStats = {
         ...(state.browserHolisticStats || {}),
         enabled: false,
         route: 'frame_slices',
-        preload_error: error.message
+        preload_error: error.message,
+        source_fallback_errors: state.browserHolisticErrors.slice()
       };
-      setWebHolisticStatus('offline', `Web Holistic 加载失败：${error.message}`);
+      setWebHolisticStatus('offline', `Web Holistic 加载失败，将回退上传压缩帧 · ${holisticErrorSummary()}`);
       return null;
     }).finally(() => {
       state.browserHolisticWarmupPromise = null;
@@ -448,14 +538,15 @@
       return state.browserHolistic;
     }
     if (state.browserHolisticUnavailable) {
-      setWebHolisticStatus('offline', 'Web Holistic 不可用，将回退上传压缩帧');
+      const detail = holisticErrorSummary();
+      setWebHolisticStatus('offline', detail ? `Web Holistic 不可用，将回退上传压缩帧 · ${detail}` : 'Web Holistic 不可用，将回退上传压缩帧');
       return null;
     }
     if (state.browserHolisticPreloadPromise) return state.browserHolisticPreloadPromise;
     state.browserHolisticPreloadPromise = (async () => {
-      setWebHolisticStatus('checking', 'Web Holistic 正在加载并预热');
+      setWebHolisticStatus('checking', `Web Holistic 正在加载并预热 · ${HOLISTIC_ASSET_SOURCES[0].label}`);
       const startedAt = performance.now();
-      const holistic = await withTimeout(warmupBrowserHolistic(), BROWSER_HOLISTIC_TIMEOUT_MS, '浏览器 Holistic 预加载超时');
+      const holistic = await warmupBrowserHolistic();
       if (holistic) {
         if (state.browserHolisticPreloadMs === null) {
           state.browserHolisticPreloadMs = Math.round(performance.now() - startedAt);
@@ -470,9 +561,10 @@
         ...(state.browserHolisticStats || {}),
         enabled: false,
         route: 'frame_slices',
-        preload_error: error.message
+        preload_error: error.message,
+        source_fallback_errors: state.browserHolisticErrors.slice()
       };
-      setWebHolisticStatus('offline', `Web Holistic 加载失败：${error.message}`);
+      setWebHolisticStatus('offline', `Web Holistic 加载失败，将回退上传压缩帧 · ${holisticErrorSummary() || error.message}`);
       return null;
     }).finally(() => {
       state.browserHolisticPreloadPromise = null;
@@ -540,7 +632,10 @@
       enabled: false,
       route: 'frame_slices',
       sdk: '@mediapipe/holistic',
-      cdn: HOLISTIC_CDN_BASE
+      package_version: HOLISTIC_PACKAGE_VERSION,
+      asset_source: state.browserHolisticSource?.id || 'pending',
+      asset_label: holisticSourceLabel(),
+      asset_base: state.browserHolisticSource?.base || HOLISTIC_ASSET_SOURCES[0].base
     };
     if (!video || video.readyState < 2) return;
     try {
@@ -558,7 +653,7 @@
       const context = warmCanvas.getContext('2d');
       context.drawImage(video, 0, 0, warmCanvas.width, warmCanvas.height);
       const warmStartedAt = performance.now();
-      await sendBrowserHolisticImage(warmCanvas);
+      await sendBrowserHolisticImage(warmCanvas, { timeoutMs: BROWSER_HOLISTIC_CAMERA_WARMUP_TIMEOUT_MS });
       warmCanvas.width = 0;
       warmCanvas.height = 0;
 

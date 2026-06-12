@@ -24,6 +24,7 @@ http://127.0.0.1:5173
 - 原生 HTML/CSS/JS。
 - 包含宇宙主题首页、星系星球选择、词汇学习卡片、检索、测评、个人空间站。
 - 挑战模式已经接入 `js/scoring.js`：浏览器 Web Holistic 提取关键点，默认调用 ModelScope lite API 的 `/api/scoring/score`。
+- Web Holistic 静态运行资源已随 `apps/web/vendor/mediapipe/holistic/` 同源部署，手机端优先从 GitHub Pages 本站加载；外部 CDN 仅作为备用。
 - 挑战模式包含旧打分 demo 的关键交互：3 秒倒计时、采集时长、上传 FPS、帧宽设置、采样帧数提示、进度条、评分模式/帧数/worker 耗时/样本 ID/建议提示。
 - 挑战模式覆盖全部 `47` 个学习词汇；当前模板数据库覆盖 `10` 个可评分词，这 10 个词会排在挑战列表前面；其他词会显示“评分模板待上线”并禁用录制评分。
 - 页面提供日间/夜间模式切换和可关闭的交互音效。
@@ -34,7 +35,7 @@ http://127.0.0.1:5173
 
 ## 连接评分 API
 
-GitHub Pages 只托管 `apps/web` 静态文件，不能运行 Python/FastAPI/MediaPipe worker。当前默认方案是在浏览器运行 Web Holistic，向 ModelScope lite Docker 后端上传 `landmark_rows`。挑战页默认连接：
+GitHub Pages 只托管 `apps/web` 静态文件，不能运行 Python/FastAPI/MediaPipe worker。当前默认方案是在浏览器运行 Web Holistic，向 ModelScope lite Docker 后端上传 `landmark_rows`。Web Holistic 优先加载仓库内同源静态资源，避免手机网络访问单一 CDN 失败。挑战页默认连接：
 
 ```text
 https://scottwyc-sign-language-universe-lite.ms.show
