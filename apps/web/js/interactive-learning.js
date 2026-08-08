@@ -351,7 +351,10 @@
     const canPractice = isAvailable || isExperimental;
     const statusText = isAvailable ? t('available') : (isExperimental ? t('experimental') : t('pending'));
     const statusDetail = isAvailable ? t('availableDetail') : (isExperimental ? t('experimentalDetail') : t('pendingDetail'));
-    const illustrationPath = `assets/content/illustrations/word-${String(item.index).padStart(2, '0')}.jpeg`;
+    const illustrationIndex = String(item.index).padStart(2, '0');
+    // 优先使用仅含示意图的裁剪图；若缺失则回退到原始整页资料图
+    const illustrationPath = `assets/content/illustrations/schematic-crops/word-${illustrationIndex}.jpeg`;
+    const illustrationFallbackPath = `assets/content/illustrations/word-${illustrationIndex}.jpeg`;
     const media = state.referenceMedia[String(item.index)];
     const hasSemanticVideo = Boolean(media?.semantic_overlay_path);
     const mediaBlock = media
@@ -391,7 +394,7 @@
         <section class="interactive-panel semantic-contract-panel">
         <div class="interactive-panel-heading"><div><h3>🧭 ${esc(t('guidance'))}</h3><p>${esc(t('guidanceSubtitle'))}</p></div><span class="frame-count-badge">${esc(t('minFrames'))}: ${item.minimum_distinct_frames}</span></div>
         <div class="semantic-guidance-intro">
-          <figure class="semantic-illustration"><img src="${illustrationPath}" loading="lazy" alt="${esc(item.en)} instructional illustration"><figcaption>${state.locale === 'en' ? 'A–Z reference illustration' : 'A–Z 资料示意图'}</figcaption></figure>
+          <figure class="semantic-illustration"><img src="${illustrationPath}" loading="lazy" alt="${esc(item.en)} instructional illustration" onerror="this.onerror=null;this.src='${illustrationFallbackPath}'"><figcaption>${state.locale === 'en' ? 'A–Z reference illustration' : 'A–Z 资料示意图'}</figcaption></figure>
           <div class="semantic-guidance-summary"><p>${esc(state.locale === 'en' ? item.summary_en : item.summary_zh)}</p></div>
         </div>
         <div class="semantic-contract-columns"><div><h4>${esc(t('ordered'))}</h4><ol class="semantic-stage-list">${ordered}</ol></div><div><h4>${esc(t('simultaneous'))}</h4><div class="semantic-feature-grid">${simultaneous}</div></div></div>

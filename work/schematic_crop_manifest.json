@@ -1,0 +1,217 @@
+{
+  "schema_version": "slu-schematic-crop-manifest-v1",
+  "coordinate_system": "normalized_0_1000_top_left_origin",
+  "source_dir": "/data/WYC/sign-language-universe/apps/web/assets/content/illustrations",
+  "entries": [
+    {
+      "file": "word-01.jpeg",
+      "schematic_bbox": [
+        137,
+        392,
+        863,
+        787
+      ],
+      "raw_output": "{\"schematic_bbox\": [137, 392, 863, 787]}"
+    },
+    {
+      "file": "word-02.jpeg",
+      "schematic_bbox": [
+        112,
+        397,
+        888,
+        787
+      ],
+      "raw_output": "{\"schematic_bbox\": [112, 397, 888, 787]}"
+    },
+    {
+      "file": "word-03.jpeg",
+      "schematic_bbox": [
+        115,
+        319,
+        885,
+        712
+      ],
+      "raw_output": "{\"schematic_bbox\": [115, 319, 885, 712]}"
+    },
+    {
+      "file": "word-04.jpeg",
+      "schematic_bbox": [
+        108,
+        397,
+        888,
+        827
+      ],
+      "raw_output": "{\"schematic_bbox\": [108, 397, 888, 827]}"
+    },
+    {
+      "file": "word-05.jpeg",
+      "schematic_bbox": [
+        113,
+        323,
+        885,
+        745
+      ],
+      "raw_output": "{\"schematic_bbox\": [113, 323, 885, 745]}"
+    },
+    {
+      "file": "word-06.jpeg",
+      "schematic_bbox": [
+        137,
+        330,
+        875,
+        700
+      ],
+      "raw_output": "{\"schematic_bbox\": [137, 330, 875, 700]}"
+    },
+    {
+      "file": "word-07.jpeg",
+      "schematic_bbox": [
+        158,
+        412,
+        842,
+        750
+      ],
+      "raw_output": "{\"schematic_bbox\": [158, 412, 842, 750]}"
+    },
+    {
+      "file": "word-08.jpeg",
+      "schematic_bbox": [
+        112,
+        310,
+        888,
+        718
+      ],
+      "raw_output": "{\"schematic_bbox\": [112, 310, 888, 718]}"
+    },
+    {
+      "file": "word-09.jpeg",
+      "schematic_bbox": [
+        112,
+        362,
+        888,
+        804
+      ],
+      "raw_output": "{\"schematic_bbox\": [112, 362, 888, 804]}"
+    },
+    {
+      "file": "word-10.jpeg",
+      "schematic_bbox": [
+        112,
+        300,
+        888,
+        747
+      ],
+      "raw_output": "{\"schematic_bbox\": [112, 300, 888, 747]}"
+    },
+    {
+      "file": "word-11.jpeg",
+      "schematic_bbox": [
+        112,
+        347,
+        888,
+        667
+      ],
+      "raw_output": "{\"schematic_bbox\": [112, 347, 888, 667]}"
+    },
+    {
+      "file": "word-12.jpeg",
+      "schematic_bbox": [
+        158,
+        550,
+        777,
+        750
+      ],
+      "raw_output": "{\"schematic_bbox\": [158, 550, 777, 750]}"
+    },
+    {
+      "file": "word-13.jpeg",
+      "schematic_bbox": [
+        120,
+        487,
+        878,
+        812
+      ],
+      "raw_output": "{\"schematic_bbox\": [120, 487, 878, 812]}"
+    },
+    {
+      "file": "word-14.jpeg",
+      "schematic_bbox": [
+        117,
+        430,
+        883,
+        835
+      ],
+      "raw_output": "{\"schematic_bbox\": [117, 430, 883, 835]}"
+    },
+    {
+      "file": "word-15.jpeg",
+      "schematic_bbox": [
+        117,
+        425,
+        883,
+        825
+      ],
+      "raw_output": "{\"schematic_bbox\": [117, 425, 883, 825]}"
+    },
+    {
+      "file": "word-16.jpeg",
+      "schematic_bbox": [
+        117,
+        333,
+        883,
+        745
+      ],
+      "raw_output": "{\"schematic_bbox\": [117, 333, 883, 745]}"
+    },
+    {
+      "file": "word-17.jpeg",
+      "schematic_bbox": [
+        115,
+        335,
+        885,
+        762
+      ],
+      "raw_output": "{\"schematic_bbox\": [115, 335, 885, 762]}"
+    },
+    {
+      "file": "word-18.jpeg",
+      "schematic_bbox": [
+        286,
+        458,
+        625,
+        750
+      ],
+      "raw_output": "{\"schematic_bbox\": [286, 458, 625, 750]}"
+    },
+    {
+      "file": "word-19.jpeg",
+      "schematic_bbox": [
+        113,
+        487,
+        885,
+        845
+      ],
+      "raw_output": "{\"schematic_bbox\": [113, 487, 885, 845]}"
+    },
+    {
+      "file": "word-20.jpeg",
+      "schematic_bbox": [
+        115,
+        375,
+        883,
+        815
+      ],
+      "raw_output": "{\"schematic_bbox\": [115, 375, 883, 815]}"
+    },
+    {
+      "file": "word-21.jpeg",
+      "schematic_bbox": [
+        120,
+        430,
+        870,
+        750
+      ],
+      "raw_output": "{\"schematic_bbox\": [120, 430, 870, 750]}"
+    }
+  ]
+}
