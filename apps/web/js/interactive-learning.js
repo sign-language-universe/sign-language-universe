@@ -499,7 +499,7 @@
           ${referenceVisual}
         </section>
         <section class="interactive-panel semantic-contract-panel">
-        <div class="interactive-panel-heading"><div><h3>🧭 ${esc(t('guidance'))}</h3><p>${esc(t('guidanceSubtitle'))}</p></div><span class="frame-count-badge">${esc(t('minFrames'))}: ${item.minimum_distinct_frames}</span></div>
+        <div class="interactive-panel-heading"><div><h3>🧭 ${esc(t('guidance'))}</h3><p>${esc(t('guidanceSubtitle'))}</p></div></div>
         <div class="semantic-guidance-intro">
           <figure class="semantic-illustration"><img src="${illustrationPath}" loading="lazy" alt="${esc(item.en)} instructional illustration" onerror="this.onerror=null;this.src='${illustrationFallbackPath}'"></figure>
           <div class="semantic-guidance-summary"><p>${esc(state.locale === 'en' ? item.summary_en : item.summary_zh)}</p></div>
