@@ -17,7 +17,7 @@
     contracts: [],
     referenceMedia: {},
     index: 0,
-    locale: window.localStorage.getItem('sluInteractiveLocale') || 'zh',
+    locale: window.localStorage.getItem('sluInteractiveLocale') || 'en',
     loaded: false,
     loadPromise: null,
     player: null,

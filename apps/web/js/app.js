@@ -32,7 +32,7 @@ const AppState = {
   rewardVisible: false,
 
   // UI 偏好
-  theme: window.localStorage.getItem('signUniverseTheme') || 'night',
+  theme: window.localStorage.getItem('signUniverseTheme') || 'day',
   soundEnabled: window.localStorage.getItem('signUniverseSound') !== 'off'
 };
 
