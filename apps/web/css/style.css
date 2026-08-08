@@ -1613,6 +1613,7 @@ body.theme-day .animation-viewer {
   border-radius: 50%;
   border: 3px solid rgba(255,255,255,0.78);
   background: rgba(10,16,35,0.72);
+  color: #ffffff; /* 固定白色：倒计时始终深底白字，避免浅色主题下深字看不见 */
   font-size: 46px;
   font-weight: 900;
   font-variant-numeric: tabular-nums;
