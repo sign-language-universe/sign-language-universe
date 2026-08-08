@@ -1885,6 +1885,11 @@
   function renderScoreDetails(result) {
     const box = uiElement('scoring-result-details');
     if (!box) return;
+    // 互动学习模式：结果面板只展示 分数 + 针对性建议 + 局部语义评分，隐藏诊断详情
+    if (state.uiMode === 'interactive') {
+      box.hidden = true;
+      return;
+    }
     if (!result) {
       box.hidden = true;
       return;
@@ -1899,7 +1904,10 @@
     if (framesEl) framesEl.textContent = String(resultFrameCount(result));
     if (workerEl) workerEl.textContent = resultWorkerTime(result);
     if (requestEl) requestEl.textContent = result.request_id || '--';
-    if (adviceEl) adviceEl.textContent = buildResultAdvice(result);
+    if (adviceEl) {
+      // 互动学习模式：建议由专门的"针对性局部指导"面板展示，详情区不重复
+      adviceEl.textContent = state.uiMode === 'interactive' ? '' : buildResultAdvice(result);
+    }
     box.hidden = false;
   }
 
