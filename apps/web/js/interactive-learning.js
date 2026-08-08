@@ -335,7 +335,7 @@
     const en = state.locale === 'en';
     slot.innerHTML = [
       '<div class="interactive-score-host" id="interactive-score-host" style="display:none;" aria-hidden="true">',
-      '<div class="interactive-score-state" id="interactive-score-state">' + esc(statusText) + '</div>',
+      (statusText ? '<div class="interactive-score-state" id="interactive-score-state">' + esc(statusText) + '</div>' : '<div class="interactive-score-state" id="interactive-score-state" style="display:none;"></div>'),
       '<div class="challenge-active interactive-score-active" id="challenge-active" style="display:flex;">',
       '<div class="challenge-camera-frame interactive-score-camera" id="challenge-camera-frame"><div class="challenge-camera-inner" id="challenge-camera-inner">',
       '<p>📷 ' + (en ? 'Camera preview' : '摄像头画面区域') + '</p>',
@@ -456,8 +456,9 @@
     const isAvailable = item.scoring_template_status === 'available';
     const isExperimental = item.scoring_template_status === 'experimental';
     const canPractice = isAvailable || isExperimental;
-    const statusText = isAvailable ? t('available') : (isExperimental ? t('experimental') : t('pending'));
-    const statusDetail = isAvailable ? t('availableDetail') : '';
+    // 不再显示"评分模板已接入"状态小字，面板直接进入摄像头评分
+    const statusText = '';
+    const statusDetail = '';
     const illustrationIndex = String(item.index).padStart(2, '0');
     // 优先使用仅含示意图的裁剪图；若缺失则回退到原始整页资料图
     const illustrationPath = `assets/content/illustrations/schematic-crops/word-${illustrationIndex}.jpeg`;
@@ -469,7 +470,7 @@
       : `<div class="interactive-video-empty"><strong>📹 ${esc(t('noVideo'))}</strong></div>`;
     const referenceHeading = media ? t('videoLabel') : t('schematic');
     const referenceBadge = media
-      ? (state.locale === 'en' ? 'Manually reviewed' : '已人工审核')
+      ? ''
       : (state.locale === 'en' ? 'Schematic placeholder' : '示意动画占位');
     const referenceVisual = media
       ? mediaBlock
