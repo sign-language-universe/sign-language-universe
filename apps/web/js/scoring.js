@@ -1368,7 +1368,7 @@
     return Math.max(state.frames.length, state.landmarkRows.length);
   }
 
-  const LOCAL_TEMPLATES_URL = new URL('assets/content/scoring_templates_v1.json', document.baseURI).href;
+  const LOCAL_TEMPLATES_URL = new URL('assets/content/scoring_templates_v2.json', document.baseURI).href;
 
   function localCoreAvailable() {
     return typeof globalThis.ScorerCore !== 'undefined' && typeof globalThis.ScorerCore.scoreQuery === 'function';
