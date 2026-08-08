@@ -47,6 +47,8 @@
     '指示': 'point',
     '唱歌': 'sing',
     '馋': 'chan',
+    '超市': 'chaoshi',
+    '人们（人民）': 'renmen',
     '鸡蛋': 'egg',
     '烤串': 'kaochuan',
     '科学': 'science',

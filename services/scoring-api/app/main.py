@@ -54,6 +54,8 @@ SUPPORTED_TEMPLATES = [
     {"id": "point", "label": "指示", "aliases": ["zhishi", "指示"], "available": True},
     {"id": "sing", "label": "唱歌", "aliases": ["changge", "唱歌"], "available": True},
     {"id": "chan", "label": "馋", "aliases": ["馋", "谗（羡慕）", "chanxianmu"], "available": True},
+    {"id": "chaoshi", "label": "超市", "aliases": ["chaoshi", "超市", "supermarket"], "available": True},
+    {"id": "renmen", "label": "人们（人民）", "aliases": ["renmen", "人们", "人们（人民）", "people"], "available": True},
     {"id": "egg", "label": "鸡蛋", "aliases": ["jidan", "鸡蛋"], "available": False, "release_status": "candidate_only_not_for_production"},
     {"id": "kaochuan", "label": "烤串", "aliases": ["烤串", "barbecue_skewer"], "available": False, "release_status": "candidate_only_not_for_production"},
     {"id": "science", "label": "科学", "aliases": ["kexue", "科学"], "available": False, "release_status": "candidate_only_not_for_production"},
