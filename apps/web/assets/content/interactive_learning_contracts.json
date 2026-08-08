@@ -8,7 +8,13 @@
     "unapproved_landmark_templates_included": false,
     "reference_video_count": 3,
     "reference_video_status": "partial_self_generated_avatar_media",
-    "candidate_scoring_demo_words": ["鸡蛋", "烤串", "科学", "森林", "勇敢"],
+    "candidate_scoring_demo_words": [
+      "鸡蛋",
+      "烤串",
+      "科学",
+      "森林",
+      "勇敢"
+    ],
     "note_zh": "本页发布脱敏动作指导、前端示意动画，以及已人工审核的匿名 Avatar 自生成演示视频。真人源视频、真人预览图和未批准 landmark 不公开。摄像头评分只上传浏览器提取的匿名运动关键点。",
     "note_en": "This page publishes de-identified action guidance, procedural schematics, and manually reviewed self-generated anonymous Avatar demonstrations. Source-person videos, previews, and unapproved landmarks are not public. Camera scoring uploads browser-extracted anonymous motion landmarks only."
   },
@@ -21,8 +27,28 @@
       "pinyin": "chán（xiàn mù）",
       "summary_zh": "用食指沿嘴角向下滑动模拟口水，同时配合馋嘴的口部状态。",
       "summary_en": "Slide one index finger down from the corner of the mouth to suggest drool, with a matching craving expression.",
-      "ordered_sequence": [{"label_zh":"食指从嘴角向下滑动","label_en":"Slide the index finger down from the mouth corner","detail_zh":"一手食指沿嘴角向下滑动，完成“口水”过程。","detail_en":"One index finger travels downward along the mouth corner to complete the drool action."}],
-      "simultaneous_features": [{"label_zh":"舌头微伸 / 舔嘴唇","label_en":"Slight tongue extension / lip-licking","features_zh":["舌头微伸","嘴部呈现馋嘴状态"],"features_en":["slight tongue extension","craving or lip-licking mouth state"]}],
+      "ordered_sequence": [
+        {
+          "label_zh": "食指从嘴角向下滑动",
+          "label_en": "Slide the index finger down from the mouth corner",
+          "detail_zh": "一手食指沿嘴角向下滑动，完成“口水”过程。",
+          "detail_en": "One index finger travels downward along the mouth corner to complete the drool action."
+        }
+      ],
+      "simultaneous_features": [
+        {
+          "label_zh": "舌头微伸 / 舔嘴唇",
+          "label_en": "Slight tongue extension / lip-licking",
+          "features_zh": [
+            "舌头微伸",
+            "嘴部呈现馋嘴状态"
+          ],
+          "features_en": [
+            "slight tongue extension",
+            "craving or lip-licking mouth state"
+          ]
+        }
+      ],
       "minimum_distinct_frames": 1,
       "scoring_template_status": "available",
       "practice_word": "馋"
@@ -35,8 +61,30 @@
       "pinyin": "chàng gē",
       "summary_zh": "双手从喉部两侧同时向外移动，配合头部左右晃动和张嘴状态。",
       "summary_en": "Move both hands outward from the throat while the head sways side to side and the mouth opens.",
-      "ordered_sequence": [{"label_zh":"双手从喉部向外移出","label_en":"Move both hands outward from the throat","detail_zh":"双手拇指和食指从喉部两边同时向外移出，表示发声。","detail_en":"Thumb-and-index hand shapes move outward from both sides of the throat to suggest vocalization."}],
-      "simultaneous_features": [{"label_zh":"唱歌的并行状态","label_en":"Singing-associated parallel state","features_zh":["头部左右晃动","嘴巴张开","拇指和食指保持相应手形"],"features_en":["head sways left and right","mouth is open","thumb-and-index hand shapes are maintained"]}],
+      "ordered_sequence": [
+        {
+          "label_zh": "双手从喉部向外移出",
+          "label_en": "Move both hands outward from the throat",
+          "detail_zh": "双手拇指和食指从喉部两边同时向外移出，表示发声。",
+          "detail_en": "Thumb-and-index hand shapes move outward from both sides of the throat to suggest vocalization."
+        }
+      ],
+      "simultaneous_features": [
+        {
+          "label_zh": "唱歌的并行状态",
+          "label_en": "Singing-associated parallel state",
+          "features_zh": [
+            "头部左右晃动",
+            "嘴巴张开",
+            "拇指和食指保持相应手形"
+          ],
+          "features_en": [
+            "head sways left and right",
+            "mouth is open",
+            "thumb-and-index hand shapes are maintained"
+          ]
+        }
+      ],
       "minimum_distinct_frames": 1,
       "scoring_template_status": "available",
       "practice_word": "唱歌"
@@ -50,17 +98,79 @@
       "summary_zh": "先双手虚握并向前推动购物车，再按左、右、左、右顺序抓取商品各一次，左右各重复两遍，最后回到虚握。",
       "summary_en": "Grip and push an imaginary cart, then reach left, right, left, right, and return to the cart grip; each side is used twice.",
       "ordered_sequence": [
-        {"label_zh":"虚握购物车把手","label_en":"Grip the shopping-cart handle","detail_zh":"双手虚握、虎口相对、手背向上，形成准备状态。","detail_en":"Both hands form an imaginary handle with the web spaces facing each other and backs of hands upward."},
-        {"label_zh":"向前推动购物车","label_en":"Push the cart forward","detail_zh":"双手向前推动，进入选购动作。","detail_en":"Both hands move forward into the shopping action."},
-        {"label_zh":"左侧抓取第1次","label_en":"Reach left — first time","detail_zh":"从虚握状态向左侧抓取商品。","detail_en":"Reach from the grip toward an item on the left."},
-        {"label_zh":"右侧抓取第1次","label_en":"Reach right — first time","detail_zh":"从左侧返回并向右侧抓取商品。","detail_en":"Return from the left and reach toward an item on the right."},
-        {"label_zh":"左侧抓取第2次","label_en":"Reach left — second time","detail_zh":"第二次向左侧抓取商品。","detail_en":"Reach left for the second time."},
-        {"label_zh":"右侧抓取第2次","label_en":"Reach right — second time","detail_zh":"第二次向右侧抓取商品。","detail_en":"Reach right for the second time."},
-        {"label_zh":"回到虚握购物车把手","label_en":"Return to the cart grip","detail_zh":"抓取完成后回到双手虚握状态。","detail_en":"Return to the two-hand cart grip after the reaches."}
+        {
+          "label_zh": "虚握购物车把手",
+          "label_en": "Grip the shopping-cart handle",
+          "detail_zh": "双手虚握、虎口相对、手背向上，形成准备状态。",
+          "detail_en": "Both hands form an imaginary handle with the web spaces facing each other and backs of hands upward."
+        },
+        {
+          "label_zh": "向前推动购物车",
+          "label_en": "Push the cart forward",
+          "detail_zh": "双手向前推动，进入选购动作。",
+          "detail_en": "Both hands move forward into the shopping action."
+        },
+        {
+          "label_zh": "左侧抓取第1次",
+          "label_en": "Reach left — first time",
+          "detail_zh": "从虚握状态向左侧抓取商品。",
+          "detail_en": "Reach from the grip toward an item on the left."
+        },
+        {
+          "label_zh": "右侧抓取第1次",
+          "label_en": "Reach right — first time",
+          "detail_zh": "从左侧返回并向右侧抓取商品。",
+          "detail_en": "Return from the left and reach toward an item on the right."
+        },
+        {
+          "label_zh": "左侧抓取第2次",
+          "label_en": "Reach left — second time",
+          "detail_zh": "第二次向左侧抓取商品。",
+          "detail_en": "Reach left for the second time."
+        },
+        {
+          "label_zh": "右侧抓取第2次",
+          "label_en": "Reach right — second time",
+          "detail_zh": "第二次向右侧抓取商品。",
+          "detail_en": "Reach right for the second time."
+        },
+        {
+          "label_zh": "回到虚握购物车把手",
+          "label_en": "Return to the cart grip",
+          "detail_zh": "抓取完成后回到双手虚握状态。",
+          "detail_en": "Return to the two-hand cart grip after the reaches."
+        }
       ],
-      "simultaneous_features": [{"label_zh":"购物车把手手形","label_en":"Cart-handle hand shape","features_zh":["双手虚握","虎口相对","手背向上"],"features_en":["both hands grip","web spaces face each other","backs of hands face upward"]},{"label_zh":"双手交替抓取关系","label_en":"Alternating reach relation","features_zh":["左—右交替","左右两侧各2次"],"features_en":["left-right alternation","two reaches on each side"]}],
+      "simultaneous_features": [
+        {
+          "label_zh": "购物车把手手形",
+          "label_en": "Cart-handle hand shape",
+          "features_zh": [
+            "双手虚握",
+            "虎口相对",
+            "手背向上"
+          ],
+          "features_en": [
+            "both hands grip",
+            "web spaces face each other",
+            "backs of hands face upward"
+          ]
+        },
+        {
+          "label_zh": "双手交替抓取关系",
+          "label_en": "Alternating reach relation",
+          "features_zh": [
+            "左—右交替",
+            "左右两侧各2次"
+          ],
+          "features_en": [
+            "left-right alternation",
+            "two reaches on each side"
+          ]
+        }
+      ],
       "minimum_distinct_frames": 7,
-      "scoring_template_status": "pending",
+      "scoring_template_status": "available",
       "practice_word": "超市"
     },
     {
@@ -71,8 +181,28 @@
       "pinyin": "chuán（lún chuán）",
       "summary_zh": "双手斜立、指尖相抵形成船头，并保持这一关系整体向前移动表示航行。",
       "summary_en": "Form a ship bow with both hands tilted and fingertips touching, then move the shape forward to suggest sailing.",
-      "ordered_sequence": [{"label_zh":"双手向前移动","label_en":"Move both hands forward","detail_zh":"保持船头形状并向前行驶。","detail_en":"Keep the bow shape while travelling forward."}],
-      "simultaneous_features": [{"label_zh":"轮船船头手形","label_en":"Ship-bow hand shape","features_zh":["双手斜立","指尖相抵"],"features_en":["hands are tilted upright","fingertips touch"]}],
+      "ordered_sequence": [
+        {
+          "label_zh": "双手向前移动",
+          "label_en": "Move both hands forward",
+          "detail_zh": "保持船头形状并向前行驶。",
+          "detail_en": "Keep the bow shape while travelling forward."
+        }
+      ],
+      "simultaneous_features": [
+        {
+          "label_zh": "轮船船头手形",
+          "label_en": "Ship-bow hand shape",
+          "features_zh": [
+            "双手斜立",
+            "指尖相抵"
+          ],
+          "features_en": [
+            "hands are tilted upright",
+            "fingertips touch"
+          ]
+        }
+      ],
       "minimum_distinct_frames": 1,
       "scoring_template_status": "pending",
       "practice_word": "船（轮船）"
@@ -85,8 +215,40 @@
       "pinyin": "gōng jiāo chē",
       "summary_zh": "一手虚握且虎口朝内表示握住公交车把手，随后前后晃动两次。",
       "summary_en": "Hold an imaginary bus strap with one hand, then move the gripping hand forward and backward twice.",
-      "ordered_sequence": [{"label_zh":"虚握公交车把手","label_en":"Grip a bus strap","detail_zh":"建立乘车握把手的准备状态。","detail_en":"Establish the hand-grip posture for riding a bus."},{"label_zh":"前后晃动第1次","label_en":"Rock forward and back — first time","detail_zh":"虚握的手随公交车运动前后移动第一次。","detail_en":"Rock the gripping hand once with the bus motion."},{"label_zh":"前后晃动第2次","label_en":"Rock forward and back — second time","detail_zh":"虚握的手完成第二次前后移动。","detail_en":"Complete a second forward-backward rock."}],
-      "simultaneous_features": [{"label_zh":"公交车把手手形","label_en":"Bus-strap hand shape","features_zh":["一手虚握","虎口朝内"],"features_en":["one hand grips","web space faces inward"]}],
+      "ordered_sequence": [
+        {
+          "label_zh": "虚握公交车把手",
+          "label_en": "Grip a bus strap",
+          "detail_zh": "建立乘车握把手的准备状态。",
+          "detail_en": "Establish the hand-grip posture for riding a bus."
+        },
+        {
+          "label_zh": "前后晃动第1次",
+          "label_en": "Rock forward and back — first time",
+          "detail_zh": "虚握的手随公交车运动前后移动第一次。",
+          "detail_en": "Rock the gripping hand once with the bus motion."
+        },
+        {
+          "label_zh": "前后晃动第2次",
+          "label_en": "Rock forward and back — second time",
+          "detail_zh": "虚握的手完成第二次前后移动。",
+          "detail_en": "Complete a second forward-backward rock."
+        }
+      ],
+      "simultaneous_features": [
+        {
+          "label_zh": "公交车把手手形",
+          "label_en": "Bus-strap hand shape",
+          "features_zh": [
+            "一手虚握",
+            "虎口朝内"
+          ],
+          "features_en": [
+            "one hand grips",
+            "web space faces inward"
+          ]
+        }
+      ],
       "minimum_distinct_frames": 3,
       "scoring_template_status": "pending",
       "practice_word": "公交车"
@@ -99,8 +261,48 @@
       "pinyin": "hǔ",
       "summary_zh": "先在前额形成“王”字，再双手五指弯曲、指尖朝下向前下方有力按动，模拟兽爪。",
       "summary_en": "First form the character-like tiger mark at the forehead, then bend both hands into claws and press forcefully forward and down.",
-      "ordered_sequence": [{"label_zh":"额头比出王字","label_en":"Form the tiger mark at the forehead","detail_zh":"先在前额形成老虎王字花纹。","detail_en":"Create the tiger-mark shape at the forehead first."},{"label_zh":"双手兽爪向前下方按动","label_en":"Press both claw hands forward and down","detail_zh":"随后双手弯曲五指并向前下方有力按动。","detail_en":"Then bend all fingers into claws and press forward and downward with emphasis."}],
-      "simultaneous_features": [{"label_zh":"王字手指构型","label_en":"Tiger-mark finger shape","features_zh":["前额位置","手指共同形成王字"],"features_en":["forehead location","fingers jointly form the tiger mark"]},{"label_zh":"兽爪构型","label_en":"Claw shape","features_zh":["双手五指弯曲","指尖朝下","动作坚定有力"],"features_en":["all fingers bend","fingertips point downward","movement is firm"]}],
+      "ordered_sequence": [
+        {
+          "label_zh": "额头比出王字",
+          "label_en": "Form the tiger mark at the forehead",
+          "detail_zh": "先在前额形成老虎王字花纹。",
+          "detail_en": "Create the tiger-mark shape at the forehead first."
+        },
+        {
+          "label_zh": "双手兽爪向前下方按动",
+          "label_en": "Press both claw hands forward and down",
+          "detail_zh": "随后双手弯曲五指并向前下方有力按动。",
+          "detail_en": "Then bend all fingers into claws and press forward and downward with emphasis."
+        }
+      ],
+      "simultaneous_features": [
+        {
+          "label_zh": "王字手指构型",
+          "label_en": "Tiger-mark finger shape",
+          "features_zh": [
+            "前额位置",
+            "手指共同形成王字"
+          ],
+          "features_en": [
+            "forehead location",
+            "fingers jointly form the tiger mark"
+          ]
+        },
+        {
+          "label_zh": "兽爪构型",
+          "label_en": "Claw shape",
+          "features_zh": [
+            "双手五指弯曲",
+            "指尖朝下",
+            "动作坚定有力"
+          ],
+          "features_en": [
+            "all fingers bend",
+            "fingertips point downward",
+            "movement is firm"
+          ]
+        }
+      ],
       "minimum_distinct_frames": 2,
       "scoring_template_status": "available",
       "practice_word": "虎"
@@ -113,8 +315,46 @@
       "pinyin": "huā",
       "summary_zh": "一手撮合、指尖朝上形成花苞，手向上移动的同时逐渐张开表示开花。",
       "summary_en": "Gather one hand with fingertips up to form a bud, then move it upward while gradually opening to show blooming.",
-      "ordered_sequence": [{"label_zh":"撮合形成含苞","label_en":"Gather into a bud","detail_zh":"一手撮合、指尖朝上形成花苞准备。","detail_en":"Gather one hand with fingertips up to establish the bud."},{"label_zh":"向上并逐渐张开","label_en":"Rise and gradually open","detail_zh":"手向上移动的同时逐渐张开，完成绽放。","detail_en":"Move upward while gradually opening the fingers to complete the bloom."}],
-      "simultaneous_features": [{"label_zh":"花苞手形","label_en":"Bud hand shape","features_zh":["一手撮合","指尖朝上"],"features_en":["one hand gathered","fingertips point upward"]},{"label_zh":"上移与张开同步","label_en":"Rising and opening together","features_zh":["手向上","手指逐渐张开"],"features_en":["hand rises","fingers gradually open"]}],
+      "ordered_sequence": [
+        {
+          "label_zh": "撮合形成含苞",
+          "label_en": "Gather into a bud",
+          "detail_zh": "一手撮合、指尖朝上形成花苞准备。",
+          "detail_en": "Gather one hand with fingertips up to establish the bud."
+        },
+        {
+          "label_zh": "向上并逐渐张开",
+          "label_en": "Rise and gradually open",
+          "detail_zh": "手向上移动的同时逐渐张开，完成绽放。",
+          "detail_en": "Move upward while gradually opening the fingers to complete the bloom."
+        }
+      ],
+      "simultaneous_features": [
+        {
+          "label_zh": "花苞手形",
+          "label_en": "Bud hand shape",
+          "features_zh": [
+            "一手撮合",
+            "指尖朝上"
+          ],
+          "features_en": [
+            "one hand gathered",
+            "fingertips point upward"
+          ]
+        },
+        {
+          "label_zh": "上移与张开同步",
+          "label_en": "Rising and opening together",
+          "features_zh": [
+            "手向上",
+            "手指逐渐张开"
+          ],
+          "features_en": [
+            "hand rises",
+            "fingers gradually open"
+          ]
+        }
+      ],
       "minimum_distinct_frames": 2,
       "scoring_template_status": "available",
       "practice_word": "花"
@@ -127,8 +367,50 @@
       "pinyin": "jī dàn",
       "summary_zh": "先在嘴前撮合拇指和食指表示鸡嘴，再双手形成鸡蛋椭圆并分开完成打蛋。",
       "summary_en": "Make a beak in front of the mouth, form an egg-shaped oval with both hands, and separate them to crack the egg.",
-      "ordered_sequence": [{"label_zh":"撮合手指表示鸡","label_en":"Make the chicken beak","detail_zh":"拇指和食指撮合放在嘴前形成鸟喙。","detail_en":"Pinch thumb and index finger in front of the mouth as a bird beak."},{"label_zh":"双手组成鸡蛋椭圆","label_en":"Form the egg oval","detail_zh":"双手食指和拇指组成鸡蛋大小的椭圆。","detail_en":"Use both index fingers and thumbs to form an egg-sized oval."},{"label_zh":"分开完成打蛋","label_en":"Separate to crack the egg","detail_zh":"双手分开，完成打开鸡蛋的动作。","detail_en":"Separate both hands to complete the cracking action."}],
-      "simultaneous_features": [{"label_zh":"鸡嘴手形","label_en":"Chicken-beak hand shape","features_zh":["拇指和食指撮合","手位于嘴前"],"features_en":["thumb and index pinch","hand is in front of the mouth"]},{"label_zh":"双手蛋形关系","label_en":"Two-hand egg relation","features_zh":["双手共同围成椭圆"],"features_en":["both hands jointly form an oval"]}],
+      "ordered_sequence": [
+        {
+          "label_zh": "撮合手指表示鸡",
+          "label_en": "Make the chicken beak",
+          "detail_zh": "拇指和食指撮合放在嘴前形成鸟喙。",
+          "detail_en": "Pinch thumb and index finger in front of the mouth as a bird beak."
+        },
+        {
+          "label_zh": "双手组成鸡蛋椭圆",
+          "label_en": "Form the egg oval",
+          "detail_zh": "双手食指和拇指组成鸡蛋大小的椭圆。",
+          "detail_en": "Use both index fingers and thumbs to form an egg-sized oval."
+        },
+        {
+          "label_zh": "分开完成打蛋",
+          "label_en": "Separate to crack the egg",
+          "detail_zh": "双手分开，完成打开鸡蛋的动作。",
+          "detail_en": "Separate both hands to complete the cracking action."
+        }
+      ],
+      "simultaneous_features": [
+        {
+          "label_zh": "鸡嘴手形",
+          "label_en": "Chicken-beak hand shape",
+          "features_zh": [
+            "拇指和食指撮合",
+            "手位于嘴前"
+          ],
+          "features_en": [
+            "thumb and index pinch",
+            "hand is in front of the mouth"
+          ]
+        },
+        {
+          "label_zh": "双手蛋形关系",
+          "label_en": "Two-hand egg relation",
+          "features_zh": [
+            "双手共同围成椭圆"
+          ],
+          "features_en": [
+            "both hands jointly form an oval"
+          ]
+        }
+      ],
       "minimum_distinct_frames": 3,
       "scoring_template_status": "experimental",
       "practice_word": "鸡蛋"
@@ -141,8 +423,40 @@
       "pinyin": "kǎo chuàn",
       "summary_zh": "双手收拇指并平摊四指形成签子手形，随后左右翻动烤串两下。",
       "summary_en": "Fold in both thumbs and spread four fingers to form skewers, then turn the barbecue twice from side to side.",
-      "ordered_sequence": [{"label_zh":"双手形成烤串准备形","label_en":"Form the skewer shape","detail_zh":"双手收起拇指、平摊四指，建立签子形状。","detail_en":"Fold both thumbs in and spread four fingers to establish the skewer shape."},{"label_zh":"翻动烤串第1次","label_en":"Turn the skewer — first time","detail_zh":"双手左右翻动完成第一次翻转。","detail_en":"Turn both hands side to side once."},{"label_zh":"翻动烤串第2次","label_en":"Turn the skewer — second time","detail_zh":"双手左右翻动完成第二次翻转。","detail_en":"Complete a second side-to-side turn."}],
-      "simultaneous_features": [{"label_zh":"烤串签子手形","label_en":"Skewer hand shape","features_zh":["双手拇指收起","双手四指平摊"],"features_en":["both thumbs folded in","four fingers spread on both hands"]}],
+      "ordered_sequence": [
+        {
+          "label_zh": "双手形成烤串准备形",
+          "label_en": "Form the skewer shape",
+          "detail_zh": "双手收起拇指、平摊四指，建立签子形状。",
+          "detail_en": "Fold both thumbs in and spread four fingers to establish the skewer shape."
+        },
+        {
+          "label_zh": "翻动烤串第1次",
+          "label_en": "Turn the skewer — first time",
+          "detail_zh": "双手左右翻动完成第一次翻转。",
+          "detail_en": "Turn both hands side to side once."
+        },
+        {
+          "label_zh": "翻动烤串第2次",
+          "label_en": "Turn the skewer — second time",
+          "detail_zh": "双手左右翻动完成第二次翻转。",
+          "detail_en": "Complete a second side-to-side turn."
+        }
+      ],
+      "simultaneous_features": [
+        {
+          "label_zh": "烤串签子手形",
+          "label_en": "Skewer hand shape",
+          "features_zh": [
+            "双手拇指收起",
+            "双手四指平摊"
+          ],
+          "features_en": [
+            "both thumbs folded in",
+            "four fingers spread on both hands"
+          ]
+        }
+      ],
       "minimum_distinct_frames": 3,
       "scoring_template_status": "experimental",
       "practice_word": "烤串"
@@ -155,8 +469,54 @@
       "pinyin": "kē xué",
       "summary_zh": "先双手K手形交替向前绕圈，再一手撮合从外向额头靠近并按向额头。",
       "summary_en": "Alternate two K-hand shapes in forward circles, then bring a gathered hand toward and press it to the forehead.",
-      "ordered_sequence": [{"label_zh":"双K手形交替向前绕圈","label_en":"Alternate forward circles with two K shapes","detail_zh":"两个K手形交替向前绕圈，表示科学交流。","detail_en":"Two K-like hand shapes alternate in forward circles."},{"label_zh":"撮合手从外向额头靠近","label_en":"Bring a gathered hand toward the forehead","detail_zh":"五指撮合、指尖朝内，从外部向额头靠近。","detail_en":"Bring a gathered hand, fingertips inward, from outside toward the forehead."},{"label_zh":"按向额头","label_en":"Press to the forehead","detail_zh":"将撮合手按向额头，完成知识进入脑袋的动作。","detail_en":"Press the gathered hand to the forehead to complete the knowledge gesture."}],
-      "simultaneous_features": [{"label_zh":"双K手形局部特征","label_en":"Two-K hand features","features_zh":["食指和中指形成L形","拇指在中间露出","双手交替绕圈"],"features_en":["index and middle fingers form an L-like shape","thumb is visible between them","hands circle alternately"]},{"label_zh":"撮合手局部特征","label_en":"Gathered-hand features","features_zh":["五指撮合","指尖朝内"],"features_en":["fingers gathered","fingertips face inward"]}],
+      "ordered_sequence": [
+        {
+          "label_zh": "双K手形交替向前绕圈",
+          "label_en": "Alternate forward circles with two K shapes",
+          "detail_zh": "两个K手形交替向前绕圈，表示科学交流。",
+          "detail_en": "Two K-like hand shapes alternate in forward circles."
+        },
+        {
+          "label_zh": "撮合手从外向额头靠近",
+          "label_en": "Bring a gathered hand toward the forehead",
+          "detail_zh": "五指撮合、指尖朝内，从外部向额头靠近。",
+          "detail_en": "Bring a gathered hand, fingertips inward, from outside toward the forehead."
+        },
+        {
+          "label_zh": "按向额头",
+          "label_en": "Press to the forehead",
+          "detail_zh": "将撮合手按向额头，完成知识进入脑袋的动作。",
+          "detail_en": "Press the gathered hand to the forehead to complete the knowledge gesture."
+        }
+      ],
+      "simultaneous_features": [
+        {
+          "label_zh": "双K手形局部特征",
+          "label_en": "Two-K hand features",
+          "features_zh": [
+            "食指和中指形成L形",
+            "拇指在中间露出",
+            "双手交替绕圈"
+          ],
+          "features_en": [
+            "index and middle fingers form an L-like shape",
+            "thumb is visible between them",
+            "hands circle alternately"
+          ]
+        },
+        {
+          "label_zh": "撮合手局部特征",
+          "label_en": "Gathered-hand features",
+          "features_zh": [
+            "五指撮合",
+            "指尖朝内"
+          ],
+          "features_en": [
+            "fingers gathered",
+            "fingertips face inward"
+          ]
+        }
+      ],
       "minimum_distinct_frames": 3,
       "scoring_template_status": "experimental",
       "practice_word": "科学"
@@ -169,8 +529,48 @@
       "pinyin": "niú nǎi",
       "summary_zh": "先用一手牛角形抵太阳穴表示牛，再虎口朝上、五指弯曲并挤压向下表示挤奶。",
       "summary_en": "Make a horn shape at the temple for cow, then bend the fingers with the web space up and squeeze downward for milking.",
-      "ordered_sequence": [{"label_zh":"手作牛角抵太阳穴","label_en":"Place a horn shape at the temple","detail_zh":"一手模仿牛角，抵在太阳穴表示牛。","detail_en":"Place one horn-like hand at the temple to represent a cow."},{"label_zh":"挤压并向下挤牛奶","label_en":"Squeeze downward to milk","detail_zh":"虎口朝上、五指弯曲，同时挤压并向下移动。","detail_en":"Keep the web space up, bend the fingers, and squeeze downward together."}],
-      "simultaneous_features": [{"label_zh":"牛角局部手形","label_en":"Horn hand shape","features_zh":["手形像牛角","手位于太阳穴"],"features_en":["hand resembles horns","hand is at the temple"]},{"label_zh":"挤奶局部关系","label_en":"Milking relation","features_zh":["虎口朝上","五指弯曲","挤压与向下同步"],"features_en":["web space faces upward","fingers bend","squeeze and downward motion are simultaneous"]}],
+      "ordered_sequence": [
+        {
+          "label_zh": "手作牛角抵太阳穴",
+          "label_en": "Place a horn shape at the temple",
+          "detail_zh": "一手模仿牛角，抵在太阳穴表示牛。",
+          "detail_en": "Place one horn-like hand at the temple to represent a cow."
+        },
+        {
+          "label_zh": "挤压并向下挤牛奶",
+          "label_en": "Squeeze downward to milk",
+          "detail_zh": "虎口朝上、五指弯曲，同时挤压并向下移动。",
+          "detail_en": "Keep the web space up, bend the fingers, and squeeze downward together."
+        }
+      ],
+      "simultaneous_features": [
+        {
+          "label_zh": "牛角局部手形",
+          "label_en": "Horn hand shape",
+          "features_zh": [
+            "手形像牛角",
+            "手位于太阳穴"
+          ],
+          "features_en": [
+            "hand resembles horns",
+            "hand is at the temple"
+          ]
+        },
+        {
+          "label_zh": "挤奶局部关系",
+          "label_en": "Milking relation",
+          "features_zh": [
+            "虎口朝上",
+            "五指弯曲",
+            "挤压与向下同步"
+          ],
+          "features_en": [
+            "web space faces upward",
+            "fingers bend",
+            "squeeze and downward motion are simultaneous"
+          ]
+        }
+      ],
       "minimum_distinct_frames": 2,
       "scoring_template_status": "pending",
       "practice_word": "牛奶"
@@ -183,8 +583,40 @@
       "pinyin": "péng yǒu",
       "summary_zh": "双手拇指表示两个人的头，两个拇指相碰两次表示亲密关系。",
       "summary_en": "Use both thumbs as two heads and bring them together twice to express closeness.",
-      "ordered_sequence": [{"label_zh":"两拇指形成两个人头","label_en":"Form two thumb-heads","detail_zh":"先建立两个拇指人头的相对关系。","detail_en":"Establish the relative position of the two thumb-heads."},{"label_zh":"人头相碰第1次","label_en":"Touch heads — first time","detail_zh":"两个拇指头互相碰撞第一次。","detail_en":"Bring the two thumb-heads together once."},{"label_zh":"人头相碰第2次","label_en":"Touch heads — second time","detail_zh":"两个拇指头互相碰撞第二次。","detail_en":"Bring them together a second time."}],
-      "simultaneous_features": [{"label_zh":"双拇指人头关系","label_en":"Two-thumb head relation","features_zh":["两根拇指分别作为两个人的头","保持相对位置"],"features_en":["each thumb represents a head","the relative arrangement is maintained"]}],
+      "ordered_sequence": [
+        {
+          "label_zh": "两拇指形成两个人头",
+          "label_en": "Form two thumb-heads",
+          "detail_zh": "先建立两个拇指人头的相对关系。",
+          "detail_en": "Establish the relative position of the two thumb-heads."
+        },
+        {
+          "label_zh": "人头相碰第1次",
+          "label_en": "Touch heads — first time",
+          "detail_zh": "两个拇指头互相碰撞第一次。",
+          "detail_en": "Bring the two thumb-heads together once."
+        },
+        {
+          "label_zh": "人头相碰第2次",
+          "label_en": "Touch heads — second time",
+          "detail_zh": "两个拇指头互相碰撞第二次。",
+          "detail_en": "Bring them together a second time."
+        }
+      ],
+      "simultaneous_features": [
+        {
+          "label_zh": "双拇指人头关系",
+          "label_en": "Two-thumb head relation",
+          "features_zh": [
+            "两根拇指分别作为两个人的头",
+            "保持相对位置"
+          ],
+          "features_en": [
+            "each thumb represents a head",
+            "the relative arrangement is maintained"
+          ]
+        }
+      ],
       "minimum_distinct_frames": 3,
       "scoring_template_status": "available",
       "practice_word": "朋友"
@@ -197,8 +629,36 @@
       "pinyin": "qì chē yī",
       "summary_zh": "双手虚握方向盘，并保持双手相对关系协同左右转动。",
       "summary_en": "Hold an imaginary steering wheel with both hands and turn it left and right together.",
-      "ordered_sequence": [{"label_zh":"双手虚握方向盘","label_en":"Grip the steering wheel","detail_zh":"双手建立方向盘握持准备状态。","detail_en":"Establish the two-hand steering-wheel grip."},{"label_zh":"双手协同左右转动方向盘","label_en":"Turn the wheel left and right","detail_zh":"双手共同完成左右转动。","detail_en":"Both hands turn the wheel together from side to side."}],
-      "simultaneous_features": [{"label_zh":"方向盘双手关系","label_en":"Two-hand steering relation","features_zh":["双手同时虚握","保持方向盘相对结构","转动时双手协同"],"features_en":["both hands grip","steering-wheel relation is maintained","hands turn together"]}],
+      "ordered_sequence": [
+        {
+          "label_zh": "双手虚握方向盘",
+          "label_en": "Grip the steering wheel",
+          "detail_zh": "双手建立方向盘握持准备状态。",
+          "detail_en": "Establish the two-hand steering-wheel grip."
+        },
+        {
+          "label_zh": "双手协同左右转动方向盘",
+          "label_en": "Turn the wheel left and right",
+          "detail_zh": "双手共同完成左右转动。",
+          "detail_en": "Both hands turn the wheel together from side to side."
+        }
+      ],
+      "simultaneous_features": [
+        {
+          "label_zh": "方向盘双手关系",
+          "label_en": "Two-hand steering relation",
+          "features_zh": [
+            "双手同时虚握",
+            "保持方向盘相对结构",
+            "转动时双手协同"
+          ],
+          "features_en": [
+            "both hands grip",
+            "steering-wheel relation is maintained",
+            "hands turn together"
+          ]
+        }
+      ],
       "minimum_distinct_frames": 2,
       "scoring_template_status": "available",
       "practice_word": "汽车"
@@ -211,8 +671,34 @@
       "pinyin": "qì chē èr",
       "summary_zh": "一手五指形成方块状车身侧面，保持车身形状向前移动一次。",
       "summary_en": "Shape one hand like the side of a car, keep that shape, and move it forward once.",
-      "ordered_sequence": [{"label_zh":"单手形成汽车侧面","label_en":"Form the side of a car","detail_zh":"一手五指成方块形，建立车身侧面。","detail_en":"Use one hand to form a block-like car side."},{"label_zh":"汽车向前移动","label_en":"Move the car forward","detail_zh":"保持车身形状向前移动一次。","detail_en":"Keep the car shape while moving forward once."}],
-      "simultaneous_features": [{"label_zh":"汽车车身手形","label_en":"Car-body hand shape","features_zh":["一手五指成方块形","移动中保持车身形状"],"features_en":["one hand forms a block","the car shape is maintained while moving"]}],
+      "ordered_sequence": [
+        {
+          "label_zh": "单手形成汽车侧面",
+          "label_en": "Form the side of a car",
+          "detail_zh": "一手五指成方块形，建立车身侧面。",
+          "detail_en": "Use one hand to form a block-like car side."
+        },
+        {
+          "label_zh": "汽车向前移动",
+          "label_en": "Move the car forward",
+          "detail_zh": "保持车身形状向前移动一次。",
+          "detail_en": "Keep the car shape while moving forward once."
+        }
+      ],
+      "simultaneous_features": [
+        {
+          "label_zh": "汽车车身手形",
+          "label_en": "Car-body hand shape",
+          "features_zh": [
+            "一手五指成方块形",
+            "移动中保持车身形状"
+          ],
+          "features_en": [
+            "one hand forms a block",
+            "the car shape is maintained while moving"
+          ]
+        }
+      ],
       "minimum_distinct_frames": 2,
       "scoring_template_status": "pending",
       "practice_word": "汽车（二）"
@@ -225,10 +711,36 @@
       "pinyin": "rén men（rén mín）",
       "summary_zh": "双手食指形成“人”字，再从胸前顺时针环绕一圈表示很多人。",
       "summary_en": "Form the character-like shape for a person with both index fingers, then circle clockwise once from the chest to suggest many people.",
-      "ordered_sequence": [{"label_zh":"双食指形成“人”字","label_en":"Form the people shape","detail_zh":"先摆出手语仿字“人”。","detail_en":"First form the character-like shape for a person."},{"label_zh":"人字顺时针环绕一圈","label_en":"Circle clockwise once","detail_zh":"从胸前出发顺时针转动一圈表示多人。","detail_en":"Start at the chest and circle clockwise once to suggest many people."}],
-      "simultaneous_features": [{"label_zh":"人字手形","label_en":"People-shape hand form","features_zh":["双手食指共同形成“人”字","起点在胸前"],"features_en":["both index fingers form the people shape","the start position is at the chest"]}],
+      "ordered_sequence": [
+        {
+          "label_zh": "双食指形成“人”字",
+          "label_en": "Form the people shape",
+          "detail_zh": "先摆出手语仿字“人”。",
+          "detail_en": "First form the character-like shape for a person."
+        },
+        {
+          "label_zh": "人字顺时针环绕一圈",
+          "label_en": "Circle clockwise once",
+          "detail_zh": "从胸前出发顺时针转动一圈表示多人。",
+          "detail_en": "Start at the chest and circle clockwise once to suggest many people."
+        }
+      ],
+      "simultaneous_features": [
+        {
+          "label_zh": "人字手形",
+          "label_en": "People-shape hand form",
+          "features_zh": [
+            "双手食指共同形成“人”字",
+            "起点在胸前"
+          ],
+          "features_en": [
+            "both index fingers form the people shape",
+            "the start position is at the chest"
+          ]
+        }
+      ],
       "minimum_distinct_frames": 2,
-      "scoring_template_status": "pending",
+      "scoring_template_status": "available",
       "practice_word": "人们（人民）"
     },
     {
@@ -239,8 +751,40 @@
       "pinyin": "sēn lín",
       "summary_zh": "双手拇指和食指形成大圆树干，在三个不同位置分别自下而上完成树形动作。",
       "summary_en": "Make large circular trunks with both thumbs and index fingers, moving upward at three different positions to suggest many trees.",
-      "ordered_sequence": [{"label_zh":"第1处树形位置","label_en":"Tree position one","detail_zh":"在一个位置完成一次树形动作。","detail_en":"Complete one tree action at the first location."},{"label_zh":"第2处树形位置","label_en":"Tree position two","detail_zh":"在第二个不同位置完成一次树形动作。","detail_en":"Complete one tree action at a second location."},{"label_zh":"第3处树形位置","label_en":"Tree position three","detail_zh":"在第三个不同位置完成一次树形动作。","detail_en":"Complete one tree action at a third location."}],
-      "simultaneous_features": [{"label_zh":"树干圆形手形","label_en":"Circular trunk hand shape","features_zh":["双手拇指和食指形成大圆形","三处位置各保持一次树形"],"features_en":["thumbs and index fingers form large circles","the tree shape is held at each of three locations"]}],
+      "ordered_sequence": [
+        {
+          "label_zh": "第1处树形位置",
+          "label_en": "Tree position one",
+          "detail_zh": "在一个位置完成一次树形动作。",
+          "detail_en": "Complete one tree action at the first location."
+        },
+        {
+          "label_zh": "第2处树形位置",
+          "label_en": "Tree position two",
+          "detail_zh": "在第二个不同位置完成一次树形动作。",
+          "detail_en": "Complete one tree action at a second location."
+        },
+        {
+          "label_zh": "第3处树形位置",
+          "label_en": "Tree position three",
+          "detail_zh": "在第三个不同位置完成一次树形动作。",
+          "detail_en": "Complete one tree action at a third location."
+        }
+      ],
+      "simultaneous_features": [
+        {
+          "label_zh": "树干圆形手形",
+          "label_en": "Circular trunk hand shape",
+          "features_zh": [
+            "双手拇指和食指形成大圆形",
+            "三处位置各保持一次树形"
+          ],
+          "features_en": [
+            "thumbs and index fingers form large circles",
+            "the tree shape is held at each of three locations"
+          ]
+        }
+      ],
       "minimum_distinct_frames": 3,
       "scoring_template_status": "experimental",
       "practice_word": "森林"
@@ -253,8 +797,36 @@
       "pinyin": "tiào",
       "summary_zh": "右手食指和中指模拟双腿，先弯曲蓄力，再相对左手地面快速伸直向上弹跳。",
       "summary_en": "Use the right index and middle fingers as legs: bend first, then extend and jump upward relative to the left-hand ground.",
-      "ordered_sequence": [{"label_zh":"双腿手指先弯曲","label_en":"Bend the finger-legs","detail_zh":"右手食指和中指模拟双腿并先弯曲蓄力。","detail_en":"Bend the right index and middle fingers as legs to load the jump."},{"label_zh":"双腿快速伸直向上跳","label_en":"Extend and jump upward","detail_zh":"右手两指快速伸直并向上弹跳。","detail_en":"Quickly extend the two fingers and jump upward."}],
-      "simultaneous_features": [{"label_zh":"人腿与地面关系","label_en":"Legs-and-ground relation","features_zh":["右手食指和中指模拟双腿","左手模拟地面","右手相对左手向上跳"],"features_en":["right index and middle fingers are legs","left hand is the ground","right hand jumps upward relative to it"]}],
+      "ordered_sequence": [
+        {
+          "label_zh": "双腿手指先弯曲",
+          "label_en": "Bend the finger-legs",
+          "detail_zh": "右手食指和中指模拟双腿并先弯曲蓄力。",
+          "detail_en": "Bend the right index and middle fingers as legs to load the jump."
+        },
+        {
+          "label_zh": "双腿快速伸直向上跳",
+          "label_en": "Extend and jump upward",
+          "detail_zh": "右手两指快速伸直并向上弹跳。",
+          "detail_en": "Quickly extend the two fingers and jump upward."
+        }
+      ],
+      "simultaneous_features": [
+        {
+          "label_zh": "人腿与地面关系",
+          "label_en": "Legs-and-ground relation",
+          "features_zh": [
+            "右手食指和中指模拟双腿",
+            "左手模拟地面",
+            "右手相对左手向上跳"
+          ],
+          "features_en": [
+            "right index and middle fingers are legs",
+            "left hand is the ground",
+            "right hand jumps upward relative to it"
+          ]
+        }
+      ],
       "minimum_distinct_frames": 2,
       "scoring_template_status": "available",
       "practice_word": "跳"
@@ -267,8 +839,28 @@
       "pinyin": "xiāng jiāo",
       "summary_zh": "辅助手竖起食指表示香蕉，主手沿该食指从上向下完成剥皮动作。",
       "summary_en": "Hold one index finger upright as the banana, then slide the other hand downward along it to peel.",
-      "ordered_sequence": [{"label_zh":"沿香蕉食指向下剥皮","label_en":"Peel downward along the banana finger","detail_zh":"右手沿左手竖直食指由上向下完成剥皮。","detail_en":"Move the active hand from top to bottom along the upright reference index finger."}],
-      "simultaneous_features": [{"label_zh":"左手香蕉参照","label_en":"Reference banana finger","features_zh":["辅助手食指竖直且稳定","主手沿其向下剥"],"features_en":["supporting index finger stays upright and stable","active hand peels downward along it"]}],
+      "ordered_sequence": [
+        {
+          "label_zh": "沿香蕉食指向下剥皮",
+          "label_en": "Peel downward along the banana finger",
+          "detail_zh": "右手沿左手竖直食指由上向下完成剥皮。",
+          "detail_en": "Move the active hand from top to bottom along the upright reference index finger."
+        }
+      ],
+      "simultaneous_features": [
+        {
+          "label_zh": "左手香蕉参照",
+          "label_en": "Reference banana finger",
+          "features_zh": [
+            "辅助手食指竖直且稳定",
+            "主手沿其向下剥"
+          ],
+          "features_en": [
+            "supporting index finger stays upright and stable",
+            "active hand peels downward along it"
+          ]
+        }
+      ],
       "minimum_distinct_frames": 1,
       "scoring_template_status": "available",
       "practice_word": "香蕉"
@@ -281,8 +873,30 @@
       "pinyin": "yǒng gǎn",
       "summary_zh": "双手贴腹、伸出拇指和食指并向两侧用力拉开，同时保持抬头挺胸和坚毅表情。",
       "summary_en": "Start near the abdomen with thumb-and-index shapes, pull both hands outward with strength, and keep the head up, chest open, and expression firm.",
-      "ordered_sequence": [{"label_zh":"双手从腹部向两侧拉开","label_en":"Pull both hands outward from the abdomen","detail_zh":"拇指和食指平着用力拉开，表示把胆撑大。","detail_en":"Pull the thumb-and-index shapes outward to show making the courage bigger."}],
-      "simultaneous_features": [{"label_zh":"勇敢的非手部状态","label_en":"Non-manual brave state","features_zh":["表情坚毅严肃","抬头","挺胸"],"features_en":["firm serious expression","head up","chest open"]}],
+      "ordered_sequence": [
+        {
+          "label_zh": "双手从腹部向两侧拉开",
+          "label_en": "Pull both hands outward from the abdomen",
+          "detail_zh": "拇指和食指平着用力拉开，表示把胆撑大。",
+          "detail_en": "Pull the thumb-and-index shapes outward to show making the courage bigger."
+        }
+      ],
+      "simultaneous_features": [
+        {
+          "label_zh": "勇敢的非手部状态",
+          "label_en": "Non-manual brave state",
+          "features_zh": [
+            "表情坚毅严肃",
+            "抬头",
+            "挺胸"
+          ],
+          "features_en": [
+            "firm serious expression",
+            "head up",
+            "chest open"
+          ]
+        }
+      ],
       "minimum_distinct_frames": 1,
       "scoring_template_status": "experimental",
       "practice_word": "勇敢"
@@ -295,8 +909,28 @@
       "pinyin": "yuè liàng",
       "summary_zh": "双手向两边移动，同时两根关键手指的间距逐渐变窄，形成弯月轮廓。",
       "summary_en": "Move both hands outward while the gap between the key fingers gradually narrows to form a crescent outline.",
-      "ordered_sequence": [{"label_zh":"双手向两边移动","label_en":"Move both hands outward","detail_zh":"双手向两侧分开形成月亮动作过程。","detail_en":"Separate both hands to create the moon movement."}],
-      "simultaneous_features": [{"label_zh":"弯月指间关系","label_en":"Crescent finger relation","features_zh":["两根手指距离逐渐变窄","双手间形成弯月轮廓"],"features_en":["the gap between two fingers narrows gradually","the hands form a crescent outline"]}],
+      "ordered_sequence": [
+        {
+          "label_zh": "双手向两边移动",
+          "label_en": "Move both hands outward",
+          "detail_zh": "双手向两侧分开形成月亮动作过程。",
+          "detail_en": "Separate both hands to create the moon movement."
+        }
+      ],
+      "simultaneous_features": [
+        {
+          "label_zh": "弯月指间关系",
+          "label_en": "Crescent finger relation",
+          "features_zh": [
+            "两根手指距离逐渐变窄",
+            "双手间形成弯月轮廓"
+          ],
+          "features_en": [
+            "the gap between two fingers narrows gradually",
+            "the hands form a crescent outline"
+          ]
+        }
+      ],
       "minimum_distinct_frames": 1,
       "scoring_template_status": "available",
       "practice_word": "月亮"
@@ -309,8 +943,34 @@
       "pinyin": "zhǐ shì",
       "summary_zh": "辅助手拇指模拟人头，主手食指相对参照向左、向右完成指挥动作。",
       "summary_en": "Use one thumb as a person’s head while the other index finger directs first left and then right relative to it.",
-      "ordered_sequence": [{"label_zh":"食指向左指挥","label_en":"Direct to the left","detail_zh":"右手食指相对左手拇指人头完成向左指挥。","detail_en":"Direct left with the active index finger relative to the supporting thumb-head."},{"label_zh":"食指向右指挥","label_en":"Direct to the right","detail_zh":"右手食指相对左手拇指人头完成向右指挥。","detail_en":"Direct right relative to the supporting thumb-head."}],
-      "simultaneous_features": [{"label_zh":"人头与指挥手关系","label_en":"Head-and-directing-hand relation","features_zh":["辅助手拇指作为人头参照","主手食指相对参照移动"],"features_en":["supporting thumb is the head reference","active index finger moves relative to it"]}],
+      "ordered_sequence": [
+        {
+          "label_zh": "食指向左指挥",
+          "label_en": "Direct to the left",
+          "detail_zh": "右手食指相对左手拇指人头完成向左指挥。",
+          "detail_en": "Direct left with the active index finger relative to the supporting thumb-head."
+        },
+        {
+          "label_zh": "食指向右指挥",
+          "label_en": "Direct to the right",
+          "detail_zh": "右手食指相对左手拇指人头完成向右指挥。",
+          "detail_en": "Direct right relative to the supporting thumb-head."
+        }
+      ],
+      "simultaneous_features": [
+        {
+          "label_zh": "人头与指挥手关系",
+          "label_en": "Head-and-directing-hand relation",
+          "features_zh": [
+            "辅助手拇指作为人头参照",
+            "主手食指相对参照移动"
+          ],
+          "features_en": [
+            "supporting thumb is the head reference",
+            "active index finger moves relative to it"
+          ]
+        }
+      ],
       "minimum_distinct_frames": 2,
       "scoring_template_status": "available",
       "practice_word": "指示"
