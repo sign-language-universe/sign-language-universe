@@ -877,7 +877,6 @@
       </div>
       <div class="scoring-camera-overlay">
         <span class="recording-indicator" id="recording-indicator">${scoreText('录制中', 'Recording')}</span>
-        <span id="scoring-frame-count">${scoreText('0 帧', '0 frames')}</span>
       </div>
     `;
     state.video = uiElement('scoring-camera-video');
