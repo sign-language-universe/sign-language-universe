@@ -1779,7 +1779,7 @@
       suggestions.push(scoreText('动作幅度略小，起止过程可以更清楚一些', 'The motion range is small; make the start and finish clearer'));
     }
     if (!suggestions.length) {
-      suggestions.push(scoreText('对照左侧示范，重点检查手形、运动方向和动作起止节奏', 'Compare with the guidance and check hand shape, motion direction, and timing'));
+      return null; // 无质量建议时不生成兜底文案，避免抢占语义建议
     }
     return scoreText(`建议：${suggestions.slice(0, 2).join('；')}。`, `Suggestion: ${suggestions.slice(0, 2).join('; ')}.`);
   }
@@ -1827,17 +1827,19 @@
   function buildResultAdvice(result) {
     if (!result) return '--';
     const mode = result.diagnostics?.scoring_mode || result.level || '';
-    const metrics = resultMetrics(result);
-    const practiceAdvice = buildPracticeAdvice(result);
-    if (practiceAdvice) return practiceAdvice;
+    // 语义建议优先（各核心语义打分的针对性指导）
     if (mode === 'web_holistic_core_local') {
-      // 针对性建议：各核心语义（局部组 + 语义阶段）的做对程度与具体练习指导
       const groupAdvice = (result.diagnostics?.group_advice || []).map(a => `• ${a.suggestion}`).join('\n');
       const stageAdvice = (result.diagnostics?.stage_advice || []).map(a => `• ${a.suggestion}`).join('\n');
       const adviceLines = [groupAdvice, stageAdvice].filter(Boolean).join('\n');
       if (adviceLines) {
         return `${scoreText('针对性建议（按核心语义打分）：', 'Targeted advice (by semantic part score):')}\n${adviceLines}`;
       }
+    }
+    // 质量建议（帧数/手部可见性/动作幅度）作为补充
+    const practiceAdvice = buildPracticeAdvice(result);
+    if (practiceAdvice) return practiceAdvice;
+    if (mode === 'web_holistic_core_local') {
       return scoreText('已在本机完成评分。', 'Scored locally.');
     }
     if (mode === 'web_holistic_template_similarity') {
