@@ -12,9 +12,9 @@
   const UPLOAD_JPEG_QUALITY = 0.7;
   const MOTION_SIG_WIDTH = 32;
   const MOTION_SIG_HEIGHT = 24;
-  const DEFAULT_CAPTURE_DURATION_SEC = 2.5;
+  const DEFAULT_CAPTURE_DURATION_SEC = 3;
   const DEFAULT_CAPTURE_FPS = 10;
-  const DEFAULT_FRAME_WIDTH = 480;
+  const DEFAULT_FRAME_WIDTH = 1280;
   const HOLISTIC_PACKAGE_VERSION = '0.5.1675471629';
   const HOLISTIC_LOCAL_BASE = new URL('vendor/mediapipe/holistic', document.baseURI).href.replace(/\/$/, '');
   const HOLISTIC_ASSET_SOURCES = [
@@ -76,6 +76,8 @@
     apiBase: null,
     lastHealth: null,
     scoringBusy: false,
+    localTemplates: null,
+    localTemplatesLoading: null,
     browserHolistic: null,
     browserHolisticLoading: null,
     browserHolisticPending: null,
@@ -778,7 +780,7 @@
     const rec = getCaptureRecommendation(word);
     const durationSec = clampNumber(inputValue('scoring-duration-sec', DEFAULT_CAPTURE_DURATION_SEC), 1, 8, DEFAULT_CAPTURE_DURATION_SEC);
     const uploadFps = Math.round(clampNumber(inputValue('scoring-capture-fps', DEFAULT_CAPTURE_FPS), 1, 12, DEFAULT_CAPTURE_FPS));
-    const frameWidth = Math.round(clampNumber(inputValue('scoring-frame-width', DEFAULT_FRAME_WIDTH), 240, 960, DEFAULT_FRAME_WIDTH));
+    const frameWidth = Math.round(clampNumber(inputValue('scoring-frame-width', DEFAULT_FRAME_WIDTH), 240, 1920, DEFAULT_FRAME_WIDTH));
     const requestedDurationSec = durationSec;
     const requestedUploadFps = uploadFps;
     const targetFrames = Math.max(1, Math.min(MAX_FRAMES, Math.round(durationSec * uploadFps)));
@@ -884,7 +886,7 @@
     if (!state.stream) {
       state.stream = await navigator.mediaDevices.getUserMedia({
         video: {
-          width: { ideal: 960 },
+          width: { ideal: 1280 },
           height: { ideal: 720 },
           facingMode: 'user'
         },
@@ -1126,7 +1128,7 @@
     if (!video || video.readyState < 2) return null;
     const sourceWidth = video.videoWidth || 640;
     const sourceHeight = video.videoHeight || 480;
-    const width = Math.max(240, Math.min(frameWidth, sourceWidth, 960));
+    const width = Math.max(240, Math.min(frameWidth, sourceWidth, 1920));
     const height = Math.max(1, Math.round(width * sourceHeight / sourceWidth));
     const canvas = keepCanvas ? document.createElement('canvas') : state.canvas;
     const context = canvas.getContext('2d', { willReadFrequently: true });
@@ -1366,6 +1368,67 @@
     return Math.max(state.frames.length, state.landmarkRows.length);
   }
 
+  const LOCAL_TEMPLATES_URL = new URL('assets/content/scoring_templates_v1.json', document.baseURI).href;
+
+  function localCoreAvailable() {
+    return typeof globalThis.ScorerCore !== 'undefined' && typeof globalThis.ScorerCore.scoreQuery === 'function';
+  }
+
+  async function loadLocalTemplates() {
+    // 模板 JSON 较大（~1.5MB），懒加载 + 单飞 + 缓存
+    if (state.localTemplates) return state.localTemplates;
+    if (state.localTemplatesLoading) return state.localTemplatesLoading;
+    state.localTemplatesLoading = (async () => {
+      const response = await fetch(LOCAL_TEMPLATES_URL, { cache: 'force-cache' });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const payload = await response.json();
+      state.localTemplates = payload;
+      return payload;
+    })().catch(error => {
+      state.localTemplatesLoading = null;
+      throw error;
+    });
+    return state.localTemplatesLoading;
+  }
+
+  function localCoreScore(word, rows, fps, totalFrames) {
+    // 浏览器本地评分核心：与后端 Python 完全一致的 DTW 语义评分
+    const template = state.localTemplates?.words?.[word];
+    if (!template) return null;
+    const t0 = performance.now();
+    let result;
+    try {
+      result = globalThis.ScorerCore.scoreQuery(template, rows, fps, totalFrames);
+    } catch (error) {
+      console.warn('[scoring] local core score failed:', error);
+      return null;
+    }
+    const elapsedMs = performance.now() - t0;
+    return {
+      request_id: `local_core_${Date.now()}`,
+      score: Number.isFinite(result.prototype_score) ? result.prototype_score : 0,
+      prototype_score: result.prototype_score,
+      score_valid: Number.isFinite(result.prototype_score),
+      level: 'web_core_local',
+      feedback: [{ type: 'core', message: scoreText('浏览器评分核心（与后端一致）', 'Browser scoring core (matches backend)') }],
+      diagnostics: {
+        scoring_mode: 'web_holistic_core_local',
+        word,
+        frame_count: totalFrames,
+        landmark_rows: rows.length,
+        dtw_distance: result.dtw_distance,
+        normalized_distance: result.normalized_distance,
+        standard_length: result.standard_length,
+        query_length: result.query_length,
+        score_scale: result.score_scale,
+        trim_tolerance: result.trim_tolerance,
+        alignment_policy: result.alignment_policy,
+        sequence_penalty: result.sequence_penalty,
+        local_score_ms: elapsedMs
+      }
+    };
+  }
+
   function localPreviewScore(reason) {
     const sizes = state.frames.map(frame => frame.image_base64.length);
     const meanSize = sizes.length ? sizes.reduce((sum, value) => sum + value, 0) / sizes.length : 0;
@@ -1405,17 +1468,34 @@
     const plan = state.capturePlan || buildCapturePlan();
     const durationMs = state.captureDurationMs || Math.round(plan.durationSec * 1000);
     const useLandmarks = state.landmarkRows.length >= 3;
+    const word = wordData.word;
+    const fps = plan.candidateFps || plan.uploadFps || DEFAULT_CAPTURE_FPS;
+
+    // 本地评分核心优先：模板词 + landmark 帧 → 浏览器端直接评分（不依赖后端）
+    if (useLandmarks && localCoreAvailable()) {
+      try {
+        await loadLocalTemplates();
+        const localResult = localCoreScore(word, state.landmarkRows, fps, state.landmarkRows.length);
+        if (localResult) {
+          setServiceStatus('ready', scoreText('浏览器评分核心完成（无需后端）', 'Browser scoring core complete (no backend needed)'));
+          return localResult;
+        }
+      } catch (error) {
+        console.warn('[scoring] local core unavailable, falling back to backend:', error);
+      }
+    }
+
     const payload = {
-      template_id: templateIdForWord(wordData.word),
+      template_id: templateIdForWord(word),
       input_type: useLandmarks ? 'landmark_rows' : 'frame_slices',
-      fps: plan.candidateFps || plan.uploadFps,
+      fps,
       duration_ms: durationMs,
       frames: useLandmarks ? [] : state.frames,
       landmark_rows: useLandmarks ? state.landmarkRows : [],
       client_meta: {
         source: 'apps/web/challenge',
-        word: wordData.word,
-        model: wordData.model || wordData.word,
+        word,
+        model: wordData.model || word,
         capture_plan: plan,
         capture_transport: useLandmarks ? 'web_holistic_landmarks' : 'jpeg_frame_slices',
         browser_holistic: state.browserHolisticStats,
@@ -1441,6 +1521,7 @@
 
   function serviceTextFromResult(result) {
     const mode = result.diagnostics?.scoring_mode || result.level || '';
+    if (mode === 'web_holistic_core_local') return scoreText('浏览器评分核心完成（与后端一致）', 'Browser scoring core complete (matches backend)');
     if (mode === 'web_holistic_template_similarity') return scoreText('浏览器 Holistic 模板评分完成', 'Browser Holistic template scoring complete');
     if (mode === 'web_holistic_capture_quality') return scoreText('浏览器 Holistic 捕获质量评分完成', 'Browser Holistic capture-quality scoring complete');
     if (mode === 'holistic_template_similarity') return scoreText('Holistic 模板评分完成', 'Holistic template scoring complete');
@@ -1525,6 +1606,7 @@
 
   function scoringModeLabel(mode) {
     const labels = isInteractiveEnglish() ? {
+      web_holistic_core_local: 'Browser scoring core (local)',
       web_holistic_template_similarity: 'Browser Holistic template similarity',
       web_holistic_capture_quality: 'Browser Holistic capture quality',
       holistic_template_similarity: 'Holistic template similarity',
@@ -1532,6 +1614,7 @@
       browser_frame_fallback: 'Browser-frame preview',
       browser_local_fallback: 'Local preview'
     } : {
+      web_holistic_core_local: '浏览器评分核心（本地）',
       web_holistic_template_similarity: '浏览器 Holistic 模板相似度',
       web_holistic_capture_quality: '浏览器 Holistic 捕获质量',
       holistic_template_similarity: 'Holistic 模板相似度',
@@ -1562,6 +1645,12 @@
     const metrics = resultMetrics(result);
     const practiceAdvice = buildPracticeAdvice(result);
     if (practiceAdvice) return practiceAdvice;
+    if (mode === 'web_holistic_core_local') {
+      return scoreText(
+        '已在浏览器本机完成与后端一致的 DTW 语义评分（无网络依赖）；该分数仍需结合真实用户标注继续校准。',
+        'Scored locally in the browser with the same DTW semantic core as the backend (no network needed); this score still needs calibration with real-user labels.'
+      );
+    }
     if (mode === 'web_holistic_template_similarity') {
       return scoreText(
         '已在浏览器本机提取 Holistic 关键点，只上传关键点到服务器模板评分；该分数仍需结合真实用户标注继续校准。',

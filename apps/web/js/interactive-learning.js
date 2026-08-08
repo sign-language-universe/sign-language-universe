@@ -236,9 +236,9 @@
       '<div class="recording-indicator" id="recording-indicator">⏺ ' + (en ? 'Recording' : '录制中') + '</div>',
       '</div></div>',
       '<div class="scoring-capture-settings" id="scoring-capture-settings">',
-      '<label><span>' + (en ? 'Duration' : '采集时长') + '</span><input id="scoring-duration-sec" type="number" min="1" max="8" step="0.5" value="2.5"></label>',
+      '<label><span>' + (en ? 'Duration' : '采集时长') + '</span><input id="scoring-duration-sec" type="number" min="1" max="8" step="0.5" value="3"></label>',
       '<label><span>' + (en ? 'Upload FPS' : '上传 FPS') + '</span><input id="scoring-capture-fps" type="number" min="1" max="12" step="1" value="10"></label>',
-      '<label><span>' + (en ? 'Frame width' : '帧宽') + '</span><input id="scoring-frame-width" type="number" min="240" max="960" step="40" value="480"></label>',
+      '<label><span>' + (en ? 'Frame width' : '帧宽') + '</span><input id="scoring-frame-width" type="number" min="240" max="1920" step="40" value="1280"></label>',
       '</div>',
       '<div class="scoring-capture-hint" id="scoring-capture-hint">' + (en ? 'Capture settings loading' : '采样参数待确认') + '</div>',
       '<div class="scoring-web-holistic-note" id="scoring-web-holistic-note">Web Holistic ' + (en ? 'loading' : '准备中') + '</div>',
@@ -386,13 +386,7 @@
           <div class="interactive-panel-heading"><div><h3>🎞️ ${esc(t('reference'))}</h3><p>${esc(referenceHeading)}</p></div><span class="interactive-badge">${esc(referenceBadge)}</span></div>
           ${referenceVisual}
         </section>
-        <section class="interactive-panel interactive-practice-panel">
-          <div class="interactive-panel-heading"><div><h3>📷 ${esc(t('practice'))}</h3><p>${esc(statusDetail)}</p></div><span class="interactive-status ${isAvailable ? 'ready' : (isExperimental ? 'experimental' : 'pending')}" >${esc(statusText)}</span></div>
-          <button type="button" class="interactive-practice-btn" id="interactive-score-launcher" aria-controls="interactive-score-host" aria-expanded="false" onclick="InteractiveLearning.startScore(${canPractice ? 'true' : 'false'})">${canPractice ? '🚀' : '🔒'} ${esc(t('openChallenge'))}</button>
-          <div id="interactive-scoring-slot"></div>
-        </section>
-      </div>
-      <section class="interactive-panel semantic-contract-panel">
+        <section class="interactive-panel semantic-contract-panel">
         <div class="interactive-panel-heading"><div><h3>🧭 ${esc(t('guidance'))}</h3><p>${esc(t('guidanceSubtitle'))}</p></div><span class="frame-count-badge">${esc(t('minFrames'))}: ${item.minimum_distinct_frames}</span></div>
         <div class="semantic-guidance-intro">
           <figure class="semantic-illustration"><img src="${illustrationPath}" loading="lazy" alt="${esc(item.en)} instructional illustration"><figcaption>${state.locale === 'en' ? 'A–Z reference illustration' : 'A–Z 资料示意图'}</figcaption></figure>
@@ -400,11 +394,14 @@
         </div>
         <div class="semantic-contract-columns"><div><h4>${esc(t('ordered'))}</h4><ol class="semantic-stage-list">${ordered}</ol></div><div><h4>${esc(t('simultaneous'))}</h4><div class="semantic-feature-grid">${simultaneous}</div></div></div>
         <p class="interactive-frame-note">ℹ️ ${esc(t('frameNote'))}</p>
-      </section>`;
+        </section>
+        <section class="interactive-panel interactive-practice-panel">
+          <div class="interactive-panel-heading"><div><h3>📷 ${esc(t('practice'))}</h3><p>${esc(statusDetail)}</p></div><span class="interactive-status ${isAvailable ? 'ready' : (isExperimental ? 'experimental' : 'pending')}" >${esc(statusText)}</span></div>
+          <button type="button" class="interactive-practice-btn" id="interactive-score-launcher" aria-controls="interactive-score-host" aria-expanded="false" onclick="InteractiveLearning.startScore(${canPractice ? 'true' : 'false'})">${canPractice ? '🚀' : '🔒'} ${esc(t('openChallenge'))}</button>
+          <div id="interactive-scoring-slot"></div>
+        </section>
+      </div>`;
 
-    const referencePanel = host.querySelector('.interactive-schematic-panel');
-    const guidancePanel = host.querySelector('.semantic-contract-panel');
-    if (referencePanel && guidancePanel) referencePanel.appendChild(guidancePanel);
     initAnimation(item);
     setReferenceMode(state.referenceMode, true);
     renderInteractiveScoringPanel(item, canPractice, statusText, statusDetail);
