@@ -53,16 +53,38 @@
       "title_zh": "汽车（一）｜匿名 Avatar 正视角演示",
       "title_en": "Car I | Anonymous Avatar front-view demo",
       "source_type": "self_generated_demonstration",
-      "review_status": "manually_approved_current_version",
-      "provenance": "Wan2.2-Animate private self-generated Avatar; current version manually approved for frontend display on 2026-08-07; facial-expression refinement queued separately",
+      "review_status": "manually_approved",
+      "provenance": "Wan2.2-Animate private self-generated Avatar; final version manually approved for frontend display on 2026-08-09",
+      "contains_real_person_video": false,
+      "contains_face_landmarks": false,
+      "public_release": true
+    },
+    {
+      "word_index": 14,
+      "word_zh": "汽车（二）",
+      "word_en": "Car II",
+      "path": "assets/content/reference-videos/word-14-car-two-avatar.mp4",
+      "title_zh": "汽车（二）｜匿名 Avatar 正视角演示",
+      "title_en": "Car II | Anonymous Avatar front-view demo",
+      "source_type": "self_generated_demonstration",
+      "review_status": "manually_approved",
+      "provenance": "Wan2.2-Animate private self-generated Avatar; manually approved for frontend display on 2026-08-09",
       "contains_real_person_video": false,
       "contains_face_landmarks": false,
       "public_release": true
     }
   ],
   "policy": {
-    "allowed_sources": ["licensed_reference_video", "self_generated_demonstration"],
-    "required_review": ["license_or_consent", "de_identification", "reidentification_risk", "provenance"],
+    "allowed_sources": [
+      "licensed_reference_video",
+      "self_generated_demonstration"
+    ],
+    "required_review": [
+      "license_or_consent",
+      "de_identification",
+      "reidentification_risk",
+      "provenance"
+    ],
     "private_volunteer_video_allowed": false
   },
   "note_zh": "仅发布已人工审核的匿名 Avatar 自生成演示视频；真人源视频、真人预览图和未批准 landmark 不进入公开仓库。",
