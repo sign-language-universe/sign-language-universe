@@ -496,7 +496,7 @@
       </section>
       <div class="interactive-reference-grid">
         <section class="interactive-panel interactive-schematic-panel">
-          <div class="interactive-panel-heading"><div><h3>🎞️ ${esc(t('reference'))}</h3><p>${esc(referenceHeading)}</p></div><span class="interactive-badge">${esc(referenceBadge)}</span></div>
+          <div class="interactive-panel-heading"><div><h3>🎞️ ${esc(t('reference'))}</h3><p>${esc(referenceHeading)}</p></div></div>
           ${referenceVisual}
         </section>
         <section class="interactive-panel semantic-contract-panel">
@@ -508,7 +508,7 @@
         <div class="semantic-contract-columns"><div><h4>${esc(t('ordered'))}</h4><ol class="semantic-stage-list">${ordered}</ol></div><div><h4>${esc(t('simultaneous'))}</h4><div class="semantic-feature-grid">${simultaneous}</div></div></div>
         </section>
         <section class="interactive-panel interactive-practice-panel">
-          <div class="interactive-panel-heading"><div><h3>📷 ${esc(t('practice'))}</h3>${statusDetail ? `<p>${esc(statusDetail)}</p>` : ''}</div><span class="interactive-status ${isAvailable ? 'ready' : (isExperimental ? 'experimental' : 'pending')}" >${esc(statusText)}</span></div>
+          <div class="interactive-panel-heading"><div><h3>📷 ${esc(t('practice'))}</h3>${statusDetail ? `<p>${esc(statusDetail)}</p>` : ''}</div></div>
           <button type="button" class="interactive-practice-btn" id="interactive-score-launcher" aria-controls="interactive-score-host" aria-expanded="false" onclick="InteractiveLearning.startScore(${canPractice ? 'true' : 'false'})">${canPractice ? '🚀' : '🔒'} ${esc(t('openChallenge'))}</button>
           <div id="interactive-scoring-slot"></div>
         </section>

@@ -1975,6 +1975,7 @@
 
   window.ScoringBridge = {
     startChallengeRecording,
+    ensureCamera,
     scoreChallengeWithApi,
     resetForChallenge,
     mountInteractive,
