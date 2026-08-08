@@ -1579,6 +1579,44 @@
     // 浏览器本地评分核心：与后端 Python 完全一致的 DTW 语义评分
     const template = state.localTemplates?.words?.[word];
     if (!template) return null;
+    // 核心手部入画检查：该词核心语义要求的手部组（focus 中的 hand/hand_shape）若在查询中
+    // 关键点缺失（未入画/检测失败），会被 mask 全 0 当"距离 0 = 做对"→ 乱做也满分。
+    // 前置拦截：核心手部组有效率过低 → 直接低分 + 明确提示（不进入评分核心）。
+    const HAND_KEYS = { left_hand: 'left_hand_landmarks', right_hand: 'right_hand_landmarks',
+      left_hand_shape: 'left_hand_landmarks', right_hand_shape: 'right_hand_landmarks' };
+    const focusGroups = (template.profile && template.profile.focus_groups) || [];
+    const requiredHands = focusGroups.filter(g => HAND_KEYS[g]);
+    if (requiredHands.length && rows.length >= 3) {
+      const handOk = requiredHands.some(g => {
+        const key = HAND_KEYS[g];
+        const valid = rows.filter(r => Array.isArray(r[key]) && r[key].length >= 5).length;
+        return valid / rows.length > 0.5;
+      });
+      if (!handOk) {
+        return {
+          request_id: `local_core_hand_missing_${Date.now()}`,
+          score: 0,
+          prototype_score: 0,
+          score_valid: false,
+          level: 'web_core_local_hand_missing',
+          feedback: [{
+            type: 'core',
+            message: scoreText(
+              `「${word}」的核心手部动作未被摄像头捕捉到（手部未入画/被遮挡），请让双手完整入画后重新录制。`,
+              `The key hand motion for "${word}" was not captured (hand out of frame or occluded); keep both hands fully visible and record again.`
+            ),
+          }],
+          diagnostics: {
+            scoring_mode: 'web_holistic_core_local',
+            word,
+            hand_missing: true,
+            required_hand_groups: requiredHands,
+            frame_count: totalFrames,
+            local_score_ms: 0,
+          },
+        };
+      }
+    }
     const t0 = performance.now();
     let result;
     try {
