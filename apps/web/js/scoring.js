@@ -1831,23 +1831,19 @@
     const practiceAdvice = buildPracticeAdvice(result);
     if (practiceAdvice) return practiceAdvice;
     if (mode === 'web_holistic_core_local') {
-      const base = scoreText(
-        '已在浏览器本机完成与后端一致的 DTW 语义评分（无网络依赖）；该分数仍需结合真实用户标注继续校准。',
-        'Scored locally in the browser with the same DTW semantic core as the backend (no network needed); this score still needs calibration with real-user labels.'
-      );
-      // 追加针对性建议：各核心语义（局部组 + 语义阶段）的做对程度与具体练习指导
+      // 针对性建议：各核心语义（局部组 + 语义阶段）的做对程度与具体练习指导
       const groupAdvice = (result.diagnostics?.group_advice || []).map(a => `• ${a.suggestion}`).join('\n');
       const stageAdvice = (result.diagnostics?.stage_advice || []).map(a => `• ${a.suggestion}`).join('\n');
       const adviceLines = [groupAdvice, stageAdvice].filter(Boolean).join('\n');
       if (adviceLines) {
-        return `${base}\n\n${scoreText('针对性建议（按核心语义打分）：', 'Targeted advice (by semantic part score):')}\n${adviceLines}`;
+        return `${scoreText('针对性建议（按核心语义打分）：', 'Targeted advice (by semantic part score):')}\n${adviceLines}`;
       }
-      return base;
+      return scoreText('已在本机完成评分。', 'Scored locally.');
     }
     if (mode === 'web_holistic_template_similarity') {
       return scoreText(
-        '已在浏览器本机提取 Holistic 关键点，只上传关键点到服务器模板评分；该分数仍需结合真实用户标注继续校准。',
-        'Browser Holistic landmarks were compared with the server template; this score still needs calibration with real-user labels.'
+        '已在浏览器本机提取 Holistic 关键点，只上传关键点到服务器模板评分。',
+        'Browser Holistic landmarks were compared with the server template.'
       );
     }
     if (mode === 'web_holistic_capture_quality') {
@@ -1858,7 +1854,7 @@
       return scoreText('浏览器已识别到可用关键点；继续关注手形、方向、动作起止和节奏。', 'Browser landmarks were detected; keep focusing on hand shape, direction, start/end points, and timing.');
     }
     if (mode === 'holistic_template_similarity') {
-      return scoreText('已使用服务器模板做原型相似度评分；该分数仍需结合真实用户标注继续校准。', 'The server template was used for prototype similarity scoring; this score still needs calibration with real-user labels.');
+      return scoreText('已使用服务器模板做原型相似度评分。', 'The server template was used for prototype similarity scoring.');
     }
     if (mode === 'holistic_capture_quality') {
       const hand = Number(metrics.hand_presence_ratio || 0);
