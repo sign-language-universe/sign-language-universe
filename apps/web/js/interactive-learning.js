@@ -180,7 +180,6 @@
     const resultPanel = root.querySelector('#challenge-result');
     const icon = root.querySelector('#result-icon');
     const scoreEl = root.querySelector('#result-score');
-    const message = root.querySelector('#result-message');
     if (active) active.style.display = 'none';
     if (resultPanel) {
       resultPanel.style.display = 'flex';
@@ -190,12 +189,11 @@
     }
     if (icon) icon.textContent = passed ? '🎉' : '🔄';
     if (scoreEl) scoreEl.textContent = `${score} ${state.locale === 'en' ? 'points' : '分'}`;
-    if (message) message.textContent = scoringResultMessage(result, passed);
     const status = document.getElementById('interactive-score-state');
     if (status) status.textContent = passed ? t('success') : t('retryHint');
-    // 核心语义局部（特征组）打分 + 低分针对性建议（主展示）
-    renderGroupScores(result);
+    // 展示顺序：针对性建议 → 局部语义评分（分数下方直接是建议，不重复小字提示）
     renderGroupAdvice(result);
+    renderGroupScores(result);
     if (passed && typeof AppState !== 'undefined') {
       AppState.collectedWords.add(item.zh);
       if (typeof playUiSound === 'function') playUiSound('reward');
@@ -350,14 +348,14 @@
       '<div class="challenge-timer" id="challenge-timer">' + (en ? 'Duration: ' : '录制时长：') + '<span id="timer-display">00:00</span></div>',
       '</div>',
       '<div class="challenge-result interactive-score-result" id="challenge-result" style="display:none;">',
-      '<div class="result-icon" id="result-icon">🎯</div><div class="result-score" id="result-score">--</div><div class="result-message" id="result-message">--</div>',
+      '<div class="result-icon" id="result-icon">🎯</div><div class="result-score" id="result-score">--</div>',
       '<div class="scoring-result-details" id="scoring-result-details" hidden>',
       '<div><span>' + (en ? 'Scoring mode' : '评分模式') + '</span><strong id="scoring-result-mode">--</strong></div>',
       '<div><span>' + (en ? 'Frames' : '上传帧数') + '</span><strong id="scoring-result-frames">--</strong></div>',
       '<div><span>Worker</span><strong id="scoring-result-worker">--</strong></div>',
       '<div><span>Request</span><strong id="scoring-result-request">--</strong></div><p id="scoring-result-advice">--</p></div>',
-      '<div class="interactive-group-scores" id="interactive-group-scores" hidden></div>',
       '<div class="interactive-group-advice" id="interactive-group-advice" hidden></div>',
+      '<div class="interactive-group-scores" id="interactive-group-scores" hidden></div>',
       '<div class="result-actions"><button class="action-btn secondary" type="button" onclick="InteractiveLearning.retryScore()">↻ ' + esc(t('retry')) + '</button>',
       '<button class="action-btn primary" type="button" onclick="InteractiveLearning.next()">→ ' + esc(t('nextAfterScore')) + '</button></div>',
       '</div></div>'
