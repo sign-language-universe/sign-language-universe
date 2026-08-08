@@ -40,6 +40,11 @@
             <span class="mode-label">学习宇宙</span>
             <span class="mode-desc">词汇教学 · 互动游戏 · 测评</span>
           </button>
+          <button class="mode-btn interactive" onclick="navigateTo('interactive-learning')">
+            <span class="mode-icon">🌍</span>
+            <span class="mode-label">互动学习实验室</span>
+            <span class="mode-desc">中英双语 · 语义过程 · 摄像头练习</span>
+          </button>
           <button class="mode-btn personal" onclick="navigateTo('galaxy', 'personal')">
             <span class="mode-icon">🏠</span>
             <span class="mode-label">个人空间</span>
@@ -86,6 +91,7 @@
             <!-- 动画展示画布（替代视频占位） -->
             <div class="animation-viewer" id="learning-anim-viewer">
               <canvas id="learning-anim-canvas"></canvas>
+              <canvas id="learning-avatar3d-canvas" class="avatar3d-canvas" aria-label="匿名3D语义动作形象 / Anonymous 3D semantic sign avatar"></canvas>
               <div class="anim-overlay-hint" id="anim-overlay">
                 <span class="anim-phase-icon">🤚</span>
                 <p class="anim-phase-text" id="anim-phase-label">准备学习</p>
@@ -93,6 +99,7 @@
               <div class="anim-controls">
                 <button class="anim-ctrl-btn" id="btn-anim-play" onclick="toggleAnimPlay()">▶ 播放</button>
                 <button class="anim-ctrl-btn" id="btn-anim-replay" onclick="restartAnim()">🔄 重播</button>
+                <button class="anim-ctrl-btn" id="btn-avatar3d-toggle" onclick="toggleAvatar3D()">🧍 3D语义形象</button>
                 <span class="anim-speed-label" id="anim-phase-name">--</span>
               </div>
             </div>
@@ -127,6 +134,24 @@
           <span class="nav-label">下一词</span>
         </button>
       </div>
+    </section>
+
+    <!-- ===== 页面2：双语互动学习实验室 ===== -->
+    <section id="screen-interactive-learning" class="screen">
+      <header class="top-bar interactive-top-bar">
+        <button class="back-btn" onclick="navigateTo('splash')" id="interactive-back-btn">← 返回</button>
+        <div class="interactive-title-block">
+          <h1 id="interactive-learning-title">互动学习实验室</h1>
+          <p id="interactive-learning-subtitle">语义过程 · 示意参考 · 摄像头练习</p>
+        </div>
+        <div class="interactive-top-actions">
+          <span class="progress-text" id="interactive-index-label">--</span>
+          <button class="language-toggle-btn" id="interactive-locale-toggle" type="button" onclick="InteractiveLearning.toggleLocale()">English</button>
+        </div>
+      </header>
+      <main class="interactive-learning-shell" id="interactive-learning-content">
+        <div class="interactive-loading">正在加载公开动作指导…</div>
+      </main>
     </section>
 
     <!-- ===== 页面3：检索页面 ===== -->
@@ -306,6 +331,7 @@
                   <span class="anim-speed-label" id="challenge-anim-phase-name">--</span>
                 </div>
               </div>
+              <div id="challenge-reference-video-slot" class="challenge-reference-video-slot" hidden></div>
             </div>
             <div class="model-word-label" id="model-word-label">--</div>
           </div>
@@ -487,9 +513,12 @@
   <!-- model-viewer: 用于奖励弹窗的 3D 模型展示 -->
   <script type="module" src="https://unpkg.com/@google/model-viewer@3.5.0/dist/model-viewer.min.js"></script>
   <script src="js/data.js"></script>
+  <script src="js/reference-media.js?v=20260807-reference-media-v2"></script>
   <script src="js/stars.js"></script>
+  <script src="js/avatar3d.js?v=20260806-filled-avatar-v1"></script>
   <script src="js/animations.js"></script>
-  <script src="js/app.js"></script>
-  <script src="js/scoring.js"></script>
+  <script src="js/app.js?v=20260807-challenge-reference-video-v3"></script>
+  <script src="js/scoring.js?v=20260806-3d-fix"></script>
+  <script src="js/interactive-learning.js?v=20260807-semantic-video-toggle-v2"></script>
 </body>
 </html>

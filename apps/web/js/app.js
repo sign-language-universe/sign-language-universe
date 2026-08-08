@@ -125,6 +125,9 @@ function navigateTo(screen, param) {
   if (AppState.currentScreen === 'challenge' && screen !== 'challenge' && window.ScoringBridge?.stopAll) {
     window.ScoringBridge.stopAll();
   }
+  if (AppState.currentScreen === 'interactive-learning' && screen !== 'interactive-learning' && window.InteractiveLearning?.stop) {
+    window.InteractiveLearning.stop();
+  }
 
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
 
@@ -139,6 +142,7 @@ function navigateTo(screen, param) {
     case 'splash':      break;
     case 'galaxy':      if (param) AppState.mode = param; renderGalaxy(); break;
     case 'learning':    renderLearning(); break;
+    case 'interactive-learning': if (window.InteractiveLearning?.render) window.InteractiveLearning.render(); break;
     case 'search':      break;
     case 'assessment': renderAssessment(); break;
     case 'spacestation': renderSpacestation(); break;
@@ -246,10 +250,21 @@ function renderLearning() {
 // ── 学习页动画控制 ──
 let _learningAnimPlayer = null;
 let _learningAnimLoaded = false;
+let _avatar3dPlayer = null;
+let _avatar3dVisible = false;
 
 function initLearningAnimation(word) {
   const canvas = document.getElementById('learning-anim-canvas');
   if (!canvas) return;
+
+  const avatarCanvas = document.getElementById('learning-avatar3d-canvas');
+  if (avatarCanvas && window.Avatar3D && !_avatar3dPlayer) {
+    _avatar3dPlayer = window.Avatar3D.create(avatarCanvas);
+  }
+  if (_avatar3dPlayer) {
+    _avatar3dPlayer.load(word);
+    if (_avatar3dVisible) _avatar3dPlayer.play();
+  }
 
   const player = getAnimationPlayer(canvas);
   _learningAnimPlayer = player;
@@ -290,6 +305,24 @@ function initLearningAnimation(word) {
   const replayBtn = document.getElementById('btn-anim-replay');
   if (playBtn) playBtn.disabled = false;
   if (replayBtn) replayBtn.disabled = false;
+}
+
+function toggleAvatar3D() {
+  const viewer = document.getElementById('learning-anim-viewer');
+  const button = document.getElementById('btn-avatar3d-toggle');
+  _avatar3dVisible = !_avatar3dVisible;
+  if (viewer) viewer.classList.toggle('avatar3d-active', _avatar3dVisible);
+  if (button) {
+    button.textContent = _avatar3dVisible ? '🎨 返回2D示意' : '🧍 3D语义形象';
+    button.classList.toggle('playing', _avatar3dVisible);
+  }
+  if (_avatar3dPlayer) {
+    if (_avatar3dVisible) {
+      _avatar3dPlayer.resize();
+      _avatar3dPlayer.play();
+    }
+    else _avatar3dPlayer.stop();
+  }
 }
 
 function toggleAnimPlay() {
@@ -443,6 +476,36 @@ function initChallengeAnimation(word) {
   const replayBtn = document.getElementById('btn-challenge-anim-replay');
   if (playBtn) playBtn.disabled = false;
   if (replayBtn) replayBtn.disabled = false;
+}
+
+function renderChallengeReferenceVideo(word) {
+  const slot = document.getElementById('challenge-reference-video-slot');
+  const viewer = document.getElementById('challenge-anim-viewer');
+  if (!slot) return;
+  const render = () => {
+    const media = window.SLUReferenceMedia?.getByWord(word);
+    if (!media) {
+      slot.hidden = true;
+      if (viewer) viewer.hidden = false;
+      slot.innerHTML = '';
+      return;
+    }
+    if (viewer) viewer.hidden = true;
+    slot.hidden = false;
+    slot.innerHTML = `
+      <div class="challenge-reference-video-heading">
+        <strong>📹 已审核匿名 Avatar 参考视频</strong>
+        <span>${media.title_zh || ''}</span>
+      </div>
+      <video controls autoplay loop muted playsinline preload="metadata"
+        src="${media.path}" aria-label="${media.title_zh || word}参考视频"></video>
+    `;
+  };
+  if (window.SLUReferenceMedia?.ready) {
+    window.SLUReferenceMedia.ready.then(render);
+  } else {
+    render();
+  }
 }
 
 function toggleChallengeAnimPlay() {
@@ -631,7 +694,15 @@ function initChallenge() {
   if (enterBtn) {
     enterBtn.disabled = !scoringReady;
     enterBtn.querySelector('.start-btn-icon').textContent = scoringReady ? '🚀' : '⏳';
-    enterBtn.querySelector('.start-btn-text').textContent = scoringReady ? '进入挑战' : '等待上线';
+    enterBtn.querySelector('.start-btn-text').textContent = scoringReady ? '进入挑战 / 打开摄像头' : '等待上线';
+  }
+  // The challenge screen should expose the camera practice panel immediately
+  // for scoreable words.  Opening this panel never requests camera permission;
+  // permission is still requested only when the user starts recording.
+  if (scoringReady && intro && active) {
+    intro.style.display = 'none';
+    active.style.display = 'flex';
+    AppState.isChallengeActive = true;
   }
 
   // 更新左侧视频提示文字
@@ -640,6 +711,7 @@ function initChallenge() {
 
   // ── 启动挑战页动画 ──
   initChallengeAnimation(wordData.word);
+  renderChallengeReferenceVideo(wordData.word);
 
   updateNavButtons();
 

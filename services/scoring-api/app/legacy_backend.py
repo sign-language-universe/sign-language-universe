@@ -37,6 +37,7 @@ DENSE_TEMPLATE_ROOT = WORK_DIR / "generated/scoring_mvp_run3/all_demo_step2_work
 OUTPUT_ROOT = WORK_DIR / "generated/web_scoring_mvp"
 LOG_DIR = WORK_DIR / "logs"
 DEMO_VIDEO_ROOT = REPO_ROOT / "data/Demo词汇视频/Demo词汇视频"
+PUBLIC_REFERENCE_MEDIA_MANIFEST = REPO_ROOT / "apps/web/assets/content/reference_media_manifest.json"
 SEMANTIC_PROFILE_JSON = WORK_DIR / "generated/scoring_semantic_profiles/sign_semantic_weights.json"
 WATCH_STATUS_JSON = WORK_DIR / "generated/scoring_mvp_run3/web_sample_marker_watch_status.json"
 WATCH_STATUS_MD = WORK_DIR / "generated/scoring_mvp_run3/web_sample_marker_watch_status.md"
@@ -290,6 +291,19 @@ def _template_path(word: str) -> Path:
 
 
 def _reference_video_path(word: str) -> Path:
+    # Public, manually approved anonymous Avatar demonstrations are the
+    # canonical reference media for every frontend/API surface.  Keep the
+    # historical private demo directory only as a compatibility fallback.
+    try:
+        manifest = json.loads(PUBLIC_REFERENCE_MEDIA_MANIFEST.read_text(encoding="utf-8"))
+        wanted = str(word).strip()
+        for item in manifest.get("entries", []):
+            if str(item.get("word_zh", "")).strip() == wanted or str(item.get("word_en", "")).strip().lower() == wanted.lower():
+                candidate = REPO_ROOT / "apps/web" / str(item["path"])
+                if candidate.is_file():
+                    return candidate
+    except (OSError, json.JSONDecodeError, KeyError, TypeError):
+        pass
     direct = DEMO_VIDEO_ROOT / f"{word}.mp4"
     if direct.exists():
         return direct

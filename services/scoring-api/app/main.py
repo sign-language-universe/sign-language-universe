@@ -32,6 +32,9 @@ from pydantic import BaseModel, Field
 
 APP_VERSION = "0.3.0"
 REPO_ROOT = Path(__file__).resolve().parents[3]
+SCORING_CORE_ROOT = REPO_ROOT / "packages" / "scoring-core"
+if str(SCORING_CORE_ROOT) not in sys.path:
+    sys.path.insert(0, str(SCORING_CORE_ROOT))
 WORKER_SCRIPT = Path(__file__).with_name("holistic_worker_daemon.py")
 DEFAULT_OUTPUT_ROOT = REPO_ROOT / "work" / "generated" / "scoring-api"
 OUTPUT_ROOT = Path(os.getenv("SLU_SCORING_OUTPUT_ROOT", str(DEFAULT_OUTPUT_ROOT)))
@@ -51,6 +54,11 @@ SUPPORTED_TEMPLATES = [
     {"id": "point", "label": "指示", "aliases": ["zhishi", "指示"], "available": True},
     {"id": "sing", "label": "唱歌", "aliases": ["changge", "唱歌"], "available": True},
     {"id": "chan", "label": "馋", "aliases": ["馋", "谗（羡慕）", "chanxianmu"], "available": True},
+    {"id": "egg", "label": "鸡蛋", "aliases": ["jidan", "鸡蛋"], "available": False, "release_status": "candidate_only_not_for_production"},
+    {"id": "kaochuan", "label": "烤串", "aliases": ["烤串", "barbecue_skewer"], "available": False, "release_status": "candidate_only_not_for_production"},
+    {"id": "science", "label": "科学", "aliases": ["kexue", "科学"], "available": False, "release_status": "candidate_only_not_for_production"},
+    {"id": "forest", "label": "森林", "aliases": ["senlin", "森林"], "available": False, "release_status": "candidate_only_not_for_production"},
+    {"id": "brave", "label": "勇敢", "aliases": ["yonggan", "勇敢"], "available": False, "release_status": "candidate_only_not_for_production"},
     {"id": "nihao", "label": "你好", "aliases": ["ni-hao", "你好"], "available": True},
     {"id": "xiexie", "label": "谢谢", "aliases": ["xie-xie", "谢谢"], "available": True},
     {"id": "baba", "label": "爸爸", "aliases": ["爸爸"], "available": True},
