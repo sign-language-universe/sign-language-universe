@@ -1658,7 +1658,8 @@
     // 本地评分核心优先：模板词 + landmark 帧 → 浏览器端直接评分（不依赖后端）
     if (useLandmarks && localCoreAvailable()) {
       try {
-        await loadLocalTemplates();
+        // 模板 + 语义阶段数据（ordered_sequence 指导文案）并行加载
+        await Promise.all([loadLocalTemplates(), loadLocalStages()]);
         const localResult = localCoreScore(word, state.landmarkRows, fps, state.landmarkRows.length);
         if (localResult) {
           setServiceStatus('ready', scoreText('浏览器评分核心完成（无需后端）', 'Browser scoring core complete (no backend needed)'));
