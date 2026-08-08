@@ -3233,8 +3233,9 @@ body.theme-day .interactive-side-nav:hover {
 }
 .interactive-reference-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr) minmax(0, 0.92fr);
   gap: 16px;
+  align-items: start;
 }
 .interactive-panel { padding: 18px; }
 .interactive-schematic-panel { padding: 20px; }
@@ -3354,15 +3355,12 @@ body.theme-day .interactive-side-nav:hover {
   font-size: 12px;
   line-height: 1.6;
 }
-.semantic-contract-panel { padding: 20px; }
-.interactive-schematic-panel > .semantic-contract-panel {
-  margin: 20px 0 0;
-  padding: 20px 0 0;
-  border: 0;
-  border-top: 1px solid rgba(255,255,255,0.08);
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
+.semantic-contract-panel {
+  padding: 20px;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: var(--radius);
+  background: var(--bg-card);
+  box-shadow: 0 12px 34px rgba(0,0,0,0.18);
 }
 .frame-count-badge { color: var(--accent-yellow); background: rgba(255,217,61,0.11); }
 .semantic-guidance-intro {
@@ -3446,8 +3444,10 @@ body.theme-day .semantic-guidance-intro,
 body.theme-day .interactive-frame-note {
   border-color: rgba(77,166,255,0.16);
 }
-body.theme-day .interactive-schematic-panel > .semantic-contract-panel {
-  border-top-color: rgba(77,166,255,0.16);
+body.theme-day .semantic-contract-panel {
+  background: linear-gradient(145deg, rgba(255,255,255,0.92), rgba(239,247,255,0.92));
+  border-color: rgba(77,166,255,0.18);
+  box-shadow: 0 12px 34px rgba(54,104,148,0.12);
 }
 body.theme-day .interactive-score-host {
   border-color: rgba(77,166,255,0.16);
@@ -3455,6 +3455,41 @@ body.theme-day .interactive-score-host {
 body.theme-day .interactive-score-result {
   background: rgba(255,255,255,0.74);
   border-color: rgba(77,166,255,0.2);
+}
+
+/* 三列横屏布局（实验场景为横屏）：动画视频 | 动作指导 | 摄像头，尽量一屏放下 */
+@media (min-width: 1100px) {
+  .interactive-hero-card { padding: 10px 16px; }
+  .interactive-word-heading h2 { font-size: clamp(18px, 2.4vw, 26px); }
+  .interactive-word-heading p { font-size: 12px; }
+  .interactive-schematic-viewer { height: clamp(220px, 30vh, 300px); }
+  .interactive-reference-video video { max-height: 34vh; }
+  .interactive-reference-grid { flex: 1; min-height: 0; }
+  /* 各列超出视口高度时列内滚动，页面本身不翻页 */
+  .interactive-reference-grid > .interactive-panel {
+    max-height: calc(100vh - 240px);
+    overflow-y: auto;
+  }
+  /* 指导列：纵向紧凑排列，示意图收窄 */
+  .semantic-guidance-intro { grid-template-columns: 1fr; gap: 12px; margin: 4px 0 14px; padding-bottom: 14px; }
+  .semantic-illustration img { max-height: 170px; }
+  .semantic-contract-columns { grid-template-columns: 1fr; gap: 14px; }
+  .interactive-frame-note { margin: 14px 0 0; }
+}
+
+/* 超大屏（横屏全屏）：容器放宽填满宽度，side-nav 贴边，三列自适应撑满 */
+@media (min-width: 1280px) {
+  .interactive-learning-shell {
+    width: min(1760px, calc(100% - 108px));
+  }
+  .interactive-side-nav-prev { left: 14px; }
+  .interactive-side-nav-next { right: 14px; }
+}
+
+/* 中屏降级：参考 | 摄像头 两列，指导面板占整行 */
+@media (max-width: 1099px) {
+  .interactive-reference-grid { grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr); }
+  .interactive-reference-grid .semantic-contract-panel { grid-column: 1 / -1; }
 }
 
 @media (max-width: 760px) {
