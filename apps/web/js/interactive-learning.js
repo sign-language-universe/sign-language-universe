@@ -285,9 +285,16 @@
     const advice = result?.diagnostics?.group_advice;
     const en = state.locale === 'en';
     if (!Array.isArray(advice) || !advice.length) {
-      // 评分完成但无低分局部：显示达标反馈，避免"评分后无提示"的困惑
-      host.innerHTML = `<h4>💡 ${esc(en ? 'Targeted part guidance' : '针对性局部指导')}</h4>
-        <p class="stage-advice-all-ok">✅ ${esc(en ? 'All semantic parts passed (≥80). Great job!' : '各核心语义局部均达标（≥80），动作标准！')}</p>`;
+      const score = Number(result?.prototype_score ?? result?.score);
+      // 低分（<80）但核心组无 weak：总距离大但各组距离在包络内——
+      // 问题出在时序/速度/节奏或未评分局部（如 face 无包络），不能显示"全部达标"
+      if (Number.isFinite(score) && score < 80) {
+        host.innerHTML = `<h4>💡 ${esc(en ? 'Targeted part guidance' : '针对性局部指导')}</h4>
+          <p class="stage-advice-all-ok" style="color: var(--accent-orange);">⚠️ ${esc(en ? 'Core semantic parts are within range (≥80), but the total score is low — likely due to motion timing/speed/rhythm or unscored parts (e.g. face). Review the overall motion order and pacing against the reference.' : '核心语义局部距离在合理范围（≥80），但总分未达标——可能出在动作时序/速度/节奏或未评分的局部（如面部）。请对照示范视频整体检查动作顺序与速度。')}</p>`;
+      } else {
+        host.innerHTML = `<h4>💡 ${esc(en ? 'Targeted part guidance' : '针对性局部指导')}</h4>
+          <p class="stage-advice-all-ok">✅ ${esc(en ? 'All semantic parts passed (≥80). Great job!' : '各核心语义局部均达标（≥80），动作标准！')}</p>`;
+      }
       host.hidden = false;
       return;
     }
