@@ -47,6 +47,12 @@
     '指示': 'point',
     '唱歌': 'sing',
     '馋': 'chan',
+    '谗（羡慕）': 'chan',
+    '船（轮船）': 'chuan',
+    '公交车': 'bus',
+    '牛奶': 'milk',
+    '汽车（一）': 'car_1',
+    '汽车（二）': 'car_2',
     '超市': 'chaoshi',
     '人们（人民）': 'renmen',
     '鸡蛋': 'egg',
@@ -1368,7 +1374,7 @@
     return Math.max(state.frames.length, state.landmarkRows.length);
   }
 
-  const LOCAL_TEMPLATES_URL = new URL('assets/content/scoring_templates_v1.json', document.baseURI).href;
+  const LOCAL_TEMPLATES_URL = new URL('assets/content/scoring_templates_v2.json', document.baseURI).href;
 
   function localCoreAvailable() {
     return typeof globalThis.ScorerCore !== 'undefined' && typeof globalThis.ScorerCore.scoreQuery === 'function';

@@ -19,17 +19,17 @@
 ```text
 GitHub Pages 静态前端
   -> 浏览器 Web Holistic 提取 landmarks
-  -> ModelScope lite Docker FastAPI 后端
-  -> 旧仓库模板库 + score_holistic_sequence_mvp.run_pair()
+  -> 前端 scoring-core 本地加权 DTW 并集打分（21 词模板，无后端依赖）
+  -> 可选：ModelScope lite Docker FastAPI 后端（服务端评分/回退路线）
 ```
 
-- 前端默认评分 API：`https://scottwyc-sign-language-universe-lite.ms.show`
-- 前端默认采集参数：`2.5s / 10fps / 480px`
-- 前端优先上传 `landmark_rows`，不上传图片帧。
-- `deploy/modelscope-space-lite/` 是当前推荐线上演示后端，不安装 MediaPipe worker。
+- 前端默认本地打分：浏览器提取匿名运动关键点后由 `scoring-core.js` 直接完成加权 DTW 打分；评分 API 连接行默认隐藏、不再必需。
+- 前端默认采集参数：`3s / 10fps / 1280px`
+- 连接评分 API 时优先上传 `landmark_rows`，不上传图片帧。
+- `deploy/modelscope-space-lite/` 是可选线上演示后端，不安装 MediaPipe worker。
 - `deploy/modelscope-space/` 保留为 full Docker 验证和服务端 Holistic worker 回退路线。
-- 挑战模式覆盖全部 `47` 个学习词汇；当前模板数据库覆盖 `12` 个可评分词（香蕉/花/汽车/虎/月亮/跳/朋友/指示/唱歌/馋/超市/人们（人民）），这 12 个词排在挑战列表前面；其他词显示“评分模板待上线”并禁用录制评分入口。
-- 互动学习实验室当前不携带私人志愿者视频、切片、真人预览图或未授权 landmark 缓存；超市、人们（人民）、跳、汽车（一）已发布经人工审核的匿名 Avatar 自生成参考视频，评分模板由这些公开动画视频提取；鸡蛋、烤串、科学、森林、勇敢已按候选校准 Demo 开放试运行，但尚未发布最终语义 DTW 模板。
+- 挑战模式覆盖全部 `47` 个学习词汇；互动学习 21 词已全部上线评分模板（并集评分：每词 3 模板 top-2 均值 + 判别力组权重 + 包络软化），Python 校准与前端交叉验证 21/21 通过。
+- 互动学习实验室当前不携带私人志愿者视频、切片、真人预览图或未授权 landmark 缓存；超市、人们（人民）、跳、汽车（一）已发布经人工审核的匿名 Avatar 自生成参考视频，评分模板由这些公开动画视频提取。
 
 ## 本地预览前端
 

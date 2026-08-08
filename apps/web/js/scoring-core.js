@@ -1814,21 +1814,75 @@
 
   /** 入口：加载模板 + query rows → 评分结果 */
   function scoreQuery(template, queryRows, fps, totalFrames) {
-    const standard = {
-      source: template.word,
-      mode: 'landmark',
-      fps: template.fps || fps || DEFAULT_FPS,
-      totalFrames: template.total_frames || template.features.length,
-      features: template.features.map(f => ({
-        frameIdx: f.frame_idx, timestampSec: f.timestamp_sec,
-        vector: f.vector, mask: f.mask, groups: f.groups,
-        presence: f.presence, frameWeight: f.frame_weight, semanticPhase: f.semantic_phase || 0,
-      })),
-    };
-    // 模板打包时已应用动态帧权重 + motion 特征，标记已动态避免二次应用；
-    // query 需应用一次动态权重（与 Python dtw_align 行为一致）。
+    const profile = template.profile || null;
     const query = sequenceFromRows(queryRows, fps, totalFrames);
-    return dtwAlign(standard, query, template.profile || null, { standardAlreadyDynamic: true });
+    // 多模板并集：每词打包 1~3 个标准模板（多用户），距离取最小 top-2 截尾均值
+    const templateList = (template.templates && template.templates.length)
+      ? template.templates
+      : [template];
+    const results = templateList.map(tpl => {
+      const standard = {
+        source: template.word,
+        mode: 'landmark',
+        fps: tpl.fps || template.fps || fps || DEFAULT_FPS,
+        totalFrames: tpl.total_frames || (tpl.features ? tpl.features.length : 0),
+        features: (tpl.features || template.features).map(f => ({
+          frameIdx: f.frame_idx, timestampSec: f.timestamp_sec,
+          vector: f.vector, mask: f.mask, groups: f.groups,
+          presence: f.presence, frameWeight: f.frame_weight, semanticPhase: f.semantic_phase || 0,
+        })),
+      };
+      // 模板打包时已应用动态帧权重 + motion 特征，标记已动态避免二次应用
+      return dtwAlign(standard, query, profile, { standardAlreadyDynamic: true });
+    });
+    // 聚合距离（对应校准的 aggregate_template_distance：最小 top-2 均值）
+    const distances = results.map(r => r.normalized_distance).sort((a, b) => a - b);
+    const aggregatedDistance = distances.length >= 2
+      ? (distances[0] + distances[1]) / 2
+      : distances[0];
+    // 层 3 包络软化（对应校准 soften_distance：q50 内 ×0.35，q50→q90 斜率 0.5，超 q90 全罚）
+    let softenedDistance = aggregatedDistance;
+    const envelope = template.envelope;
+    if (envelope && envelope.q50 > 0 && envelope.q90 > envelope.q50) {
+      softenedDistance = softenEnvelopeDistance(aggregatedDistance, envelope.q50, envelope.q90, 0.35, 0.5);
+    }
+    const base = results[0];
+    const scoreScaleDetail = base.score_scale || {};
+    const noiseFloor = scoreScaleDetail.noise_floor_distance || 0;
+    const scoreDistance = Math.max(0, softenedDistance - noiseFloor);
+    const effectiveScale = scoreScaleDetail.effective_scale || 0.12;
+    let prototypeScore = 100 * Math.exp(-scoreDistance / effectiveScale);
+    prototypeScore = Math.max(0, Math.min(100, prototypeScore));
+    return {
+      standard_length: base.standard_length,
+      query_length: base.query_length,
+      template_count: results.length,
+      template_results: results.map(r => ({
+        dtw_distance: r.dtw_distance,
+        normalized_distance: r.normalized_distance,
+        prototype_score: r.prototype_score,
+      })),
+      aggregated_distance: aggregatedDistance,
+      softened_distance: softenedDistance,
+      envelope_used: !!envelope,
+      dtw_distance: softenedDistance,
+      normalized_distance: softenedDistance,
+      prototype_score: prototypeScore,
+      score_distance: scoreDistance,
+      sequence_penalty: base.sequence_penalty,
+      score_scale: scoreScaleDetail,
+      alignment_policy: base.alignment_policy,
+      features_standard: base.features_standard,
+      features_query: base.features_query,
+    };
+  }
+
+  /** 包络软化：并集内（≤q90）距离打折，超出全罚；与 Python 校准 soften_distance 一致 */
+  function softenEnvelopeDistance(d, q50, q90, insideScale, rampSlope) {
+    if (!(d >= 0) || !(q90 > q50)) return d;
+    if (d <= q50) return insideScale * d;
+    if (d <= q90) return insideScale * q50 + rampSlope * (d - q50);
+    return insideScale * q50 + rampSlope * (q90 - q50) + (d - q90);
   }
 
   global.ScorerCore = {
@@ -1842,6 +1896,6 @@
       POSE_CORE_INDICES, FACE_CORE_INDICES, GROUP_WEIGHTS,
       HAND_GROUPS, RELATIVE_MOTION_GROUPS, FINGER_TIPS, FINGER_MCPS, FINGER_PIPS, FINGER_DIPS, SPREAD_PAIRS,
     },
-    _internal: { landmarkArray, handShapeFeature, normalizationFromPose, groupDistance, groupDistanceBetween, profileGroupWeights, computeSemanticFrameWeightValues, semanticPhaseFromWeights, adjacentGroupMotion, dimensionWeights, weightedRmse, twoHandRelationFeature, sequenceWithRelativeMotionFeatures, poseRobustHandDistance, similarityAlignedXyRmse, svd2x2, groupMissingDistanceWeight },
+    _internal: { landmarkArray, handShapeFeature, normalizationFromPose, groupDistance, groupDistanceBetween, profileGroupWeights, computeSemanticFrameWeightValues, semanticPhaseFromWeights, adjacentGroupMotion, dimensionWeights, weightedRmse, twoHandRelationFeature, sequenceWithRelativeMotionFeatures, poseRobustHandDistance, similarityAlignedXyRmse, svd2x2, groupMissingDistanceWeight, softenEnvelopeDistance },
   };
 })(typeof window !== 'undefined' ? window : globalThis);
