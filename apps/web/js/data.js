@@ -243,12 +243,34 @@ const MODEL_MAP = {
 
 // =============================================
 //  挑战模式词汇
-//  列表覆盖全部学习词汇；只有模板库已覆盖的词开放正式评分。
+//  列表覆盖全部学习词汇；21 词模板库（scoring_templates_v2.json）已全部覆盖正式评分。
 // =============================================
-const SCORING_READY_WORD_LIST = [
-  '香蕉', '花', '汽车', '虎', '月亮', '跳', '朋友', '指示', '唱歌', '馋'
+
+// 21 词评分模板词汇（与 scoring_templates_v2.json 词名完全一致）
+const TEMPLATE_WORDS_21 = [
+  '谗（羡慕）', '唱歌', '超市', '船（轮船）', '公交车', '虎', '花', '鸡蛋', '烤串', '科学',
+  '牛奶', '朋友', '汽车（一）', '汽车（二）', '人们（人民）', '森林', '跳', '香蕉', '勇敢', '月亮', '指示'
 ];
+const SCORING_READY_WORD_LIST = TEMPLATE_WORDS_21;
 const SCORING_READY_WORDS = new Set(SCORING_READY_WORD_LIST);
+
+// 学习词汇表词名 → 21 词模板词名归一（旧词名在评分时无法匹配模板）
+const CANONICAL_WORD_ALIASES = { '馋': '谗（羡慕）', '汽车': '汽车（一）' };
+
+// 21 词中不在 VOCABULARY_DATA 学习词表的补充词条（含语义资料）
+const EXTRA_TEMPLATE_WORDS = {
+  '谗（羡慕）': { id: 'chan-xianmu', pinyin: 'chán', definition: '一手食指弯曲，从口中向外移动，表示想吃、羡慕。', usage: '表达羡慕、嘴馋。', category: '情感' },
+  '超市': { id: 'chao-shi', pinyin: 'chāo shì', definition: '双手模拟货架与挑选动作。', usage: '指超市购物。', category: '生活' },
+  '船（轮船）': { id: 'chuan', pinyin: 'chuán', definition: '一手五指并拢，在身前横向波浪状移动，模拟船身。', usage: '指轮船、船只。', category: '交通' },
+  '鸡蛋': { id: 'ji-dan', pinyin: 'jī dàn', definition: '一手模拟蛋形，另一手轻敲。', usage: '指鸡蛋。', category: '食物' },
+  '烤串': { id: 'kao-chuan', pinyin: 'kǎo chuàn', definition: '双手模拟持签翻转烤串。', usage: '指烤串食物。', category: '食物' },
+  '科学': { id: 'ke-xue', pinyin: 'kē xué', definition: '双手在胸前做思考与展开动作。', usage: '指科学。', category: '学习' },
+  '牛奶': { id: 'niu-nai', pinyin: 'niú nǎi', definition: '一手做挤奶动作，另一手模拟杯。', usage: '指牛奶。', category: '食物' },
+  '汽车（二）': { id: 'qi-che-2', pinyin: 'qì chē', definition: '双手模拟方向盘转动（第二动作块）。', usage: '指汽车驾驶动作。', category: '交通' },
+  '人们（人民）': { id: 'ren-men', pinyin: 'rén men', definition: '双手拇指相对，向两侧移动，表示众人。', usage: '指人们、人民群众。', category: '社会' },
+  '森林': { id: 'sen-lin', pinyin: 'sēn lín', definition: '双手五指张开向上，交错移动，模拟树林。', usage: '指森林。', category: '自然' },
+  '勇敢': { id: 'yong-gan', pinyin: 'yǒng gǎn', definition: '一手握拳在胸前，表示勇气。', usage: '指勇敢。', category: '品质' }
+};
 
 const CHALLENGE_WORD_EXTRAS = {
   '香蕉': { model: '香蕉', hasRewardModel: true },
@@ -260,33 +282,62 @@ const CHALLENGE_WORD_EXTRAS = {
   '朋友': { model: '朋友', hasRewardModel: false },
   '指示': { model: '指示', hasRewardModel: false },
   '唱歌': { model: '唱歌', hasRewardModel: false },
-  '馋': { model: '馋', hasRewardModel: false }
+  '馋': { model: '馋', hasRewardModel: false },
+  '谗（羡慕）': { model: '馋', hasRewardModel: false },
+  '汽车（一）': { model: '汽车', hasRewardModel: true },
+  '汽车（二）': { model: '汽车', hasRewardModel: true }
 };
 
 function buildChallengeWords() {
   const words = [];
   const seen = new Set();
+  // 先从学习词表构建（词名归一为 21 词模板词名）
   Object.values(VOCABULARY_DATA).forEach(level => {
     level.planets.forEach(planet => {
       planet.words.forEach(item => {
-        if (seen.has(item.word)) return;
-        seen.add(item.word);
-        const extra = CHALLENGE_WORD_EXTRAS[item.word] || {};
-        const scoringReady = SCORING_READY_WORDS.has(item.word);
+        const canonicalWord = CANONICAL_WORD_ALIASES[item.word] || item.word;
+        if (seen.has(canonicalWord)) return;
+        seen.add(canonicalWord);
+        const extra = CHALLENGE_WORD_EXTRAS[canonicalWord] || {};
+        const scoringReady = SCORING_READY_WORDS.has(canonicalWord);
         words.push({
           ...item,
+          word: canonicalWord,
           level: level.level,
           planet: planet.name,
           originalOrder: words.length,
-          model: extra.model || item.word,
+          model: extra.model || canonicalWord,
           scoringReady,
           hasRewardModel: Boolean(extra.hasRewardModel && MODEL_MAP[extra.model]?.glbPath),
           statusLabel: scoringReady ? '评分模板已上线' : '评分模板待上线',
           statusText: scoringReady
-            ? '可以使用 Web Holistic + ModelScope lite 后端进行模板评分。'
+            ? '可以使用浏览器本地评分核心进行模板评分（无需后端）。'
             : '这个学习词汇还没有标准动作模板，暂时不能录制打分；可先学习打法，等待评分数据库上线。'
         });
       });
+    });
+  });
+  // 补入 21 词中不在学习词表的词条
+  TEMPLATE_WORDS_21.forEach((word, index) => {
+    if (seen.has(word)) return;
+    seen.add(word);
+    const extra = CHALLENGE_WORD_EXTRAS[word] || {};
+    const meta = EXTRA_TEMPLATE_WORDS[word] || { id: word, pinyin: '', definition: '', usage: '', category: '' };
+    words.push({
+      id: meta.id,
+      word,
+      pinyin: meta.pinyin,
+      definition: meta.definition,
+      usage: meta.usage,
+      category: meta.category,
+      level: 1,
+      planet: '21 词评分',
+      originalOrder: 100 + index,
+      model: extra.model || word,
+      scoringReady: true,
+      hasRewardModel: Boolean(extra.hasRewardModel && MODEL_MAP[extra.model]?.glbPath),
+      statusLabel: '评分模板已上线',
+      statusText: '可以使用浏览器本地评分核心进行模板评分（无需后端）。'
     });
   });
   return words
