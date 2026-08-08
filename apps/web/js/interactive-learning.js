@@ -40,15 +40,12 @@
       ordered: '次序过程（需要不同时间状态）',
       simultaneous: '同时状态（同一关联帧内检查）',
       minFrames: '最少独立证据帧',
-      frameNote: '实际练习允许更多帧；这里的数量只表示语义过程的最低时间证据，不是视频采样总帧数。',
       reference: '参考内容',
       schematic: '前端生成的动作示意动画',
       play: '▶ 播放',
       replay: '↻ 重播',
       noVideo: '暂无已授权或自行生成的参考视频',
-      noVideoDetail: '当前不发布真人视频。待获得授权或完成自行生成的展示视频后，再通过媒体清单接入。',
       videoLabel: '已审核匿名 Avatar 演示视频',
-      videoDetail: '该视频为已人工审核的匿名 Avatar 自生成演示，不包含真人源视频。',
       originalVideo: '原始演示',
       semanticVideo: '语义叠加',
       videoMode: '视频模式',
@@ -58,9 +55,7 @@
       available: '评分模板已接入',
       pending: '评分模板待上线',
       experimental: '候选校准 Demo',
-      availableDetail: '浏览器先提取匿名运动关键点，再调用评分 API；不上传原始视频。',
-      pendingDetail: '可先查看动作指导和示意动画；该词的标准评分模板尚未公开部署。',
-      experimentalDetail: '该词已通过首轮正负样本工程候选门槛；当前以 Demo 试运行方式开放，分数仍属于候选/捕获质量预览，不是正式 v2 语义 DTW 分。',
+      availableDetail: '浏览器提取匿名运动关键点后在本地完成打分。',
       loading: '正在加载公开动作指导…',
       error: '公开动作指导加载失败，请通过 HTTP(S) 服务打开网页。',
       openChallenge: '开始摄像头评分',
@@ -84,15 +79,12 @@
       ordered: 'Ordered process (distinct time states required)',
       simultaneous: 'Simultaneous state (checked within the same associated frame)',
       minFrames: 'Minimum distinct evidence frames',
-      frameNote: 'Practice may use more frames. This number is the minimum temporal evidence for the semantic process, not the total sampling count.',
       reference: 'Reference material',
       schematic: 'Procedural motion schematic generated in the browser',
       play: '▶ Play',
       replay: '↻ Replay',
       noVideo: 'No licensed or self-generated reference video yet',
-      noVideoDetail: 'Real-person videos are not published at this stage. An authorized or self-generated presentation video can be added later through the media manifest.',
       videoLabel: 'Reviewed anonymous Avatar demonstration',
-      videoDetail: 'This is a manually reviewed, self-generated anonymous Avatar demonstration; no source-person video is published.',
       originalVideo: 'Original demo',
       semanticVideo: 'Semantic overlay',
       videoMode: 'Video mode',
@@ -102,9 +94,7 @@
       available: 'Scoring template connected',
       pending: 'Scoring template pending',
       experimental: 'Validated candidate demo',
-      availableDetail: 'The browser extracts anonymous motion landmarks first, then calls the scoring API; raw video is not uploaded.',
-      pendingDetail: 'You can review the action guidance and schematic first; a public standard scoring template is not deployed for this word yet.',
-      experimentalDetail: 'This word passed the first positive/negative engineering-candidate gate. It is enabled for a demo trial; the score is still a candidate/capture-quality preview, not the final v2 semantic-DTW score.',
+      availableDetail: 'The browser extracts anonymous motion landmarks and scores locally.',
       loading: 'Loading public action guidance…',
       error: 'Could not load the public action guidance. Open the page through an HTTP(S) server.',
       openChallenge: 'Start camera scoring',
@@ -224,7 +214,7 @@
     const slot = document.getElementById('interactive-scoring-slot');
     if (!slot) return;
     if (!canPractice) {
-      slot.innerHTML = '<div class="interactive-score-unavailable">🔒 ' + esc(statusDetail) + '</div>';
+      slot.innerHTML = '<div class="interactive-score-unavailable">🔒 ' + esc(statusText) + '</div>';
       return;
     }
     const en = state.locale === 'en';
@@ -250,7 +240,7 @@
       '<button class="challenge-ctrl-btn start-btn" id="btn-start-record" onclick="InteractiveLearning.beginRecording()"><span class="ctrl-icon">🎥</span><span>' + (en ? 'Start camera' : '开启摄像头') + '</span></button>',
       '<button class="challenge-ctrl-btn score-btn" id="btn-score" onclick="ScoringBridge.scoreChallengeWithApi()" disabled><span class="ctrl-icon">⭐</span><span>' + (en ? 'Score' : '自动评分') + '</span></button>',
       '</div>',
-      '<div class="scoring-service-row" id="scoring-service-row"><span class="service-dot idle" id="scoring-service-dot"></span>',
+      '<div class="scoring-service-row" id="scoring-service-row" style="display:none;"><span class="service-dot idle" id="scoring-service-dot"></span>',
       '<input id="scoring-api-base-input" class="scoring-api-input" type="url" inputmode="url" placeholder="' + (en ? 'Scoring API URL' : '评分 API 地址') + '" aria-label="' + (en ? 'Scoring API URL' : '评分 API 地址') + '">',
       '<button class="scoring-api-btn" type="button" onclick="ScoringBridge.saveApiBaseFromInput()">' + (en ? 'Connect' : '连接') + '</button></div>',
       '<div class="scoring-worker-note" id="scoring-worker-note">' + (en ? 'Scoring service pending' : '评分服务待连接') + '</div>',
@@ -350,7 +340,7 @@
     const isExperimental = item.scoring_template_status === 'experimental';
     const canPractice = isAvailable || isExperimental;
     const statusText = isAvailable ? t('available') : (isExperimental ? t('experimental') : t('pending'));
-    const statusDetail = isAvailable ? t('availableDetail') : (isExperimental ? t('experimentalDetail') : t('pendingDetail'));
+    const statusDetail = isAvailable ? t('availableDetail') : '';
     const illustrationIndex = String(item.index).padStart(2, '0');
     // 优先使用仅含示意图的裁剪图；若缺失则回退到原始整页资料图
     const illustrationPath = `assets/content/illustrations/schematic-crops/word-${illustrationIndex}.jpeg`;
@@ -358,8 +348,8 @@
     const media = state.referenceMedia[String(item.index)];
     const hasSemanticVideo = Boolean(media?.semantic_overlay_path);
     const mediaBlock = media
-      ? `<div class="interactive-reference-video"><div class="interactive-video-heading"><strong>📹 ${esc(t('videoLabel'))}</strong></div>${hasSemanticVideo ? `<div class="interactive-video-mode-label">${esc(t('videoMode'))}</div><div class="interactive-video-mode-controls"><button type="button" class="reference-video-mode-btn active" data-reference-video-mode="original" onclick="InteractiveLearning.setReferenceVideoMode('original')">${esc(t('originalVideo'))}</button><button type="button" class="reference-video-mode-btn" data-reference-video-mode="semantic" onclick="InteractiveLearning.setReferenceVideoMode('semantic')">${esc(t('semanticVideo'))}</button></div>` : ''}<video id="interactive-reference-video" data-reference-video-role="original" controls preload="metadata" autoplay loop muted playsinline src="${esc(media.path)}" aria-label="${esc(t('videoLabel'))}"></video>${hasSemanticVideo ? `<video id="interactive-semantic-reference-video" data-reference-video-role="semantic" controls preload="metadata" loop muted playsinline hidden src="${esc(media.semantic_overlay_path)}" aria-label="${esc(t('semanticVideo'))}"></video>` : ''}<div class="interactive-video-controls"><button type="button" id="interactive-reference-video-toggle" onclick="InteractiveLearning.toggleReferenceVideo()">Ⅱ ${esc(t('videoPause'))}</button></div></div>`
-      : `<div class="interactive-video-empty"><strong>📹 ${esc(t('noVideo'))}</strong><p>${esc(t('noVideoDetail'))}</p></div>`;
+      ? `<div class="interactive-reference-video">${hasSemanticVideo ? `<div class="interactive-video-mode-label">${esc(t('videoMode'))}</div><div class="interactive-video-mode-controls"><button type="button" class="reference-video-mode-btn active" data-reference-video-mode="original" onclick="InteractiveLearning.setReferenceVideoMode('original')">${esc(t('originalVideo'))}</button><button type="button" class="reference-video-mode-btn" data-reference-video-mode="semantic" onclick="InteractiveLearning.setReferenceVideoMode('semantic')">${esc(t('semanticVideo'))}</button></div>` : ''}<video id="interactive-reference-video" data-reference-video-role="original" controls preload="metadata" autoplay loop muted playsinline src="${esc(media.path)}" aria-label="${esc(t('videoLabel'))}"></video>${hasSemanticVideo ? `<video id="interactive-semantic-reference-video" data-reference-video-role="semantic" controls preload="metadata" loop muted playsinline hidden src="${esc(media.semantic_overlay_path)}" aria-label="${esc(t('semanticVideo'))}"></video>` : ''}<div class="interactive-video-controls"><button type="button" id="interactive-reference-video-toggle" onclick="InteractiveLearning.toggleReferenceVideo()">Ⅱ ${esc(t('videoPause'))}</button></div></div>`
+      : `<div class="interactive-video-empty"><strong>📹 ${esc(t('noVideo'))}</strong></div>`;
     const referenceHeading = media ? t('videoLabel') : t('schematic');
     const referenceBadge = media
       ? (state.locale === 'en' ? 'Manually reviewed' : '已人工审核')
@@ -394,14 +384,13 @@
         <section class="interactive-panel semantic-contract-panel">
         <div class="interactive-panel-heading"><div><h3>🧭 ${esc(t('guidance'))}</h3><p>${esc(t('guidanceSubtitle'))}</p></div><span class="frame-count-badge">${esc(t('minFrames'))}: ${item.minimum_distinct_frames}</span></div>
         <div class="semantic-guidance-intro">
-          <figure class="semantic-illustration"><img src="${illustrationPath}" loading="lazy" alt="${esc(item.en)} instructional illustration" onerror="this.onerror=null;this.src='${illustrationFallbackPath}'"><figcaption>${state.locale === 'en' ? 'A–Z reference illustration' : 'A–Z 资料示意图'}</figcaption></figure>
+          <figure class="semantic-illustration"><img src="${illustrationPath}" loading="lazy" alt="${esc(item.en)} instructional illustration" onerror="this.onerror=null;this.src='${illustrationFallbackPath}'"></figure>
           <div class="semantic-guidance-summary"><p>${esc(state.locale === 'en' ? item.summary_en : item.summary_zh)}</p></div>
         </div>
         <div class="semantic-contract-columns"><div><h4>${esc(t('ordered'))}</h4><ol class="semantic-stage-list">${ordered}</ol></div><div><h4>${esc(t('simultaneous'))}</h4><div class="semantic-feature-grid">${simultaneous}</div></div></div>
-        <p class="interactive-frame-note">ℹ️ ${esc(t('frameNote'))}</p>
         </section>
         <section class="interactive-panel interactive-practice-panel">
-          <div class="interactive-panel-heading"><div><h3>📷 ${esc(t('practice'))}</h3><p>${esc(statusDetail)}</p></div><span class="interactive-status ${isAvailable ? 'ready' : (isExperimental ? 'experimental' : 'pending')}" >${esc(statusText)}</span></div>
+          <div class="interactive-panel-heading"><div><h3>📷 ${esc(t('practice'))}</h3>${statusDetail ? `<p>${esc(statusDetail)}</p>` : ''}</div><span class="interactive-status ${isAvailable ? 'ready' : (isExperimental ? 'experimental' : 'pending')}" >${esc(statusText)}</span></div>
           <button type="button" class="interactive-practice-btn" id="interactive-score-launcher" aria-controls="interactive-score-host" aria-expanded="false" onclick="InteractiveLearning.startScore(${canPractice ? 'true' : 'false'})">${canPractice ? '🚀' : '🔒'} ${esc(t('openChallenge'))}</button>
           <div id="interactive-scoring-slot"></div>
         </section>
