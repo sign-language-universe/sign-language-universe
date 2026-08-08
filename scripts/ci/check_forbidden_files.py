@@ -33,6 +33,9 @@ FORBIDDEN_SUFFIXES = (
     ".onnx",
 )
 MAX_FILE_BYTES = 95 * 1024 * 1024
+# 已人工审核通过的匿名 Avatar 教学视频（apps/web/assets/content/reference-videos/）
+# 允许进入仓库供 GitHub Pages 与互动学习板块使用；其余 .mp4 一律禁止。
+ALLOWED_VIDEO_PREFIX = "apps/web/assets/content/reference-videos/"
 
 
 def tracked_files() -> list[str]:
@@ -55,6 +58,8 @@ def main() -> int:
             bad.append(rel)
             continue
         if any(rel.endswith(suffix) for suffix in FORBIDDEN_SUFFIXES):
+            if rel.endswith(".mp4") and rel.startswith(ALLOWED_VIDEO_PREFIX):
+                continue
             bad.append(rel)
             continue
         if path.exists() and path.is_file() and path.stat().st_size > MAX_FILE_BYTES:

@@ -1,0 +1,19 @@
+{
+  "schema_version": "slu-public-motion-template-manifest-v1",
+  "status": "pending_approved_landmark_release",
+  "privacy": {
+    "raw_video_included": false,
+    "face_landmarks_included": false,
+    "volunteer_identifiers_included": false,
+    "source_paths_included": false
+  },
+  "landmark_schema": {
+    "frame_fields": ["index", "timestamp_ms", "pose_landmarks", "left_hand_landmarks", "right_hand_landmarks", "frame_weight"],
+    "point_fields": ["x", "y", "z", "visibility", "presence"],
+    "coordinate_note": "Normalized image coordinates; public templates must be approved, signer-disjoint, and face-free before release."
+  },
+  "templates": [],
+  "candidate_only_words": ["鸡蛋", "烤串", "科学", "森林", "勇敢"],
+  "note_zh": "当前没有通过公开发布审查的真人 landmark 模板，因此保持空清单；该文件只定义兼容格式，不携带私人样本。",
+  "note_en": "No real-person landmark template has passed public-release review yet. This empty manifest defines the compatible format without carrying private samples."
+}

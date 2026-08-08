@@ -10,6 +10,8 @@
 
 当前推荐线上方案是：GitHub Pages 前端在浏览器中运行 Web Holistic，向本服务提交 `landmark_rows`；ModelScope lite Docker 后端读取模板库并运行旧评分算法。`app/main.py` 也保留 `app/holistic_worker_daemon.py` 常驻 Holistic worker，用于 full Docker 或自托管服务器回退验证。
 
+API 入口会自动把仓库内的 `packages/scoring-core` 加入模块路径；本地或容器仍需安装该包的运行依赖。这样即使没有执行 editable install，配置了模板目录后也不会误降级为 fallback 分。
+
 服务按以下顺序评分：
 
 1. 已配置 `SLU_TEMPLATE_ROOT` 且请求包含 `landmark_rows`：直接和服务器模板 JSON 做原型相似度评分，返回 `web_holistic_template_similarity`。

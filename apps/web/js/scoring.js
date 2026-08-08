@@ -6,6 +6,7 @@
 (function () {
   const STORAGE_KEY = 'signUniverseScoringApiBase';
   const DEFAULT_SCORING_API_BASE = 'https://scottwyc-sign-language-universe-lite.ms.show';
+  const LOCAL_SCORING_API_BASE = 'http://127.0.0.1:5080';
   const MAX_FRAMES = 90;
   const COUNTDOWN_SECONDS = 3;
   const UPLOAD_JPEG_QUALITY = 0.7;
@@ -46,6 +47,11 @@
     '指示': 'point',
     '唱歌': 'sing',
     '馋': 'chan',
+    '鸡蛋': 'egg',
+    '烤串': 'kaochuan',
+    '科学': 'science',
+    '森林': 'forest',
+    '勇敢': 'brave',
     '你好': 'nihao',
     '谢谢': 'xiexie',
     '爸爸': 'baba',
@@ -82,11 +88,51 @@
     browserHolisticSource: null,
     browserHolisticErrors: [],
     scoringWaitTimer: null,
-    scoringStartedAt: 0
+    scoringStartedAt: 0,
+    uiRoot: document,
+    uiMode: 'challenge',
+    onResult: null
   };
+
+  function installWebGLAlertGuard() {
+    if (window.__sluWebGLAlertGuardInstalled || typeof window.alert !== 'function') return;
+    const nativeAlert = window.alert.bind(window);
+    window.alert = message => {
+      const text = String(message || '');
+      if (/Failed to create WebGL canvas context|WebGL canvas context/i.test(text)) {
+        window.__sluLastWebGLAlert = text;
+        return;
+      }
+      return nativeAlert(text);
+    };
+    window.__sluWebGLAlertGuardInstalled = true;
+  }
+
+  installWebGLAlertGuard();
 
   function show(message) {
     if (typeof showToast === 'function') showToast(message);
+  }
+
+  function isInteractiveEnglish() {
+    return state.uiMode === 'interactive'
+      && window.localStorage.getItem('sluInteractiveLocale') === 'en';
+  }
+
+  function scoreText(zh, en) {
+    return isInteractiveEnglish() ? en : zh;
+  }
+
+  // The same scoring bridge serves the legacy challenge page and the
+  // self-contained interactive-learning panel. Resolve controls inside the
+  // active mount first so the two flows can coexist without cross-updating UI.
+  function uiElement(id) {
+    const root = state.uiRoot;
+    if (root && root !== document) {
+      const scoped = root.querySelector(`#${id}`);
+      if (scoped) return scoped;
+    }
+    return document.getElementById(id);
   }
 
   function normalizeApiBase(value) {
@@ -106,7 +152,10 @@
     }
     if (state.apiBase !== null) return state.apiBase;
     const stored = normalizeApiBase(window.localStorage.getItem(STORAGE_KEY) || '');
-    state.apiBase = stored || DEFAULT_SCORING_API_BASE;
+    const isLocalPage = window.location.hostname === '127.0.0.1'
+      || window.location.hostname === 'localhost'
+      || window.location.hostname === '[::1]';
+    state.apiBase = stored || (isLocalPage ? LOCAL_SCORING_API_BASE : DEFAULT_SCORING_API_BASE);
     return state.apiBase;
   }
 
@@ -116,14 +165,14 @@
   }
 
   function updateApiInput() {
-    const input = document.getElementById('scoring-api-base-input');
+    const input = uiElement('scoring-api-base-input');
     if (input) input.value = readApiBase();
   }
 
   function setServiceStatus(kind, text) {
-    const dot = document.getElementById('scoring-service-dot');
-    const label = document.getElementById('scoring-service-status');
-    const note = document.getElementById('scoring-worker-note');
+    const dot = uiElement('scoring-service-dot');
+    const label = uiElement('scoring-service-status');
+    const note = uiElement('scoring-worker-note');
     if (dot) dot.className = `service-dot ${kind}`;
     if (label) label.textContent = text;
     if (note) note.textContent = text;
@@ -131,7 +180,7 @@
 
   async function checkHealth() {
     updateApiInput();
-    setServiceStatus('checking', '评分服务检测中');
+    setServiceStatus('checking', scoreText('评分服务检测中', 'Checking scoring service'));
     try {
       const response = await fetch(apiUrl('/api/scoring/health'), {
         method: 'GET',
@@ -140,24 +189,24 @@
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const payload = await response.json();
       state.lastHealth = payload;
-      let workerText = '评分服务在线，worker 未启用';
+      let workerText = scoreText('评分服务在线，worker 未启用', 'Scoring service online; worker disabled');
       if (payload.worker_enabled && payload.worker_ready) {
-        workerText = 'Holistic worker 已就绪';
+        workerText = scoreText('Holistic worker 已就绪', 'Holistic worker is ready');
       } else if (payload.worker_enabled) {
-        workerText = '评分服务在线，worker 将在首次评分时启动';
+        workerText = scoreText('评分服务在线，worker 将在首次评分时启动', 'Scoring service online; worker starts on first score');
       }
-      const templateText = payload.template_root_configured ? '已配置模板' : '未配置模板';
+      const templateText = payload.template_root_configured ? scoreText('已配置模板', 'Templates configured') : scoreText('未配置模板', 'No templates configured');
       setServiceStatus(payload.worker_ready ? 'ready' : 'online', `${workerText} · ${templateText}`);
       return payload;
     } catch (error) {
       state.lastHealth = null;
-      setServiceStatus('offline', '评分服务未连接，将使用本地预览评分');
+      setServiceStatus('offline', scoreText('评分服务未连接，将使用本地预览评分', 'Scoring service is offline; local preview scoring will be used'));
       return null;
     }
   }
 
   function saveApiBaseFromInput() {
-    const input = document.getElementById('scoring-api-base-input');
+    const input = uiElement('scoring-api-base-input');
     const normalized = normalizeApiBase(input ? input.value : '');
     window.localStorage.setItem(STORAGE_KEY, normalized);
     state.apiBase = normalized;
@@ -196,6 +245,7 @@
   }
 
   function holisticSourceLabel(source = state.browserHolisticSource) {
+    if (source?.id === 'local' || !source) return scoreText('同源本地资源', 'Same-origin local assets');
     return source?.label || HOLISTIC_ASSET_SOURCES[0].label;
   }
 
@@ -217,8 +267,8 @@
   }
 
   function setWebHolisticStatus(kind, text) {
-    const note = document.getElementById('scoring-web-holistic-note');
-    const retryBtn = document.getElementById('scoring-holistic-retry-btn');
+    const note = uiElement('scoring-web-holistic-note');
+    const retryBtn = uiElement('scoring-holistic-retry-btn');
     if (note) {
       note.className = `scoring-web-holistic-note ${kind}`;
       note.textContent = text;
@@ -226,35 +276,40 @@
     if (retryBtn) {
       retryBtn.hidden = kind !== 'offline';
       retryBtn.disabled = false;
-      retryBtn.textContent = '重新加载 Web Holistic';
+      retryBtn.textContent = scoreText('重新加载 Web Holistic', 'Reload Web Holistic');
     }
   }
 
   function webHolisticReadyText(extraText = '') {
     const preloadText = state.browserHolisticPreloadMs !== null
-      ? `加载 ${formatSeconds(state.browserHolisticPreloadMs)}`
-      : '已加载';
+      ? scoreText(`加载 ${formatSeconds(state.browserHolisticPreloadMs)}`, `loaded ${formatSeconds(state.browserHolisticPreloadMs)}`)
+      : scoreText('已加载', 'loaded');
     const warmupText = state.browserHolisticWarmupMs !== null
-      ? `预热 ${formatSeconds(state.browserHolisticWarmupMs)}`
-      : '已预热';
-    return `Web Holistic 已就绪并常驻 · ${holisticSourceLabel()} · ${preloadText} · ${warmupText}${extraText}`;
+      ? scoreText(`预热 ${formatSeconds(state.browserHolisticWarmupMs)}`, `warmed up ${formatSeconds(state.browserHolisticWarmupMs)}`)
+      : scoreText('已预热', 'warmed up');
+    return scoreText(
+      `Web Holistic 已就绪并常驻 · ${holisticSourceLabel()} · ${preloadText} · ${warmupText}${extraText}`,
+      `Web Holistic is ready · ${holisticSourceLabel()} · ${preloadText} · ${warmupText}${extraText}`
+    );
   }
 
   function syncWebHolisticStatus() {
     if (state.browserHolisticReady && state.browserHolistic) {
       setWebHolisticStatus('ready', webHolisticReadyText());
     } else if (state.browserHolisticPreloadPromise || state.browserHolisticLoading || state.browserHolisticWarmupPromise) {
-      setWebHolisticStatus('checking', `Web Holistic 正在加载并预热 · ${holisticSourceLabel()}`);
+      setWebHolisticStatus('checking', scoreText(`Web Holistic 正在加载并预热 · ${holisticSourceLabel()}`, `Web Holistic is loading and warming up · ${holisticSourceLabel()}`));
     } else if (state.browserHolisticUnavailable) {
       const detail = holisticErrorSummary();
-      setWebHolisticStatus('offline', detail ? `Web Holistic 不可用，将回退上传压缩帧 · ${detail}` : 'Web Holistic 不可用，将回退上传压缩帧');
+      setWebHolisticStatus('offline', detail
+        ? scoreText(`Web Holistic 不可用，将回退上传压缩帧 · ${detail}`, `Web Holistic is unavailable; compressed-frame upload will be used · ${detail}`)
+        : scoreText('Web Holistic 不可用，将回退上传压缩帧', 'Web Holistic is unavailable; compressed-frame upload will be used'));
     } else {
-      setWebHolisticStatus('checking', 'Web Holistic 准备中');
+      setWebHolisticStatus('checking', scoreText('Web Holistic 准备中', 'Web Holistic is preparing'));
     }
   }
 
   function setAutoScoreStatus(text, visible = true) {
-    const note = document.getElementById('scoring-auto-note');
+    const note = uiElement('scoring-auto-note');
     if (!note) return;
     note.hidden = !visible;
     if (text) note.textContent = text;
@@ -262,7 +317,7 @@
 
   function updateScoringWaitStatus() {
     const elapsedMs = state.scoringStartedAt ? performance.now() - state.scoringStartedAt : 0;
-    setAutoScoreStatus(`正在等待评分：${formatSeconds(elapsedMs)}`, true);
+    setAutoScoreStatus(scoreText(`正在等待评分：${formatSeconds(elapsedMs)}`, `Waiting for score: ${formatSeconds(elapsedMs)}`), true);
   }
 
   function stopScoringWaitStatus(text = '', { hide = false } = {}) {
@@ -307,13 +362,13 @@
       script.onload = () => resolve();
       script.onerror = () => {
         script.remove();
-        reject(new Error(`脚本加载失败：${src}`));
+        reject(new Error(scoreText(`脚本加载失败：${src}`, `Script failed to load: ${src}`)));
       };
       document.head.appendChild(script);
-    }), timeoutMs, '浏览器 Holistic 脚本加载超时');
+    }), timeoutMs, scoreText('浏览器 Holistic 脚本加载超时', 'Browser Holistic script load timed out'));
   }
 
-  function disposeBrowserHolisticInstance(message = 'Web Holistic 正在重新加载') {
+  function disposeBrowserHolisticInstance(message = scoreText('Web Holistic 正在重新加载', 'Web Holistic is reloading')) {
     if (state.browserHolisticPending?.reject) {
       state.browserHolisticPending.reject(new Error(message));
     }
@@ -347,21 +402,27 @@
   }
 
   async function retryBrowserHolistic() {
-    const retryBtn = document.getElementById('scoring-holistic-retry-btn');
+    const retryBtn = uiElement('scoring-holistic-retry-btn');
     if (retryBtn) {
       retryBtn.hidden = false;
       retryBtn.disabled = true;
-      retryBtn.textContent = '重新加载中...';
+      retryBtn.textContent = scoreText('重新加载中...', 'Reloading...');
     }
     resetBrowserHolisticForRetry();
-    setWebHolisticStatus('checking', `Web Holistic 正在重新加载并预热 · ${HOLISTIC_ASSET_SOURCES[0].label}`);
+    setWebHolisticStatus('checking', scoreText(
+      `Web Holistic 正在重新加载并预热 · ${HOLISTIC_ASSET_SOURCES[0].label}`,
+      `Web Holistic is reloading and warming up · ${HOLISTIC_ASSET_SOURCES[0].label}`
+    ));
     const holistic = await preloadBrowserHolistic();
     if (holistic) {
-      show('Web Holistic 已重新加载');
+      show(scoreText('Web Holistic 已重新加载', 'Web Holistic reloaded'));
       return holistic;
     }
-    setWebHolisticStatus('offline', `Web Holistic 仍不可用，可稍后重试 · ${holisticErrorSummary()}`);
-    show('Web Holistic 仍不可用，已保留回退评分路径');
+    setWebHolisticStatus('offline', scoreText(
+      `Web Holistic 仍不可用，可稍后重试 · ${holisticErrorSummary()}`,
+      `Web Holistic is still unavailable; try again later · ${holisticErrorSummary()}`
+    ));
+    show(scoreText('Web Holistic 仍不可用，已保留回退评分路径', 'Web Holistic is still unavailable; fallback scoring remains available'));
     return null;
   }
 
@@ -370,7 +431,7 @@
     state.browserHolisticSource = source;
     state.browserHolisticLoading = (async () => {
       await loadScriptOnce(holisticSourceScriptUrl(source));
-      if (!window.Holistic) throw new Error('浏览器 Holistic SDK 未正确加载');
+      if (!window.Holistic) throw new Error(scoreText('浏览器 Holistic SDK 未正确加载', 'Browser Holistic SDK did not load correctly'));
       const holistic = new window.Holistic({
         locateFile: file => `${source.base}/${file}`
       });
@@ -416,13 +477,13 @@
 
   function sendHolisticImage(holistic, image, options = {}) {
     if (state.browserHolisticPending) {
-      throw new Error('浏览器 Holistic 仍在处理上一帧');
+      throw new Error(scoreText('浏览器 Holistic 仍在处理上一帧', 'Browser Holistic is still processing the previous frame'));
     }
     const timeoutMs = options.timeoutMs || BROWSER_HOLISTIC_FRAME_TIMEOUT_MS;
     return new Promise((resolve, reject) => {
       const timer = window.setTimeout(() => {
         if (state.browserHolisticPending) state.browserHolisticPending = null;
-        reject(new Error('浏览器 Holistic 单帧处理超时'));
+        reject(new Error(scoreText('浏览器 Holistic 单帧处理超时', 'Browser Holistic frame processing timed out')));
       }, timeoutMs);
       state.browserHolisticPending = {
         resolve: results => {
@@ -435,7 +496,15 @@
         }
       };
       try {
-        Promise.resolve(holistic.send({ image })).catch(error => {
+        // MediaPipe's bundled WASM path may call window.alert() when WebGL is
+        // unavailable. installWebGLAlertGuard() converts that vendor failure
+        // into a normal non-blocking fallback status instead.
+        const previousWebGLAlert = window.__sluLastWebGLAlert || '';
+        const sendResult = holistic.send({ image });
+        if (window.__sluLastWebGLAlert && window.__sluLastWebGLAlert !== previousWebGLAlert) {
+          throw new Error(window.__sluLastWebGLAlert);
+        }
+        Promise.resolve(sendResult).catch(error => {
           if (state.browserHolisticPending) {
             window.clearTimeout(timer);
             state.browserHolisticPending = null;
@@ -472,10 +541,10 @@
     state.browserHolisticWarmupPromise = (async () => {
       const errors = [];
       for (const source of HOLISTIC_ASSET_SOURCES) {
-        disposeBrowserHolisticInstance(`正在切换 Web Holistic 资源源：${source.label}`);
+        disposeBrowserHolisticInstance(scoreText(`正在切换 Web Holistic 资源源：${source.label}`, `Switching Web Holistic asset source: ${source.label}`));
         state.browserHolisticUnavailable = false;
         state.browserHolisticSource = source;
-        setWebHolisticStatus('checking', `Web Holistic 正在加载并预热 · ${source.label}`);
+        setWebHolisticStatus('checking', scoreText(`Web Holistic 正在加载并预热 · ${source.label}`, `Web Holistic is loading and warming up · ${source.label}`));
         const startedAt = performance.now();
         const canvas = createWarmupCanvas();
         try {
@@ -503,14 +572,14 @@
             preload_error: message,
             source_fallback_errors: errors.slice()
           };
-          disposeBrowserHolisticInstance(`Web Holistic ${source.label} 加载失败`);
-          setWebHolisticStatus('checking', `Web Holistic 正在尝试备用资源 · ${holisticErrorSummary(errors)}`);
+          disposeBrowserHolisticInstance(scoreText(`Web Holistic ${source.label} 加载失败`, `Web Holistic ${source.label} failed to load`));
+          setWebHolisticStatus('checking', scoreText(`Web Holistic 正在尝试备用资源 · ${holisticErrorSummary(errors)}`, `Web Holistic is trying a fallback asset source · ${holisticErrorSummary(errors)}`));
         } finally {
           canvas.width = 0;
           canvas.height = 0;
         }
       }
-      throw new Error(holisticErrorSummary(errors) || '所有 Web Holistic 资源均不可用');
+      throw new Error(holisticErrorSummary(errors) || scoreText('所有 Web Holistic 资源均不可用', 'All Web Holistic asset sources are unavailable'));
     })().catch(error => {
       state.browserHolisticReady = false;
       state.browserHolisticUnavailable = true;
@@ -524,7 +593,7 @@
         preload_error: error.message,
         source_fallback_errors: state.browserHolisticErrors.slice()
       };
-      setWebHolisticStatus('offline', `Web Holistic 加载失败，将回退上传压缩帧 · ${holisticErrorSummary()}`);
+      setWebHolisticStatus('offline', scoreText(`Web Holistic 加载失败，将回退上传压缩帧 · ${holisticErrorSummary()}`, `Web Holistic failed to load; compressed-frame upload will be used · ${holisticErrorSummary()}`));
       return null;
     }).finally(() => {
       state.browserHolisticWarmupPromise = null;
@@ -539,12 +608,14 @@
     }
     if (state.browserHolisticUnavailable) {
       const detail = holisticErrorSummary();
-      setWebHolisticStatus('offline', detail ? `Web Holistic 不可用，将回退上传压缩帧 · ${detail}` : 'Web Holistic 不可用，将回退上传压缩帧');
+      setWebHolisticStatus('offline', detail
+        ? scoreText(`Web Holistic 不可用，将回退上传压缩帧 · ${detail}`, `Web Holistic is unavailable; compressed-frame upload will be used · ${detail}`)
+        : scoreText('Web Holistic 不可用，将回退上传压缩帧', 'Web Holistic is unavailable; compressed-frame upload will be used'));
       return null;
     }
     if (state.browserHolisticPreloadPromise) return state.browserHolisticPreloadPromise;
     state.browserHolisticPreloadPromise = (async () => {
-      setWebHolisticStatus('checking', `Web Holistic 正在加载并预热 · ${HOLISTIC_ASSET_SOURCES[0].label}`);
+      setWebHolisticStatus('checking', scoreText(`Web Holistic 正在加载并预热 · ${HOLISTIC_ASSET_SOURCES[0].label}`, `Web Holistic is loading and warming up · ${HOLISTIC_ASSET_SOURCES[0].label}`));
       const startedAt = performance.now();
       const holistic = await warmupBrowserHolistic();
       if (holistic) {
@@ -564,7 +635,7 @@
         preload_error: error.message,
         source_fallback_errors: state.browserHolisticErrors.slice()
       };
-      setWebHolisticStatus('offline', `Web Holistic 加载失败，将回退上传压缩帧 · ${holisticErrorSummary() || error.message}`);
+      setWebHolisticStatus('offline', scoreText(`Web Holistic 加载失败，将回退上传压缩帧 · ${holisticErrorSummary() || error.message}`, `Web Holistic failed to load; compressed-frame upload will be used · ${holisticErrorSummary() || error.message}`));
       return null;
     }).finally(() => {
       state.browserHolisticPreloadPromise = null;
@@ -640,10 +711,10 @@
     if (!video || video.readyState < 2) return;
     try {
       const startedAt = performance.now();
-      setWebHolisticStatus('checking', 'Web Holistic 已加载，正在用摄像头画面预热');
-      setServiceStatus('checking', '正在准备浏览器 Holistic');
+      setWebHolisticStatus('checking', scoreText('Web Holistic 已加载，正在用摄像头画面预热', 'Web Holistic loaded; warming up with the camera view'));
+      setServiceStatus('checking', scoreText('正在准备浏览器 Holistic', 'Preparing browser Holistic'));
       const holistic = await preloadBrowserHolistic();
-      if (!holistic) throw new Error('浏览器 Holistic 未就绪');
+      if (!holistic) throw new Error(scoreText('浏览器 Holistic 未就绪', 'Browser Holistic is not ready'));
 
       const warmCanvas = document.createElement('canvas');
       const sourceWidth = video.videoWidth || 640;
@@ -671,8 +742,8 @@
       plan.candidateFps = plan.targetFrames / plan.durationSec;
       plan.candidateFrames = plan.targetFrames;
       plan.captureTransport = 'web_holistic_landmarks';
-      setWebHolisticStatus('ready', webHolisticReadyText(` · 采集 ${plan.targetFrames} 帧`));
-      setServiceStatus('ready', `浏览器 Holistic 已就绪 · 将上传 ${plan.targetFrames} 帧关键点`);
+      setWebHolisticStatus('ready', webHolisticReadyText(scoreText(` · 采集 ${plan.targetFrames} 帧`, ` · capturing ${plan.targetFrames} frames`)));
+      setServiceStatus('ready', scoreText(`浏览器 Holistic 已就绪 · 将上传 ${plan.targetFrames} 帧关键点`, `Browser Holistic ready · ${plan.targetFrames} landmark frames will be uploaded`));
     } catch (error) {
       state.browserHolisticActive = false;
       state.browserHolisticStats = {
@@ -681,18 +752,18 @@
         route: 'frame_slices',
         error: error.message
       };
-      setWebHolisticStatus('offline', 'Web Holistic 不可用，将上传压缩帧');
-      setServiceStatus('online', '浏览器 Holistic 不可用，将上传压缩帧');
+      setWebHolisticStatus('offline', scoreText('Web Holistic 不可用，将上传压缩帧', 'Web Holistic unavailable; compressed frames will be uploaded'));
+      setServiceStatus('online', scoreText('浏览器 Holistic 不可用，将上传压缩帧', 'Browser Holistic unavailable; compressed frames will be uploaded'));
     }
   }
 
   function inputValue(id, fallback) {
-    const el = document.getElementById(id);
+    const el = uiElement(id);
     return el ? el.value : fallback;
   }
 
   function setInputValue(id, value) {
-    const el = document.getElementById(id);
+    const el = uiElement(id);
     if (el) el.value = String(value);
   }
 
@@ -737,29 +808,35 @@
 
   function captureHintSuffix(plan) {
     if (plan.belowTechnicalMinimum) {
-      return '少于 3 帧时通常无法提交正式评分，请适当增加时长或 FPS。';
+      return scoreText('少于 3 帧时通常无法提交正式评分，请适当增加时长或 FPS。', 'Fewer than 3 frames usually cannot be scored; increase duration or FPS.');
     }
     if (plan.belowRecommendation) {
-      return '低于建议帧数，仍会按当前设置采集，但评分稳定性可能下降。';
+      return scoreText('低于建议帧数，仍会按当前设置采集，但评分稳定性可能下降。', 'Below the recommended frame count; capture will continue, but score stability may decrease.');
     }
-    return '已达到建议帧数。';
+    return scoreText('已达到建议帧数。', 'Recommended frame count reached.');
   }
 
   function updateCaptureHint(plan = buildCapturePlan()) {
-    const hint = document.getElementById('scoring-capture-hint');
+    const hint = uiElement('scoring-capture-hint');
     if (!hint) return;
-    const currentText = `${plan.durationSec}s x ${plan.uploadFps}fps = ${plan.targetFrames} 帧`;
-    const recommendationText = `建议至少 ${plan.minFrames} 帧`;
+    const currentText = scoreText(`${plan.durationSec}s x ${plan.uploadFps}fps = ${plan.targetFrames} 帧`, `${plan.durationSec}s × ${plan.uploadFps} fps = ${plan.targetFrames} frames`);
+    const recommendationText = scoreText(`建议至少 ${plan.minFrames} 帧`, `recommended minimum: ${plan.minFrames} frames`);
     const suffix = captureHintSuffix(plan);
     if (plan.captureTransport === 'web_holistic_landmarks') {
-      hint.textContent = `采样：浏览器本机提取 Holistic 关键点；${recommendationText}；当前按设置采集 ${currentText}，只上传姿态、双手和面部核心点。${suffix}`;
+      hint.textContent = scoreText(
+        `采样：浏览器本机提取 Holistic 关键点；${recommendationText}；当前按设置采集 ${currentText}，只上传姿态、双手和面部核心点。${suffix}`,
+        `Capture: browser Holistic landmarks; ${recommendationText}; ${currentText}; only pose, hands, and face-core landmarks are uploaded. ${suffix}`
+      );
       return;
     }
-    hint.textContent = `采样：${plan.word} ${recommendationText}；当前按设置采集 ${currentText}。${suffix}`;
+    hint.textContent = scoreText(
+      `采样：${plan.word} ${recommendationText}；当前按设置采集 ${currentText}。${suffix}`,
+      `Capture: ${plan.word}; ${recommendationText}; ${currentText}. ${suffix}`
+    );
   }
 
   function setProgress(percent) {
-    const bar = document.getElementById('scoring-progress-bar');
+    const bar = uiElement('scoring-progress-bar');
     if (bar) bar.style.width = `${Math.max(0, Math.min(100, percent))}%`;
   }
 
@@ -773,13 +850,13 @@
   }
 
   function setTimerMs(ms) {
-    const timerEl = document.getElementById('timer-display');
+    const timerEl = uiElement('timer-display');
     if (timerEl) timerEl.textContent = formatTimerMs(ms);
     AppState.recordingSeconds = Math.max(0, (Number(ms) || 0) / 1000);
   }
 
   function renderCameraShell() {
-    const cameraInner = document.getElementById('challenge-camera-inner');
+    const cameraInner = uiElement('challenge-camera-inner');
     if (!cameraInner) return null;
     cameraInner.classList.add('is-live');
     cameraInner.innerHTML = `
@@ -788,20 +865,20 @@
         <span id="scoring-countdown-value">${COUNTDOWN_SECONDS}</span>
       </div>
       <div class="scoring-camera-overlay">
-        <span class="recording-indicator" id="recording-indicator">录制中</span>
-        <span id="scoring-frame-count">0 帧</span>
+        <span class="recording-indicator" id="recording-indicator">${scoreText('录制中', 'Recording')}</span>
+        <span id="scoring-frame-count">${scoreText('0 帧', '0 frames')}</span>
       </div>
     `;
-    state.video = document.getElementById('scoring-camera-video');
+    state.video = uiElement('scoring-camera-video');
     return state.video;
   }
 
   async function ensureCamera() {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      throw new Error('当前浏览器不支持摄像头采集');
+      throw new Error(scoreText('当前浏览器不支持摄像头采集', 'This browser does not support camera capture'));
     }
     const video = renderCameraShell();
-    if (!video) throw new Error('摄像头区域未找到');
+    if (!video) throw new Error(scoreText('摄像头区域未找到', 'Camera area was not found'));
     if (!state.stream) {
       state.stream = await navigator.mediaDevices.getUserMedia({
         video: {
@@ -867,7 +944,7 @@
   }
 
   function renderCameraStatus(title, line, detail, stillUrl = '', accent = 'var(--accent-green)') {
-    const cameraInner = document.getElementById('challenge-camera-inner');
+    const cameraInner = uiElement('challenge-camera-inner');
     if (!cameraInner) return;
     cameraInner.classList.remove('is-live');
     const stillHtml = stillUrl
@@ -883,17 +960,28 @@
     `;
   }
 
+  function renderCameraReady() {
+    const cameraInner = uiElement('challenge-camera-inner');
+    if (!cameraInner) return;
+    cameraInner.classList.remove('is-live');
+    cameraInner.innerHTML = `
+      <p>📷 ${scoreText('摄像头画面区域', 'Camera preview')}</p>
+      <small>${scoreText('点击“开启摄像头”后对着摄像头比划手语', 'Click “Start camera” to practice in front of the camera')}</small>
+      <div class="recording-indicator" id="recording-indicator">⏺ ${scoreText('录制中', 'Recording')}</div>
+    `;
+  }
+
   function renderCaptureComplete(selectedCount, plan, stillUrl = '') {
     renderCameraStatus(
-      '采集完成',
-      `采集 ${selectedCount} 帧 · ${formatTimerMs(Math.round(plan.durationSec * 1000))}`,
-      '摄像头已关闭',
+      scoreText('采集完成', 'Capture complete'),
+      scoreText(`采集 ${selectedCount} 帧 · ${formatTimerMs(Math.round(plan.durationSec * 1000))}`, `${selectedCount} frames · ${formatTimerMs(Math.round(plan.durationSec * 1000))}`),
+      scoreText('摄像头已关闭', 'Camera closed'),
       stillUrl
     );
   }
 
   function renderCaptureClosing(stillUrl = '') {
-    renderCameraStatus('采集结束', '摄像头已关闭', '正在整理上传帧', stillUrl);
+    renderCameraStatus(scoreText('采集结束', 'Capture ended'), scoreText('摄像头已关闭', 'Camera closed'), scoreText('正在整理上传帧', 'Preparing frames for upload'), stillUrl);
   }
 
   function stopUiTimer() {
@@ -919,8 +1007,40 @@
     setProgress(0);
   }
 
+  function mountInteractive(root, { onResult = null } = {}) {
+    if (!root) return false;
+    stopAll();
+    state.uiRoot = root;
+    state.uiMode = 'interactive';
+    state.onResult = typeof onResult === 'function' ? onResult : null;
+    const active = uiElement('challenge-active');
+    const result = uiElement('challenge-result');
+    if (active) active.style.display = 'flex';
+    if (result) {
+      result.style.display = 'none';
+      result.classList.remove('show');
+    }
+    updateApiInput();
+    updateCaptureHint();
+    syncWebHolisticStatus();
+    setAutoScoreStatus('', false);
+    renderScoreDetails(null);
+    checkHealth();
+    preloadBrowserHolistic();
+    return true;
+  }
+
+  function unmountInteractive() {
+    if (state.uiMode !== 'interactive') return;
+    stopAll();
+    state.uiRoot = document;
+    state.uiMode = 'challenge';
+    state.onResult = null;
+  }
+
   function resetForChallenge() {
     stopAll();
+    renderCameraReady();
     updateApiInput();
     updateCaptureHint();
     syncWebHolisticStatus();
@@ -1028,16 +1148,16 @@
   }
 
   async function runCountdown(seconds, runId) {
-    const overlay = document.getElementById('scoring-countdown-overlay');
-    const value = document.getElementById('scoring-countdown-value');
+    const overlay = uiElement('scoring-countdown-overlay');
+    const value = uiElement('scoring-countdown-value');
     if (overlay) overlay.classList.remove('hidden');
     for (let remaining = seconds; remaining >= 1; remaining--) {
       if (runId !== state.captureRunId) return false;
       if (value) value.textContent = String(remaining);
-      setServiceStatus('checking', `${remaining}s 后开始采集，请准备动作`);
+      setServiceStatus('checking', scoreText(`${remaining}s 后开始采集，请准备动作`, `Capture starts in ${remaining}s; get ready`));
       await new Promise(resolve => setTimeout(resolve, 1000));
     }
-    if (value) value.textContent = '开始';
+    if (value) value.textContent = scoreText('开始', 'Start');
     await new Promise(resolve => setTimeout(resolve, 260));
     if (overlay) overlay.classList.add('hidden');
     return runId === state.captureRunId;
@@ -1054,10 +1174,10 @@
     AppState.isRecording = true;
     setProgress(0);
 
-    const recIndicator = document.getElementById('recording-indicator');
+    const recIndicator = uiElement('recording-indicator');
     if (recIndicator) recIndicator.classList.add('active');
-    const countEl = document.getElementById('scoring-frame-count');
-    if (countEl) countEl.textContent = '0 帧';
+    const countEl = uiElement('scoring-frame-count');
+    if (countEl) countEl.textContent = scoreText('0 帧', '0 frames');
 
     state.uiTimer = setInterval(updateTimerUi, 100);
     updateTimerUi();
@@ -1089,7 +1209,7 @@
           frameWeight: 1.0
         });
       }
-      if (countEl) countEl.textContent = `${candidates.length} 采集帧`;
+      if (countEl) countEl.textContent = scoreText(`${candidates.length} 采集帧`, `${candidates.length} captured frames`);
     }
     const remainingMs = state.recordStartedAt + state.captureDurationMs - Date.now();
     if (remainingMs > 0) await new Promise(resolve => setTimeout(resolve, remainingMs));
@@ -1120,7 +1240,7 @@
         if (runId !== state.captureRunId) return [];
         const item = selected[idx];
         if (!item.canvas) continue;
-        setServiceStatus('checking', `正在本机提取关键点：${idx + 1}/${selected.length}`);
+        setServiceStatus('checking', scoreText(`正在本机提取关键点：${idx + 1}/${selected.length}`, `Extracting landmarks locally: ${idx + 1}/${selected.length}`));
         try {
           const row = await landmarkRowFromCanvas(item.canvas, item, plan);
           if (row) rows.push(row);
@@ -1146,7 +1266,7 @@
         hand_presence_ratio: Number(landmarkPresenceRatio(rows, ['left_hand_landmarks', 'right_hand_landmarks']).toFixed(3)),
         pose_presence_ratio: Number(landmarkPresenceRatio(rows, ['pose_landmarks']).toFixed(3))
       };
-      if (countEl) countEl.textContent = `${state.landmarkRows.length} 关键点帧`;
+      if (countEl) countEl.textContent = scoreText(`${state.landmarkRows.length} 关键点帧`, `${state.landmarkRows.length} landmark frames`);
     } else {
       selected.forEach(item => {
         if (item.canvas) {
@@ -1162,7 +1282,7 @@
           image_base64: item.frame.image_base64
         }));
       state.landmarkRows = [];
-      if (countEl) countEl.textContent = `${state.frames.length} 上传帧`;
+      if (countEl) countEl.textContent = scoreText(`${state.frames.length} 上传帧`, `${state.frames.length} uploaded frames`);
     }
     return selected;
   }
@@ -1171,7 +1291,7 @@
     if (state.scoringBusy) return;
     const wordData = currentWordData();
     if (!currentWordScoringReady()) {
-      show(`「${wordData.word}」评分模板待上线，暂不能录制打分`);
+      show(scoreText(`「${wordData.word}」评分模板待上线，暂不能录制打分`, `The scoring template for “${wordData.word}” is not available yet.`));
       return;
     }
     state.captureRunId++;
@@ -1190,49 +1310,52 @@
     try {
       await ensureCamera();
     } catch (error) {
-      setServiceStatus('offline', '摄像头未开启');
-      show(`摄像头开启失败：${error.message}`);
+      setServiceStatus('offline', scoreText('摄像头未开启', 'Camera is not available'));
+      show(scoreText(`摄像头开启失败：${error.message}`, `Could not start the camera: ${error.message}`));
       return;
     }
     await prepareBrowserHolisticForCapture(state.video, state.capturePlan);
     updateCaptureHint(state.capturePlan);
 
-    const startBtn = document.getElementById('btn-start-record');
+    const startBtn = uiElement('btn-start-record');
     if (startBtn) {
-      startBtn.innerHTML = '<span class="ctrl-icon">🔄</span><span>重采</span>';
+      startBtn.innerHTML = `<span class="ctrl-icon">🔄</span><span>${scoreText('重采', 'Recapture')}</span>`;
       startBtn.classList.add('recording');
     }
-    const scoreBtn = document.getElementById('btn-score');
+    const scoreBtn = uiElement('btn-score');
     if (scoreBtn) scoreBtn.disabled = true;
     updateTimerUi();
-    show(`准备采集「${wordData.word}」`);
+    show(scoreText(`准备采集「${wordData.word}」`, `Preparing to capture “${wordData.word}”`));
 
     const ok = await runCountdown(COUNTDOWN_SECONDS, runId);
     if (!ok) {
       stopCameraStream();
       return;
     }
-    setServiceStatus('checking', `正在采集评分帧：${state.capturePlan.candidateFrames} 帧`);
+    setServiceStatus('checking', scoreText(`正在采集评分帧：${state.capturePlan.candidateFrames} 帧`, `Capturing score frames: ${state.capturePlan.candidateFrames}`));
     const selected = await collectFrames(state.capturePlan, runId);
     if (runId !== state.captureRunId) return;
     stopUiTimer();
     AppState.isRecording = false;
     stopCameraStream();
-    const recIndicator = document.getElementById('recording-indicator');
+    const recIndicator = uiElement('recording-indicator');
     if (recIndicator) recIndicator.classList.remove('active');
     if (startBtn) startBtn.classList.remove('recording');
     if (scoreBtn) scoreBtn.disabled = true;
     renderCaptureComplete(selected.length, state.capturePlan, state.captureStillUrl);
     const readyCount = Math.max(state.landmarkRows.length, state.frames.length);
-    const routeText = state.landmarkRows.length >= 3 ? '关键点帧' : '上传帧';
+    const routeText = state.landmarkRows.length >= 3 ? scoreText('关键点帧', 'landmark frames') : scoreText('上传帧', 'uploaded frames');
     if (readyCount < 3) {
-      setServiceStatus('offline', '采集帧不足，请重采');
-      show('采集帧不足，请重采');
+      setServiceStatus('offline', scoreText('采集帧不足，请重采', 'Not enough frames; please recapture'));
+      show(scoreText('采集帧不足，请重采', 'Not enough frames; please recapture'));
       return;
     }
-    setServiceStatus('checking', `采集完成：按设置采集 ${state.capturePlan.candidateFrames} 帧，${routeText} ${readyCount} 帧，正在自动评分`);
-    setAutoScoreStatus('采集完成，正在自动评分：0.0s', true);
-    show('采集完成，正在自动评分');
+    setServiceStatus('checking', scoreText(
+      `采集完成：按设置采集 ${state.capturePlan.candidateFrames} 帧，${routeText} ${readyCount} 帧，正在自动评分`,
+      `Capture complete: ${state.capturePlan.candidateFrames} planned, ${readyCount} ${routeText}; scoring automatically`
+    ));
+    setAutoScoreStatus(scoreText('采集完成，正在自动评分：0.0s', 'Capture complete; scoring automatically: 0.0s'), true);
+    show(scoreText('采集完成，正在自动评分', 'Capture complete; scoring automatically'));
     await new Promise(resolve => setTimeout(resolve, 160));
     if (runId === state.captureRunId) await scoreChallengeWithApi();
   }
@@ -1264,7 +1387,7 @@
       score,
       score_valid: sampleCount >= 3,
       level: 'browser_local_fallback',
-      feedback: [{ type: 'fallback', message: reason || '本地预览评分' }],
+      feedback: [{ type: 'fallback', message: reason || scoreText('本地预览评分', 'Local preview scoring') }],
       diagnostics: {
         scoring_mode: 'browser_local_fallback',
         frame_count: sampleCount,
@@ -1309,19 +1432,19 @@
       setServiceStatus(result.diagnostics?.scoring_mode?.includes('holistic') ? 'ready' : 'online', serviceTextFromResult(result));
       return result;
     } catch (error) {
-      setServiceStatus('offline', '评分服务未连接，已使用本地预览评分');
-      return localPreviewScore(`评分服务未连接：${error.message}`);
+      setServiceStatus('offline', scoreText('评分服务未连接，已使用本地预览评分', 'Scoring service is offline; local preview scoring was used'));
+      return localPreviewScore(scoreText(`评分服务未连接：${error.message}`, `Scoring service is offline: ${error.message}`));
     }
   }
 
   function serviceTextFromResult(result) {
     const mode = result.diagnostics?.scoring_mode || result.level || '';
-    if (mode === 'web_holistic_template_similarity') return '浏览器 Holistic 模板评分完成';
-    if (mode === 'web_holistic_capture_quality') return '浏览器 Holistic 捕获质量评分完成';
-    if (mode === 'holistic_template_similarity') return 'Holistic 模板评分完成';
-    if (mode === 'holistic_capture_quality') return 'Holistic 捕获质量评分完成';
-    if (mode.includes('fallback')) return '本地预览评分完成';
-    return '评分完成';
+    if (mode === 'web_holistic_template_similarity') return scoreText('浏览器 Holistic 模板评分完成', 'Browser Holistic template scoring complete');
+    if (mode === 'web_holistic_capture_quality') return scoreText('浏览器 Holistic 捕获质量评分完成', 'Browser Holistic capture-quality scoring complete');
+    if (mode === 'holistic_template_similarity') return scoreText('Holistic 模板评分完成', 'Holistic template scoring complete');
+    if (mode === 'holistic_capture_quality') return scoreText('Holistic 捕获质量评分完成', 'Holistic capture-quality scoring complete');
+    if (mode.includes('fallback')) return scoreText('本地预览评分完成', 'Local preview scoring complete');
+    return scoreText('评分完成', 'Scoring complete');
   }
 
   function primaryResultFeedback(result) {
@@ -1366,31 +1489,31 @@
     const suggestions = [];
 
     if (Number.isFinite(frameCount) && minFrames && frameCount < minFrames) {
-      suggestions.push(`采样帧数偏少，建议至少 ${minFrames} 帧后再评分`);
+      suggestions.push(scoreText(`采样帧数偏少，建议至少 ${minFrames} 帧后再评分`, `Too few frames; use at least ${minFrames} frames before scoring`));
     }
     if (result.score_valid === false) {
-      suggestions.push('请重采一次，确保动作从开始到结束都被完整录到');
+      suggestions.push(scoreText('请重采一次，确保动作从开始到结束都被完整录到', 'Recapture and make sure the full motion from start to finish is visible'));
     }
     if (Number.isFinite(left) && Number.isFinite(right) && Math.abs(left - right) >= 0.25) {
       if (left < right) {
-        suggestions.push('注意左手手势，手指弯曲和手腕角度尽量贴近示范');
+        suggestions.push(scoreText('注意左手手势，手指弯曲和手腕角度尽量贴近示范', 'Adjust the left-hand shape, finger bends, and wrist angle toward the guidance'));
       } else {
-        suggestions.push('注意右手手势，参考示范调整手形和手腕角度');
+        suggestions.push(scoreText('注意右手手势，参考示范调整手形和手腕角度', 'Adjust the right-hand shape and wrist angle toward the guidance'));
       }
     }
     if (Number.isFinite(hand) && hand < 0.45) {
-      suggestions.push('双手尽量完整入画，靠近摄像头并避免互相遮挡');
+      suggestions.push(scoreText('双手尽量完整入画，靠近摄像头并避免互相遮挡', 'Keep both hands fully in frame, close enough to the camera, and avoid occlusion'));
     }
     if (Number.isFinite(pose) && pose < 0.35) {
-      suggestions.push('注意身体姿势，保持上半身、肩膀和手臂都在画面中');
+      suggestions.push(scoreText('注意身体姿势，保持上半身、肩膀和手臂都在画面中', 'Keep your upper body, shoulders, and arms in frame'));
     }
     if (Number.isFinite(motion) && motion < 1.5) {
-      suggestions.push('动作幅度略小，起止过程可以更清楚一些');
+      suggestions.push(scoreText('动作幅度略小，起止过程可以更清楚一些', 'The motion range is small; make the start and finish clearer'));
     }
     if (!suggestions.length) {
-      suggestions.push('对照左侧示范，重点检查手形、运动方向和动作起止节奏');
+      suggestions.push(scoreText('对照左侧示范，重点检查手形、运动方向和动作起止节奏', 'Compare with the guidance and check hand shape, motion direction, and timing'));
     }
-    return `建议：${suggestions.slice(0, 2).join('；')}。`;
+    return scoreText(`建议：${suggestions.slice(0, 2).join('；')}。`, `Suggestion: ${suggestions.slice(0, 2).join('; ')}.`);
   }
 
   function resultFeedback(result) {
@@ -1399,7 +1522,14 @@
   }
 
   function scoringModeLabel(mode) {
-    const labels = {
+    const labels = isInteractiveEnglish() ? {
+      web_holistic_template_similarity: 'Browser Holistic template similarity',
+      web_holistic_capture_quality: 'Browser Holistic capture quality',
+      holistic_template_similarity: 'Holistic template similarity',
+      holistic_capture_quality: 'Holistic capture quality',
+      browser_frame_fallback: 'Browser-frame preview',
+      browser_local_fallback: 'Local preview'
+    } : {
       web_holistic_template_similarity: '浏览器 Holistic 模板相似度',
       web_holistic_capture_quality: '浏览器 Holistic 捕获质量',
       holistic_template_similarity: 'Holistic 模板相似度',
@@ -1431,44 +1561,52 @@
     const practiceAdvice = buildPracticeAdvice(result);
     if (practiceAdvice) return practiceAdvice;
     if (mode === 'web_holistic_template_similarity') {
-      return '已在浏览器本机提取 Holistic 关键点，只上传关键点到服务器模板评分；该分数仍需结合真实用户标注继续校准。';
+      return scoreText(
+        '已在浏览器本机提取 Holistic 关键点，只上传关键点到服务器模板评分；该分数仍需结合真实用户标注继续校准。',
+        'Browser Holistic landmarks were compared with the server template; this score still needs calibration with real-user labels.'
+      );
     }
     if (mode === 'web_holistic_capture_quality') {
       const hand = Number(metrics.hand_presence_ratio || 0);
       const pose = Number(metrics.pose_presence_ratio || 0);
-      if (hand < 0.35) return `手部覆盖偏低（${formatNumber(hand, 2)}），请让关键手部靠近摄像头并完整入画后重采。`;
-      if (pose < 0.35) return `人体姿态覆盖偏低（${formatNumber(pose, 2)}），请保持上半身和双手都在画面中。`;
-      return '浏览器已识别到可用关键点；继续关注手形、方向、动作起止和节奏。';
+      if (hand < 0.35) return scoreText(`手部覆盖偏低（${formatNumber(hand, 2)}），请让关键手部靠近摄像头并完整入画后重采。`, `Hand coverage is low (${formatNumber(hand, 2)}); move the key hand closer and keep it fully in frame.`);
+      if (pose < 0.35) return scoreText(`人体姿态覆盖偏低（${formatNumber(pose, 2)}），请保持上半身和双手都在画面中。`, `Pose coverage is low (${formatNumber(pose, 2)}); keep your upper body and both hands in frame.`);
+      return scoreText('浏览器已识别到可用关键点；继续关注手形、方向、动作起止和节奏。', 'Browser landmarks were detected; keep focusing on hand shape, direction, start/end points, and timing.');
     }
     if (mode === 'holistic_template_similarity') {
-      return '已使用服务器模板做原型相似度评分；该分数仍需结合真实用户标注继续校准。';
+      return scoreText('已使用服务器模板做原型相似度评分；该分数仍需结合真实用户标注继续校准。', 'The server template was used for prototype similarity scoring; this score still needs calibration with real-user labels.');
     }
     if (mode === 'holistic_capture_quality') {
       const hand = Number(metrics.hand_presence_ratio || 0);
       const pose = Number(metrics.pose_presence_ratio || 0);
-      if (hand < 0.35) return `手部覆盖偏低（${formatNumber(hand, 2)}），请让关键手部靠近摄像头并完整入画后重采。`;
-      if (pose < 0.35) return `人体姿态覆盖偏低（${formatNumber(pose, 2)}），请保持上半身和双手都在画面中。`;
-      return 'Holistic 已识别到可用关键点；继续关注手形、方向、动作起止和节奏。';
+      if (hand < 0.35) return scoreText(`手部覆盖偏低（${formatNumber(hand, 2)}），请让关键手部靠近摄像头并完整入画后重采。`, `Hand coverage is low (${formatNumber(hand, 2)}); move the key hand closer and keep it fully in frame.`);
+      if (pose < 0.35) return scoreText(`人体姿态覆盖偏低（${formatNumber(pose, 2)}），请保持上半身和双手都在画面中。`, `Pose coverage is low (${formatNumber(pose, 2)}); keep your upper body and both hands in frame.`);
+      return scoreText('Holistic 已识别到可用关键点；继续关注手形、方向、动作起止和节奏。', 'Holistic landmarks were detected; keep focusing on hand shape, direction, start/end points, and timing.');
     }
     if (mode.includes('fallback')) {
-      return '当前未使用 Holistic worker，仅按帧数、时长和画面变化给出流程预览分；正式评分需连接 HTTPS 评分 API 并启用 worker。';
+      return scoreText('当前未使用 Holistic worker，仅按帧数、时长和画面变化给出流程预览分；正式评分需连接 HTTPS 评分 API 并启用 worker。', 'Holistic worker was not used; this is a process preview score based on frame count, duration, and visual change. Formal scoring requires an HTTPS scoring API and worker.');
     }
     return primaryResultFeedback(result);
   }
 
   function renderScoreDetails(result) {
-    const box = document.getElementById('scoring-result-details');
+    const box = uiElement('scoring-result-details');
     if (!box) return;
     if (!result) {
       box.hidden = true;
       return;
     }
     const mode = result.diagnostics?.scoring_mode || result.level || '';
-    document.getElementById('scoring-result-mode').textContent = scoringModeLabel(mode);
-    document.getElementById('scoring-result-frames').textContent = String(resultFrameCount(result));
-    document.getElementById('scoring-result-worker').textContent = resultWorkerTime(result);
-    document.getElementById('scoring-result-request').textContent = result.request_id || '--';
-    document.getElementById('scoring-result-advice').textContent = buildResultAdvice(result);
+    const modeEl = uiElement('scoring-result-mode');
+    const framesEl = uiElement('scoring-result-frames');
+    const workerEl = uiElement('scoring-result-worker');
+    const requestEl = uiElement('scoring-result-request');
+    const adviceEl = uiElement('scoring-result-advice');
+    if (modeEl) modeEl.textContent = scoringModeLabel(mode);
+    if (framesEl) framesEl.textContent = String(resultFrameCount(result));
+    if (workerEl) workerEl.textContent = resultWorkerTime(result);
+    if (requestEl) requestEl.textContent = result.request_id || '--';
+    if (adviceEl) adviceEl.textContent = buildResultAdvice(result);
     box.hidden = false;
   }
 
@@ -1476,11 +1614,11 @@
     if (state.scoringBusy) return;
     const wordData = currentWordData();
     if (!currentWordScoringReady()) {
-      show(`「${wordData.word}」评分模板待上线，暂不能评分`);
+      show(scoreText(`「${wordData.word}」评分模板待上线，暂不能评分`, `The scoring template for “${wordData.word}” is not available yet.`));
       return;
     }
     if (!AppState.isRecording && availableSampleCount() === 0) {
-      show('请先点击「开始」录制手语');
+      show(scoreText('请先点击「开始」录制手语', 'Click “Start camera” to record the sign first'));
       return;
     }
     stopUiTimer();
@@ -1488,19 +1626,19 @@
     state.scoringBusy = true;
     stopCameraStream();
 
-    const startBtn = document.getElementById('btn-start-record');
+    const startBtn = uiElement('btn-start-record');
     if (startBtn) {
-      startBtn.innerHTML = '<span class="ctrl-icon">🎥</span><span>开始</span>';
+      startBtn.innerHTML = `<span class="ctrl-icon">🎥</span><span>${scoreText('开始', 'Start camera')}</span>`;
       startBtn.classList.remove('recording');
     }
-    const scoreBtn = document.getElementById('btn-score');
+    const scoreBtn = uiElement('btn-score');
     if (scoreBtn) scoreBtn.disabled = true;
     startScoringWaitStatus();
 
-    renderCameraStatus('正在评分...', '等待服务器返回评分结果', '请稍候，正在分析采集帧', state.captureStillUrl, 'var(--accent-cyan)');
+    renderCameraStatus(scoreText('正在评分...', 'Scoring...'), scoreText('等待服务器返回评分结果', 'Waiting for the scoring result'), scoreText('请稍候，正在分析采集帧', 'Please wait while the captured frames are analyzed'), state.captureStillUrl, 'var(--accent-cyan)');
 
     if (availableSampleCount() < 3) {
-      finishChallengeScore(localPreviewScore('采集帧不足，请重新采集更完整动作。'));
+      finishChallengeScore(localPreviewScore(scoreText('采集帧不足，请重新采集更完整动作。', 'Not enough captured frames; please record the complete motion again.')));
       return;
     }
 
@@ -1510,21 +1648,26 @@
 
   function finishChallengeScore(result) {
     const elapsedMs = state.scoringStartedAt ? performance.now() - state.scoringStartedAt : 0;
-    stopScoringWaitStatus(`评分完成：${formatSeconds(elapsedMs)}`);
+    stopScoringWaitStatus(scoreText(`评分完成：${formatSeconds(elapsedMs)}`, `Scoring complete: ${formatSeconds(elapsedMs)}`));
     state.scoringBusy = false;
     const score = Number.isFinite(Number(result.score)) ? Math.round(Number(result.score)) : 0;
     AppState.challengeScore = score;
-    const active = document.getElementById('challenge-active');
+    renderScoreDetails(result);
+    if (state.uiMode === 'interactive') {
+      const active = uiElement('challenge-active');
+      if (active) active.style.display = 'none';
+      if (typeof state.onResult === 'function') state.onResult(result);
+      return;
+    }
+    const active = uiElement('challenge-active');
     if (active) active.style.display = 'none';
 
     if (score >= 80 && result.score_valid !== false) {
       showReward(score);
-      renderScoreDetails(result);
     } else {
       showResult(score);
-      const resultMsg = document.getElementById('result-message');
+      const resultMsg = uiElement('result-message');
       if (resultMsg) resultMsg.textContent = resultFeedback(result);
-      renderScoreDetails(result);
     }
   }
 
@@ -1532,6 +1675,8 @@
     startChallengeRecording,
     scoreChallengeWithApi,
     resetForChallenge,
+    mountInteractive,
+    unmountInteractive,
     stopAll,
     checkHealth,
     saveApiBaseFromInput,
@@ -1543,7 +1688,7 @@
   document.addEventListener('DOMContentLoaded', () => {
     updateApiInput();
     ['scoring-duration-sec', 'scoring-capture-fps', 'scoring-frame-width'].forEach(id => {
-      const input = document.getElementById(id);
+      const input = uiElement(id);
       if (input) input.addEventListener('input', () => updateCaptureHint());
     });
     updateCaptureHint();

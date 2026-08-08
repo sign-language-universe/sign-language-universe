@@ -44,3 +44,7 @@ temp/
 *.pt
 *.pth
 *.onnx
+
+# Approved self-generated anonymous Avatar teaching videos
+!apps/web/assets/content/reference-videos/
+!apps/web/assets/content/reference-videos/*.mp4

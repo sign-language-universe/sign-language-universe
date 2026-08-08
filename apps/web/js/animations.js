@@ -1631,9 +1631,13 @@ class AnimationPlayer {
     this.playing = false;
     this.loop = true;
     this._onPhaseChange = null;
+    this._lastProgress = 0;
 
     this.resize();
     window.addEventListener('resize', () => this.resize());
+    window.addEventListener('signUniverseThemeChanged', () => {
+      if (this.animData) this.render(this._lastProgress);
+    });
   }
 
   resize() {
@@ -1713,6 +1717,7 @@ class AnimationPlayer {
 
   render(rawProgress) {
     if (!this.animData) return;
+    this._lastProgress = rawProgress;
     const ctx = this.ctx;
     const W = this.W, H = this.H;
     const dpr = window.devicePixelRatio || 1;
@@ -1721,9 +1726,10 @@ class AnimationPlayer {
     ctx.clearRect(0, 0, w, h);
 
     // 背景
+    const dayTheme = document.body.classList.contains('theme-day');
     const bgGrad = ctx.createRadialGradient(w * 0.5, h * 0.45, 0, w * 0.5, h * 0.5, w * 0.7);
-    bgGrad.addColorStop(0, 'rgba(30, 30, 70, 0.4)');
-    bgGrad.addColorStop(1, 'rgba(10, 10, 30, 0.9)');
+    bgGrad.addColorStop(0, dayTheme ? 'rgba(214, 238, 255, 0.72)' : 'rgba(30, 30, 70, 0.4)');
+    bgGrad.addColorStop(1, dayTheme ? 'rgba(244, 250, 255, 0.96)' : 'rgba(10, 10, 30, 0.9)');
     ctx.fillStyle = bgGrad;
     ctx.fillRect(0, 0, w, h);
 
