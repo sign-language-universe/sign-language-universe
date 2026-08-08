@@ -497,7 +497,10 @@
       <section class="interactive-hero-card">
         <div class="interactive-word-heading">
           <span class="interactive-index-badge">#${item.index}</span>
-          <div><h2>${esc(item.zh)}</h2><p>${esc(item.en)} · ${esc(item.pinyin)}</p></div>
+          <div class="interactive-word-title">
+            <h2>${esc(item.zh)}<span class="interactive-word-en">${esc(item.en)}</span></h2>
+            <p class="interactive-word-pinyin">${esc(item.pinyin)}</p>
+          </div>
         </div>
       </section>
       <div class="interactive-reference-grid">

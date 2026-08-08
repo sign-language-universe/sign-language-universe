@@ -3567,3 +3567,17 @@ body.theme-day .stage-score-row .stage-score-bar { background: rgba(22, 32, 51, 
 
 /* 结果按钮文字不换行（try again 一行显示） */
 .interactive-score-result .result-actions .action-btn { white-space: nowrap; }
+
+/* 词语标题：中文大字 + 英文右侧小字 + 拼音下方对齐 */
+.interactive-word-title h2 { display: flex; align-items: baseline; gap: 12px; margin: 0; }
+.interactive-word-en {
+  font-size: 0.5em;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+.interactive-word-pinyin {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--text-muted);
+  letter-spacing: 0.5px;
+}
