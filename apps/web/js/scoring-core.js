@@ -1630,6 +1630,27 @@
     const denom = Math.max(pathWeightSum, 1e-6);
     const groupMean = {};
     for (const k of metricKeys) groupMean[k] = groupSums[k] / denom;
+
+    // ---- 语义阶段距离（按标准帧 semantic_phase 等分阶段，DTW 路径分组聚合） ----
+    // 用于评分后对每个核心语义阶段给出针对性指导建议。
+    const stageCount = Math.max(1, Math.min(opts.stageCount || 2, 12));
+    const stageWeighted = new Array(stageCount).fill(0);
+    const stageWeightSum = new Array(stageCount).fill(0);
+    const stageFrameCount = new Array(stageCount).fill(0);
+    for (const [pi, pj] of path) {
+      const metrics = metricsAt(pi, pj);
+      const pw = metrics.frame_pair_weight || 1;
+      const phase = s.features[pi] && isFiniteNumber(s.features[pi].semanticPhase) ? s.features[pi].semanticPhase : 0;
+      const stage = Math.max(0, Math.min(stageCount - 1, Math.floor(phase * stageCount)));
+      stageWeighted[stage] += pw * (metrics.weighted || 0);
+      stageWeightSum[stage] += pw;
+      stageFrameCount[stage] += 1;
+    }
+    const stageDistances = [];
+    for (let k = 0; k < stageCount; k++) {
+      stageDistances.push(stageWeightSum[k] > 1e-6 ? stageWeighted[k] / stageWeightSum[k] : null);
+    }
+
     // trim 生效时用 penalized_distance 作为 dtw（对应 Python dtw_align 的 trim_tolerance）
     const dtwDistance = trimToleranceDetail.used ? trimToleranceDetail.penalized_distance : groupMean.weighted;
     const normalizedDistance = dtwDistance;
@@ -1798,6 +1819,9 @@
       path_weight_sum: pathWeightSum,
       trim_tolerance: trimToleranceDetail,
       dtw_distance: dtwDistance,
+      stage_distances: stageDistances,
+      stage_weight_sum: stageWeightSum,
+      stage_frame_count: stageFrameCount,
       normalized_distance: normalized,
       prototype_score: prototypeScore,
       sequence_penalty: sequencePenalty,
@@ -1813,9 +1837,11 @@
   }
 
   /** 入口：加载模板 + query rows → 评分结果 */
-  function scoreQuery(template, queryRows, fps, totalFrames) {
+  function scoreQuery(template, queryRows, fps, totalFrames, options) {
+    const opts = options || {};
     const profile = template.profile || null;
     const query = sequenceFromRows(queryRows, fps, totalFrames);
+    const stageCount = Math.max(1, Math.min(opts.stageCount || 2, 12));
     // 多模板并集：每词打包 1~3 个标准模板（多用户），距离取最小 top-2 截尾均值
     const templateList = (template.templates && template.templates.length)
       ? template.templates
@@ -1833,7 +1859,7 @@
         })),
       };
       // 模板打包时已应用动态帧权重 + motion 特征，标记已动态避免二次应用
-      return dtwAlign(standard, query, profile, { standardAlreadyDynamic: true });
+      return dtwAlign(standard, query, profile, { standardAlreadyDynamic: true, stageCount });
     });
     // 聚合距离（对应校准的 aggregate_template_distance：最小 top-2 均值）
     const distances = results.map(r => r.normalized_distance).sort((a, b) => a - b);
@@ -1851,8 +1877,91 @@
     const noiseFloor = scoreScaleDetail.noise_floor_distance || 0;
     const scoreDistance = Math.max(0, softenedDistance - noiseFloor);
     const effectiveScale = scoreScaleDetail.effective_scale || 0.12;
-    let prototypeScore = 100 * Math.exp(-scoreDistance / effectiveScale);
-    prototypeScore = Math.max(0, Math.min(100, prototypeScore));
+    // 总分映射：有包络时用线性映射（中位正样本≈100、q90 边界≈80、超出骤降），
+    // 保证"正确实现并集内"的高分与通过线 80 兼容；无包络回退原指数映射。
+    let prototypeScore;
+    if (envelope && envelope.q50 > 0 && envelope.q90 > envelope.q50) {
+      const softBase = softenEnvelopeDistance(envelope.q50, envelope.q50, envelope.q90, 0.35, 0.5);
+      const softQ90 = softenEnvelopeDistance(envelope.q90, envelope.q50, envelope.q90, 0.35, 0.5);
+      const z = (softenedDistance - softBase) / Math.max(softQ90 - softBase, 1e-6);
+      prototypeScore = z <= 1 ? 100 - 20 * z : 80 - 35 * (z - 1);
+      prototypeScore = Math.max(0, Math.min(100, prototypeScore));
+    } else {
+      prototypeScore = 100 * Math.exp(-scoreDistance / effectiveScale);
+      prototypeScore = Math.max(0, Math.min(100, prototypeScore));
+    }
+
+    // ---- 语义阶段指标：top-2 模板阶段距离均值 → 相对总距离 ratio → 阶段得分/短板 ----
+    const sortedResults = [...results].sort((a, b) => a.normalized_distance - b.normalized_distance);
+    const topResults = sortedResults.slice(0, 2);
+    const stageDistances = [];
+    for (let k = 0; k < stageCount; k++) {
+      const values = topResults.map(r => r.stage_distances && r.stage_distances[k]).filter(v => v != null && Number.isFinite(v));
+      stageDistances.push(values.length ? values.reduce((s, v) => s + v, 0) / values.length : null);
+    }
+    const stageRatios = stageDistances.map(d =>
+      (d != null && aggregatedDistance > 1e-6) ? d / aggregatedDistance : 1.0
+    );
+    const stageScores = stageRatios.map(ratio => Math.max(0, Math.min(100, 100 * (2 - ratio))));
+    const stageWeak = stageRatios.map((ratio, k) => ratio > 1.2 && stageDistances[k] != null);
+
+    // ---- 局部语义评分：按 landmark 局部特征组（静态组 + 帧序列动态 motion 组）加权综合 ----
+    // 基于加权数据库：各组距离相对正样本组距离包络（group_envelope q50/q90）打分，
+    // 综合分 = Σ w_g·localScore_g / Σ w_g（w_g = 判别力 group_weights）。
+    // 动态组（*_motion）表达帧序列过程特征（如手部打开/移动过程），
+    // 权重由 relative_motion_weight × 对应静态组权重决定（profileGroupWeights）。
+    const GROUP_KEYS = ['pose', 'left_hand', 'right_hand', 'left_hand_shape', 'right_hand_shape', 'face', 'two_hand_relation',
+      'left_hand_motion', 'right_hand_motion', 'left_hand_shape_motion', 'right_hand_shape_motion', 'two_hand_relation_motion'];
+    const groupEnvelope = template.group_envelope || {};
+    let groupMeans = {};
+    if (topResults.length) {
+      for (const g of GROUP_KEYS) {
+        const values = topResults.map(r => r.group_mean && r.group_mean[g]).filter(v => v != null && Number.isFinite(v));
+        groupMeans[g] = values.length ? values.reduce((s, v) => s + v, 0) / values.length : null;
+      }
+    }
+    // 局部语义评分只针对该词的核心语义组（focus_groups）：
+    // 非核心组（如谗的左手/姿态）做错不影响总分，也不显示分数/判 weak，避免"总分 100 却显示一堆低分"的视觉矛盾。
+    const focusGroups = (profile && Array.isArray(profile.focus_groups) && profile.focus_groups.length)
+      ? profile.focus_groups.map(String)
+      : null;
+    const localScores = {};
+    const groupWeak = {};
+    for (const g of GROUP_KEYS) {
+      if (focusGroups && !focusGroups.includes(g)) {
+        localScores[g] = null;
+        groupWeak[g] = false;
+        continue;
+      }
+      const env = groupEnvelope[g];
+      const d = groupMeans[g];
+      if (!env || d == null || !(env.q90 > env.q50)) {
+        localScores[g] = null;
+        groupWeak[g] = false;
+        continue;
+      }
+      const z = (d - env.q50) / Math.max(env.q90 - env.q50, 1e-6);
+      const score = z <= 0 ? 100 : z <= 1 ? 100 - 25 * z : 75 - 35 * (z - 1);
+      localScores[g] = Math.max(0, Math.min(100, score));
+      groupWeak[g] = localScores[g] < 80;
+    }
+    // 加权综合语义分（仅使用该词核心语义所需的局部组权重；motion 组按 relative_motion_weight×base 计算）
+    const weightTable = profileGroupWeights(profile, GROUP_KEYS);
+    let weightedSum = 0, weightTotal = 0;
+    for (const g of GROUP_KEYS) {
+      const w = Number(weightTable[g]) || 0;
+      if (w > 0 && localScores[g] != null) { weightedSum += w * localScores[g]; weightTotal += w; }
+    }
+    const groupCompositeScore = weightTotal > 0 ? Math.round(weightedSum / weightTotal) : null;
+    const hasGroupEnvelope = Object.keys(groupEnvelope).length > 0;
+    // 总分与核心组评分联动：取 min(总体包络分, 核心组加权评分)——
+    // 核心组严重做错（如超市 right_hand 0 分）时总分必须明显降低，
+    // 避免"核心局部全错却接近通过线"的虚高。交叉验证判定基于距离阈值，不受影响。
+    if (groupCompositeScore != null && focusGroups) {
+      prototypeScore = Math.min(prototypeScore, groupCompositeScore);
+    }
+    void hasGroupEnvelope;
+
     return {
       standard_length: base.standard_length,
       query_length: base.query_length,
@@ -1865,6 +1974,16 @@
       aggregated_distance: aggregatedDistance,
       softened_distance: softenedDistance,
       envelope_used: !!envelope,
+      stage_count: stageCount,
+      stage_distances: stageDistances,
+      stage_ratios: stageRatios,
+      stage_scores: stageScores,
+      stage_weak: stageWeak,
+      group_scores: localScores,
+      group_weak: groupWeak,
+      group_mean: groupMeans,
+      group_composite_score: groupCompositeScore,
+      group_envelope_used: hasGroupEnvelope,
       dtw_distance: softenedDistance,
       normalized_distance: softenedDistance,
       prototype_score: prototypeScore,

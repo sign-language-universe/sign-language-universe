@@ -17,7 +17,7 @@
     contracts: [],
     referenceMedia: {},
     index: 0,
-    locale: window.localStorage.getItem('sluInteractiveLocale') || 'zh',
+    locale: window.localStorage.getItem('sluInteractiveLocale') || 'en',
     loaded: false,
     loadPromise: null,
     player: null,
@@ -60,7 +60,7 @@
       error: '公开动作指导加载失败，请通过 HTTP(S) 服务打开网页。',
       openChallenge: '开始摄像头评分',
       retry: '重新评分',
-      nextAfterScore: '下一个词',
+      nextAfterScore: '下一个',
       success: '完成得很好！',
       retryHint: '再看一遍动作指导后重新采集。',
       stage: '阶段',
@@ -99,7 +99,7 @@
       error: 'Could not load the public action guidance. Open the page through an HTTP(S) server.',
       openChallenge: 'Start camera scoring',
       retry: 'Try again',
-      nextAfterScore: 'Next word',
+      nextAfterScore: 'Next',
       success: 'Great job!',
       retryHint: 'Review the action guidance and capture the motion again.',
       stage: 'Stage',
@@ -180,7 +180,6 @@
     const resultPanel = root.querySelector('#challenge-result');
     const icon = root.querySelector('#result-icon');
     const scoreEl = root.querySelector('#result-score');
-    const message = root.querySelector('#result-message');
     if (active) active.style.display = 'none';
     if (resultPanel) {
       resultPanel.style.display = 'flex';
@@ -190,14 +189,130 @@
     }
     if (icon) icon.textContent = passed ? '🎉' : '🔄';
     if (scoreEl) scoreEl.textContent = `${score} ${state.locale === 'en' ? 'points' : '分'}`;
-    if (message) message.textContent = scoringResultMessage(result, passed);
     const status = document.getElementById('interactive-score-state');
     if (status) status.textContent = passed ? t('success') : t('retryHint');
+    // 展示顺序：针对性建议 → 局部语义评分（分数下方直接是建议，不重复小字提示）
+    renderGroupAdvice(result);
+    renderGroupScores(result);
     if (passed && typeof AppState !== 'undefined') {
       AppState.collectedWords.add(item.zh);
       if (typeof playUiSound === 'function') playUiSound('reward');
       if (typeof showToast === 'function') showToast(`${display({ zh: item.zh, en: item.en })} · ${t('success')}`);
     }
+  }
+
+  function renderStageScores(result) {
+    const host = document.getElementById('interactive-stage-scores');
+    if (!host) return;
+    const scores = result?.diagnostics?.stage_scores;
+    const labels = result?.diagnostics?.stage_advice && result.diagnostics.stage_advice.length
+      ? null
+      : null;
+    const stageLabels = result?.diagnostics?.stage_labels;
+    const weak = result?.diagnostics?.stage_weak;
+    if (!Array.isArray(scores) || !scores.length) { host.hidden = true; return; }
+    const en = state.locale === 'en';
+    const rows = scores.map((score, k) => {
+      const label = Array.isArray(stageLabels) && stageLabels[k]
+        ? (en ? stageLabels[k].label_en : stageLabels[k].label_zh)
+        : `${k + 1}`;
+      const isWeak = Array.isArray(weak) && weak[k];
+      const displayScore = Number.isFinite(score) ? Math.round(score) : '--';
+      return `<div class="stage-score-row ${isWeak ? 'weak' : 'ok'}">
+        <span class="stage-score-label">${esc(String(k + 1))}. ${esc(label)}</span>
+        <span class="stage-score-bar"><i style="width:${Number.isFinite(score) ? Math.max(4, Math.min(100, score)) : 4}%"></i></span>
+        <strong class="stage-score-value">${displayScore}</strong>
+      </div>`;
+    }).join('');
+    host.innerHTML = `<h4>🧩 ${esc(en ? 'Stage scores' : '核心语义阶段评分')}</h4>${rows}`;
+    host.hidden = false;
+  }
+
+  function renderStageAdvice(result) {
+    const host = document.getElementById('interactive-stage-advice');
+    if (!host) return;
+    const advice = result?.diagnostics?.stage_advice;
+    if (!Array.isArray(advice) || !advice.length) { host.hidden = true; return; }
+    const en = state.locale === 'en';
+    const items = advice.map(item => `
+      <li class="stage-advice-item">
+        <strong>⚠️ ${esc(item.stage_label || `${item.stage_index + 1}`)}</strong>
+        <p>${esc(item.suggestion || '')}</p>
+      </li>`).join('');
+    host.innerHTML = `<h4>💡 ${esc(en ? 'Targeted guidance' : '针对性指导建议')}</h4><ul>${items}</ul>`;
+    host.hidden = false;
+  }
+
+  function renderGroupScores(result) {
+    const host = document.getElementById('interactive-group-scores');
+    if (!host) return;
+    const scores = result?.diagnostics?.group_scores;
+    const weak = result?.diagnostics?.group_weak;
+    if (!scores || typeof scores !== 'object') { host.hidden = true; return; }
+    const en = state.locale === 'en';
+    const labels = {
+      pose: en ? 'Body pose' : '身体姿态',
+      left_hand: en ? 'Left hand' : '左手动作',
+      right_hand: en ? 'Right hand' : '右手动作',
+      left_hand_shape: en ? 'Left shape' : '左手手形',
+      right_hand_shape: en ? 'Right shape' : '右手手形',
+      face: en ? 'Face' : '面部',
+      two_hand_relation: en ? 'Two-hand relation' : '双手配合',
+      left_hand_motion: en ? 'Left hand process' : '左手过程',
+      right_hand_motion: en ? 'Right hand process' : '右手过程',
+      left_hand_shape_motion: en ? 'Left shape change' : '左手形变化',
+      right_hand_shape_motion: en ? 'Right shape change' : '右手形变化',
+      two_hand_relation_motion: en ? 'Relation change' : '双手配合过程'
+    };
+    const rows = Object.entries(scores).map(([group, score]) => {
+      if (score == null) return '';
+      const isWeak = weak && weak[group];
+      const displayScore = Math.round(score);
+      return `<div class="stage-score-row ${isWeak ? 'weak' : 'ok'}">
+        <span class="stage-score-label">${esc(labels[group] || group)}</span>
+        <span class="stage-score-bar"><i style="width:${Math.max(4, Math.min(100, displayScore))}%"></i></span>
+        <strong class="stage-score-value">${displayScore}</strong>
+      </div>`;
+    }).join('');
+    if (!rows) { host.hidden = true; return; }
+    host.innerHTML = `<h4>🧩 ${esc(en ? 'Semantic part scores (weighted)' : '局部语义评分（加权）')}</h4>${rows}`;
+    host.hidden = false;
+  }
+
+  function renderGroupAdvice(result) {
+    const host = document.getElementById('interactive-group-advice');
+    if (!host) return;
+    const advice = result?.diagnostics?.group_advice;
+    const en = state.locale === 'en';
+    if (!Array.isArray(advice) || !advice.length) {
+      // 评分完成但无低分局部：显示达标反馈，避免"评分后无提示"的困惑
+      host.innerHTML = `<h4>💡 ${esc(en ? 'Targeted part guidance' : '针对性局部指导')}</h4>
+        <p class="stage-advice-all-ok">✅ ${esc(en ? 'All semantic parts passed (≥80). Great job!' : '各核心语义局部均达标（≥80），动作标准！')}</p>`;
+      host.hidden = false;
+      return;
+    }
+    // 布局：多个小标题 chips（弱组 + 分数）→ 一段去重的合并建议
+    const heads = advice.map(item => `<span class="advice-head">${esc(item.group_label || item.group)} ${item.group_score != null ? item.group_score : '--'}</span>`).join('');
+    const seenDetails = new Set();
+    const bodyParts = [];
+    for (const item of advice) {
+      const detail = item.related_stage_detail;
+      const label = item.related_stage_label;
+      if (detail && !seenDetails.has(detail)) {
+        seenDetails.add(detail);
+        bodyParts.push(
+          en ? `Focus on the semantic stage "${label}": ${detail}.` : `重点练习核心语义【${label}】：${detail}。`
+        );
+      }
+    }
+    const tail = en
+      ? 'Compare with the reference video and practice these parts.'
+      : '请对照示范视频，重点练习上述局部动作。';
+    const body = bodyParts.length ? bodyParts.join(' ') + ' ' + tail : tail;
+    host.innerHTML = `<h4>💡 ${esc(en ? 'Targeted part guidance' : '针对性局部指导')}</h4>
+      <div class="advice-heads">${heads}</div>
+      <p class="advice-body">${esc(body)}</p>`;
+    host.hidden = false;
   }
 
   function mountScoring(item) {
@@ -220,7 +335,7 @@
     const en = state.locale === 'en';
     slot.innerHTML = [
       '<div class="interactive-score-host" id="interactive-score-host" style="display:none;" aria-hidden="true">',
-      '<div class="interactive-score-state" id="interactive-score-state">' + esc(statusText) + '</div>',
+      (statusText ? '<div class="interactive-score-state" id="interactive-score-state">' + esc(statusText) + '</div>' : '<div class="interactive-score-state" id="interactive-score-state" style="display:none;"></div>'),
       '<div class="challenge-active interactive-score-active" id="challenge-active" style="display:flex;">',
       '<div class="challenge-camera-frame interactive-score-camera" id="challenge-camera-frame"><div class="challenge-camera-inner" id="challenge-camera-inner">',
       '<p>📷 ' + (en ? 'Camera preview' : '摄像头画面区域') + '</p>',
@@ -237,8 +352,7 @@
       '<button class="scoring-holistic-retry-btn" id="scoring-holistic-retry-btn" type="button" onclick="ScoringBridge.retryBrowserHolistic()" hidden>' + (en ? 'Reload Web Holistic' : '重新加载 Web Holistic') + '</button>',
       '<div class="scoring-progress-wrap" aria-hidden="true"><div class="scoring-progress-bar" id="scoring-progress-bar"></div></div>',
       '<div class="challenge-controls" id="challenge-controls">',
-      '<button class="challenge-ctrl-btn start-btn" id="btn-start-record" onclick="InteractiveLearning.beginRecording()"><span class="ctrl-icon">🎥</span><span>' + (en ? 'Start camera' : '开启摄像头') + '</span></button>',
-      '<button class="challenge-ctrl-btn score-btn" id="btn-score" onclick="ScoringBridge.scoreChallengeWithApi()" disabled><span class="ctrl-icon">⭐</span><span>' + (en ? 'Score' : '自动评分') + '</span></button>',
+      '<button class="challenge-ctrl-btn start-btn" id="btn-start-record" onclick="InteractiveLearning.beginRecording()"><span class="ctrl-icon">🎥</span><span>' + (en ? 'Record' : '录制') + '</span></button>',
       '</div>',
       '<div class="scoring-service-row" id="scoring-service-row" style="display:none;"><span class="service-dot idle" id="scoring-service-dot"></span>',
       '<input id="scoring-api-base-input" class="scoring-api-input" type="url" inputmode="url" placeholder="' + (en ? 'Scoring API URL' : '评分 API 地址') + '" aria-label="' + (en ? 'Scoring API URL' : '评分 API 地址') + '">',
@@ -248,12 +362,14 @@
       '<div class="challenge-timer" id="challenge-timer">' + (en ? 'Duration: ' : '录制时长：') + '<span id="timer-display">00:00</span></div>',
       '</div>',
       '<div class="challenge-result interactive-score-result" id="challenge-result" style="display:none;">',
-      '<div class="result-icon" id="result-icon">🎯</div><div class="result-score" id="result-score">--</div><div class="result-message" id="result-message">--</div>',
+      '<div class="result-icon" id="result-icon">🎯</div><div class="result-score" id="result-score">--</div>',
       '<div class="scoring-result-details" id="scoring-result-details" hidden>',
       '<div><span>' + (en ? 'Scoring mode' : '评分模式') + '</span><strong id="scoring-result-mode">--</strong></div>',
       '<div><span>' + (en ? 'Frames' : '上传帧数') + '</span><strong id="scoring-result-frames">--</strong></div>',
       '<div><span>Worker</span><strong id="scoring-result-worker">--</strong></div>',
       '<div><span>Request</span><strong id="scoring-result-request">--</strong></div><p id="scoring-result-advice">--</p></div>',
+      '<div class="interactive-group-advice" id="interactive-group-advice" hidden></div>',
+      '<div class="interactive-group-scores" id="interactive-group-scores" hidden></div>',
       '<div class="result-actions"><button class="action-btn secondary" type="button" onclick="InteractiveLearning.retryScore()">↻ ' + esc(t('retry')) + '</button>',
       '<button class="action-btn primary" type="button" onclick="InteractiveLearning.next()">→ ' + esc(t('nextAfterScore')) + '</button></div>',
       '</div></div>'
@@ -261,9 +377,15 @@
   }
 
   function setLocale(locale) {
+    const wasScoringMounted = state.scoringMounted;
     state.locale = locale === 'en' ? 'en' : 'zh';
     window.localStorage.setItem('sluInteractiveLocale', state.locale);
     render();
+    // 语言切换后保持摄像头区域：若之前评分区已挂载，重新打开摄像头预览（不缩回）
+    if (wasScoringMounted && typeof window.ScoringBridge?.ensureCamera === 'function') {
+      if (window.AppState) window.AppState.isRecording = false;
+      window.ScoringBridge.ensureCamera().catch(() => {});
+    }
   }
   function toggleLocale() { setLocale(state.locale === 'en' ? 'zh' : 'en'); }
 
@@ -339,8 +461,9 @@
     const isAvailable = item.scoring_template_status === 'available';
     const isExperimental = item.scoring_template_status === 'experimental';
     const canPractice = isAvailable || isExperimental;
-    const statusText = isAvailable ? t('available') : (isExperimental ? t('experimental') : t('pending'));
-    const statusDetail = isAvailable ? t('availableDetail') : '';
+    // 不再显示"评分模板已接入"状态小字，面板直接进入摄像头评分
+    const statusText = '';
+    const statusDetail = '';
     const illustrationIndex = String(item.index).padStart(2, '0');
     // 优先使用仅含示意图的裁剪图；若缺失则回退到原始整页资料图
     const illustrationPath = `assets/content/illustrations/schematic-crops/word-${illustrationIndex}.jpeg`;
@@ -352,11 +475,11 @@
       : `<div class="interactive-video-empty"><strong>📹 ${esc(t('noVideo'))}</strong></div>`;
     const referenceHeading = media ? t('videoLabel') : t('schematic');
     const referenceBadge = media
-      ? (state.locale === 'en' ? 'Manually reviewed' : '已人工审核')
+      ? ''
       : (state.locale === 'en' ? 'Schematic placeholder' : '示意动画占位');
     const referenceVisual = media
       ? mediaBlock
-      : `<div class="interactive-schematic-viewer"><canvas id="interactive-reference-canvas" aria-label="${esc(item.en)} schematic animation"></canvas><canvas id="interactive-avatar3d-canvas" class="interactive-avatar3d-canvas" aria-label="${esc(item.en)} 3D teaching avatar animation" hidden></canvas><div id="interactive-phase-label" class="interactive-phase-label">${state.locale === 'en' ? '2D motion schematic' : '2D动作示意'}</div></div><div class="interactive-media-controls"><button class="reference-mode-btn" data-reference-mode="2d" type="button" onclick="InteractiveLearning.setReferenceMode('2d')">2D ${esc(t('schematic'))}</button><button class="reference-mode-btn" data-reference-mode="3d" type="button" disabled aria-disabled="true" title="${state.locale === 'en' ? 'A reviewed rigged avatar is being rebuilt' : '正在依据三视角人工帧重制可审核的人物模型'}">3D ${state.locale === 'en' ? 'rebuilding' : '重制中'}</button><button type="button" onclick="InteractiveLearning.togglePlay()">${esc(t('play'))}</button><button type="button" onclick="InteractiveLearning.replay()">${esc(t('replay'))}</button></div>${mediaBlock}`;
+      : `<div class="interactive-schematic-viewer"><canvas id="interactive-reference-canvas" aria-label="${esc(item.en)} schematic animation"></canvas><canvas id="interactive-avatar3d-canvas" class="interactive-avatar3d-canvas" aria-label="${esc(item.en)} 3D teaching avatar animation" hidden></canvas><div id="interactive-phase-label" class="interactive-phase-label">${state.locale === 'en' ? '2D motion schematic' : '2D动作示意'}</div></div><div class="interactive-media-controls"><button class="reference-mode-btn" data-reference-mode="2d" type="button" onclick="InteractiveLearning.setReferenceMode('2d')">2D ${esc(t('schematic'))}</button><button class="reference-mode-btn" data-reference-mode="3d" type="button" disabled aria-disabled="true" title="${state.locale === 'en' ? 'A reviewed rigged avatar is being rebuilt' : '正在依据三视角人工帧重制可审核的人物模型'}">3D ${state.locale === 'en' ? 'rebuilding' : '重制中'}</button><button type="button" onclick="InteractiveLearning.togglePlay()">${esc(t('play'))}</button></div>${mediaBlock}`;
 
     host.innerHTML = `
       <button type="button" class="interactive-side-nav interactive-side-nav-prev" onclick="InteractiveLearning.previous()" aria-label="${esc(t('previous'))}" title="${esc(t('previous'))}">‹</button>
@@ -373,16 +496,19 @@
       <section class="interactive-hero-card">
         <div class="interactive-word-heading">
           <span class="interactive-index-badge">#${item.index}</span>
-          <div><h2>${esc(item.zh)}</h2><p>${esc(item.en)} · ${esc(item.pinyin)}</p></div>
+          <div class="interactive-word-title">
+            <h2>${esc(item.zh)}<span class="interactive-word-en">${esc(item.en)}</span></h2>
+            <p class="interactive-word-pinyin">${esc(item.pinyin)}</p>
+          </div>
         </div>
       </section>
       <div class="interactive-reference-grid">
         <section class="interactive-panel interactive-schematic-panel">
-          <div class="interactive-panel-heading"><div><h3>🎞️ ${esc(t('reference'))}</h3><p>${esc(referenceHeading)}</p></div><span class="interactive-badge">${esc(referenceBadge)}</span></div>
+          <div class="interactive-panel-heading"><div><h3>🎞️ ${esc(t('reference'))}</h3><p>${esc(referenceHeading)}</p></div></div>
           ${referenceVisual}
         </section>
         <section class="interactive-panel semantic-contract-panel">
-        <div class="interactive-panel-heading"><div><h3>🧭 ${esc(t('guidance'))}</h3><p>${esc(t('guidanceSubtitle'))}</p></div><span class="frame-count-badge">${esc(t('minFrames'))}: ${item.minimum_distinct_frames}</span></div>
+        <div class="interactive-panel-heading"><div><h3>🧭 ${esc(t('guidance'))}</h3><p>${esc(t('guidanceSubtitle'))}</p></div></div>
         <div class="semantic-guidance-intro">
           <figure class="semantic-illustration"><img src="${illustrationPath}" loading="lazy" alt="${esc(item.en)} instructional illustration" onerror="this.onerror=null;this.src='${illustrationFallbackPath}'"></figure>
           <div class="semantic-guidance-summary"><p>${esc(state.locale === 'en' ? item.summary_en : item.summary_zh)}</p></div>
@@ -390,7 +516,7 @@
         <div class="semantic-contract-columns"><div><h4>${esc(t('ordered'))}</h4><ol class="semantic-stage-list">${ordered}</ol></div><div><h4>${esc(t('simultaneous'))}</h4><div class="semantic-feature-grid">${simultaneous}</div></div></div>
         </section>
         <section class="interactive-panel interactive-practice-panel">
-          <div class="interactive-panel-heading"><div><h3>📷 ${esc(t('practice'))}</h3>${statusDetail ? `<p>${esc(statusDetail)}</p>` : ''}</div><span class="interactive-status ${isAvailable ? 'ready' : (isExperimental ? 'experimental' : 'pending')}" >${esc(statusText)}</span></div>
+          <div class="interactive-panel-heading"><div><h3>📷 ${esc(t('practice'))}</h3>${statusDetail ? `<p>${esc(statusDetail)}</p>` : ''}</div></div>
           <button type="button" class="interactive-practice-btn" id="interactive-score-launcher" aria-controls="interactive-score-host" aria-expanded="false" onclick="InteractiveLearning.startScore(${canPractice ? 'true' : 'false'})">${canPractice ? '🚀' : '🔒'} ${esc(t('openChallenge'))}</button>
           <div id="interactive-scoring-slot"></div>
         </section>
