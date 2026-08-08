@@ -1375,6 +1375,99 @@
   }
 
   const LOCAL_TEMPLATES_URL = new URL('assets/content/scoring_templates_v2.json', document.baseURI).href;
+  const LOCAL_CONTRACTS_URL = new URL('assets/content/interactive_learning_contracts.json', document.baseURI).href;
+  // 语义阶段数据（ordered_sequence：各阶段指导文案），供本地评分组装针对性建议
+  let localStages = null;
+  let localStagesLoading = null;
+  async function loadLocalStages() {
+    if (localStages) return localStages;
+    if (localStagesLoading) return localStagesLoading;
+    localStagesLoading = (async () => {
+      const response = await fetch(LOCAL_CONTRACTS_URL, { cache: 'force-cache' });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const payload = await response.json();
+      const byWord = {};
+      (Array.isArray(payload.contracts) ? payload.contracts : []).forEach(item => {
+        const key = item.zh;
+        byWord[key] = byWord[key] || item;
+        // practice_word 老词名也映射（馋→谗（羡慕）、汽车→汽车（一））
+        if (item.practice_word && item.practice_word !== key) byWord[item.practice_word] = byWord[item.practice_word] || item;
+      });
+      localStages = byWord;
+      return byWord;
+    })().catch(error => {
+      localStagesLoading = null;
+      throw error;
+    });
+    return localStagesLoading;
+  }
+  function stageInfoForWord(word) {
+    const item = localStages ? localStages[word] : null;
+    const ordered = (item && Array.isArray(item.ordered_sequence)) ? item.ordered_sequence : [];
+    return {
+      stageCount: Math.max(1, ordered.length),
+      labels: ordered,
+    };
+  }
+  function buildStageAdvice(word, result) {
+    // 由 stage_weak（相对总距离 ratio>1.2 的短板阶段）生成针对性指导建议
+    const info = stageInfoForWord(word);
+    const weak = Array.isArray(result.stage_weak) ? result.stage_weak : [];
+    const scores = Array.isArray(result.stage_scores) ? result.stage_scores : [];
+    const advice = [];
+    for (let k = 0; k < weak.length; k++) {
+      const label = info.labels[k] || null;
+      const labelText = label
+        ? (isInteractiveEnglish() ? label.label_en : label.label_zh)
+        : `${k + 1}`;
+      const detail = label
+        ? (isInteractiveEnglish() ? label.detail_en : label.detail_zh)
+        : '';
+      const stageScore = scores[k] != null ? Math.round(scores[k]) : null;
+      if (weak[k]) {
+        // 预设建议：结合该词的具体语义阶段文案（label + detail）给出针对性指导
+        advice.push({
+          stage_index: k,
+          stage_label: labelText,
+          stage_detail: detail,
+          stage_score: stageScore,
+          suggestion: label
+            ? (isInteractiveEnglish()
+              ? `Stage ${k + 1} "${labelText}" scored ${stageScore}/100 — ${detail || labelText}. Practice this semantic stage against the reference video.`
+              : `第 ${k + 1} 阶段「${labelText}」得分 ${stageScore}/100 —— ${detail || labelText}。请对照示范视频，重点练习这一核心语义动作。`)
+            : (isInteractiveEnglish() ? `Stage ${k + 1} needs practice.` : `第 ${k + 1} 阶段需要加强练习。`),
+        });
+      }
+    }
+    return advice;
+  }
+
+  // 局部特征组 → 该词核心语义阶段的关键词（用于把"没做对的局部"映射到"具体语义阶段"）
+  const GROUP_SEMANTIC_KEYWORDS = {
+    pose: ['姿态', '身体', '移动', 'posture', 'body', 'move'],
+    left_hand: ['左手', '一手', 'hand'],
+    right_hand: ['右手', '一手', 'hand'],
+    left_hand_shape: ['手形', '撮合', '张开', '指尖', 'shape', 'gather', 'open', 'finger'],
+    right_hand_shape: ['手形', '撮合', '张开', '指尖', 'shape', 'gather', 'open', 'finger'],
+    face: ['面部', '表情', 'face', 'expression'],
+    two_hand_relation: ['双手', '配合', '相对', 'two hand', 'relation'],
+    left_hand_motion: ['手', '移动', '过程', 'motion', 'move'],
+    right_hand_motion: ['手', '移动', '过程', 'motion', 'move'],
+    left_hand_shape_motion: ['手形', '张开', '过程', '变化', 'shape', 'open', 'change'],
+    right_hand_shape_motion: ['手形', '张开', '过程', '变化', 'shape', 'open', 'change'],
+    two_hand_relation_motion: ['双手', '配合', '过程', 'relation', 'change']
+  };
+  function stageTextForGroup(stage, group, en) {
+    // 从阶段的 label/detail 中找与组语义相关的部分，作为具体指导
+    const pieces = [stage?.label_zh, stage?.label_en, stage?.detail_zh, stage?.detail_en].filter(Boolean).join(' ');
+    const keywords = GROUP_SEMANTIC_KEYWORDS[group] || [];
+    const matched = keywords.filter(kw => pieces.toLowerCase().includes(String(kw).toLowerCase()));
+    if (!matched.length) return null;
+    return {
+      stage_label: en ? stage.label_en : stage.label_zh,
+      stage_detail: en ? stage.detail_en : stage.detail_zh,
+    };
+  }
 
   function localCoreAvailable() {
     return typeof globalThis.ScorerCore !== 'undefined' && typeof globalThis.ScorerCore.scoreQuery === 'function';
@@ -1397,6 +1490,74 @@
     return state.localTemplatesLoading;
   }
 
+  const GROUP_LABELS = {
+    pose: { zh: '身体姿态', en: 'Body pose' },
+    left_hand: { zh: '左手动作', en: 'Left hand motion' },
+    right_hand: { zh: '右手动作', en: 'Right hand motion' },
+    left_hand_shape: { zh: '左手手形', en: 'Left hand shape' },
+    right_hand_shape: { zh: '右手手形', en: 'Right hand shape' },
+    face: { zh: '面部表情', en: 'Face' },
+    two_hand_relation: { zh: '双手配合', en: 'Two-hand relation' },
+    left_hand_motion: { zh: '左手过程', en: 'Left hand process' },
+    right_hand_motion: { zh: '右手过程', en: 'Right hand process' },
+    left_hand_shape_motion: { zh: '左手形变化', en: 'Left shape change' },
+    right_hand_shape_motion: { zh: '右手形变化', en: 'Right shape change' },
+    two_hand_relation_motion: { zh: '双手配合过程', en: 'Two-hand relation change' }
+  };
+  function buildGroupAdvice(result, word) {
+    // 由 group_weak（局部语义特征组做偏）生成针对性指导建议。
+    // 预设规则：把"没做对的局部组"映射到该词具体的核心语义阶段（label + detail），
+    // 让建议落到"这个语义动作具体该怎么练"。
+    const weak = result.group_weak || {};
+    const scores = result.group_scores || {};
+    const info = stageInfoForWord(word);
+    const stages = info.labels || [];
+    const advice = [];
+    for (const [group, isWeak] of Object.entries(weak)) {
+      if (!isWeak) continue;
+      const label = GROUP_LABELS[group];
+      const score = scores[group];
+      const scoreText = score != null ? Math.round(score) : null;
+      // 找该词与该组语义相关的具体阶段（取第一个匹配；无匹配则取得分最低阶段兜底）
+      let relatedStage = null;
+      for (const stage of stages) {
+        if (stageTextForGroup(stage, group, isInteractiveEnglish())) { relatedStage = stage; break; }
+      }
+      if (!relatedStage && stages.length) {
+        const stageScores = result.stage_scores || [];
+        let minIdx = 0;
+        for (let k = 1; k < stages.length; k++) {
+          if ((stageScores[k] ?? 100) < (stageScores[minIdx] ?? 100)) minIdx = k;
+        }
+        relatedStage = stages[minIdx];
+      }
+      const related = relatedStage ? stageTextForGroup(relatedStage, group, isInteractiveEnglish()) : null;
+      const groupName = label ? (isInteractiveEnglish() ? label.en : label.zh) : group;
+      if (related && related.stage_label) {
+        advice.push({
+          group,
+          group_label: groupName,
+          group_score: scoreText,
+          related_stage_label: related.stage_label,
+          related_stage_detail: related.stage_detail,
+          suggestion: isInteractiveEnglish()
+            ? `"${groupName}" scored ${scoreText ?? '--'}/100 and is key to the semantic stage "${related.stage_label}": ${related.stage_detail || ''}. Practice this part against the reference video.`
+            : `「${groupName}」得分 ${scoreText ?? '--'}/100，与该词核心语义【${related.stage_label}】密切相关：${related.stage_detail || ''}。请对照示范视频，重点练习这一局部动作的完成度。`,
+        });
+      } else {
+        advice.push({
+          group,
+          group_label: groupName,
+          group_score: scoreText,
+          suggestion: isInteractiveEnglish()
+            ? `"${groupName}" scored ${scoreText ?? '--'}/100; practice this part against the reference video.`
+            : `「${groupName}」得分 ${scoreText ?? '--'}/100，请对照示范视频重点练习该局部动作。`,
+        });
+      }
+    }
+    return advice;
+  }
+
   function localCoreScore(word, rows, fps, totalFrames) {
     // 浏览器本地评分核心：与后端 Python 完全一致的 DTW 语义评分
     const template = state.localTemplates?.words?.[word];
@@ -1404,7 +1565,13 @@
     const t0 = performance.now();
     let result;
     try {
-      result = globalThis.ScorerCore.scoreQuery(template, rows, fps, totalFrames);
+      const stageInfo = stageInfoForWord(word);
+      result = globalThis.ScorerCore.scoreQuery(template, rows, fps, totalFrames, {
+        stageCount: stageInfo.stageCount,
+      });
+      result.stage_labels = stageInfo.labels;
+      result.stage_advice = buildStageAdvice(word, result);
+      result.group_advice = buildGroupAdvice(result, word);
     } catch (error) {
       console.warn('[scoring] local core score failed:', error);
       return null;
@@ -1430,6 +1597,17 @@
         trim_tolerance: result.trim_tolerance,
         alignment_policy: result.alignment_policy,
         sequence_penalty: result.sequence_penalty,
+        stage_count: result.stage_count,
+        stage_scores: result.stage_scores,
+        stage_distances: result.stage_distances,
+        stage_ratios: result.stage_ratios,
+        stage_weak: result.stage_weak,
+        stage_advice: result.stage_advice,
+        group_scores: result.group_scores,
+        group_weak: result.group_weak,
+        group_mean: result.group_mean,
+        group_composite_score: result.group_composite_score,
+        group_advice: result.group_advice,
         local_score_ms: elapsedMs
       }
     };

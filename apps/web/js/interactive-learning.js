@@ -193,11 +193,110 @@
     if (message) message.textContent = scoringResultMessage(result, passed);
     const status = document.getElementById('interactive-score-state');
     if (status) status.textContent = passed ? t('success') : t('retryHint');
+    // 语义阶段评分 + 针对性指导建议（基于加权数据库的阶段距离）
+    renderStageScores(result);
+    renderStageAdvice(result);
+    // 局部语义特征组评分 + 组级指导建议（landmark 局部加权）
+    renderGroupScores(result);
+    renderGroupAdvice(result);
     if (passed && typeof AppState !== 'undefined') {
       AppState.collectedWords.add(item.zh);
       if (typeof playUiSound === 'function') playUiSound('reward');
       if (typeof showToast === 'function') showToast(`${display({ zh: item.zh, en: item.en })} · ${t('success')}`);
     }
+  }
+
+  function renderStageScores(result) {
+    const host = document.getElementById('interactive-stage-scores');
+    if (!host) return;
+    const scores = result?.diagnostics?.stage_scores;
+    const labels = result?.diagnostics?.stage_advice && result.diagnostics.stage_advice.length
+      ? null
+      : null;
+    const stageLabels = result?.diagnostics?.stage_labels;
+    const weak = result?.diagnostics?.stage_weak;
+    if (!Array.isArray(scores) || !scores.length) { host.hidden = true; return; }
+    const en = state.locale === 'en';
+    const rows = scores.map((score, k) => {
+      const label = Array.isArray(stageLabels) && stageLabels[k]
+        ? (en ? stageLabels[k].label_en : stageLabels[k].label_zh)
+        : `${k + 1}`;
+      const isWeak = Array.isArray(weak) && weak[k];
+      const displayScore = Number.isFinite(score) ? Math.round(score) : '--';
+      return `<div class="stage-score-row ${isWeak ? 'weak' : 'ok'}">
+        <span class="stage-score-label">${esc(String(k + 1))}. ${esc(label)}</span>
+        <span class="stage-score-bar"><i style="width:${Number.isFinite(score) ? Math.max(4, Math.min(100, score)) : 4}%"></i></span>
+        <strong class="stage-score-value">${displayScore}</strong>
+      </div>`;
+    }).join('');
+    host.innerHTML = `<h4>🧩 ${esc(en ? 'Stage scores' : '核心语义阶段评分')}</h4>${rows}`;
+    host.hidden = false;
+  }
+
+  function renderStageAdvice(result) {
+    const host = document.getElementById('interactive-stage-advice');
+    if (!host) return;
+    const advice = result?.diagnostics?.stage_advice;
+    if (!Array.isArray(advice) || !advice.length) { host.hidden = true; return; }
+    const en = state.locale === 'en';
+    const items = advice.map(item => `
+      <li class="stage-advice-item">
+        <strong>⚠️ ${esc(item.stage_label || `${item.stage_index + 1}`)}</strong>
+        <p>${esc(item.suggestion || '')}</p>
+      </li>`).join('');
+    host.innerHTML = `<h4>💡 ${esc(en ? 'Targeted guidance' : '针对性指导建议')}</h4><ul>${items}</ul>`;
+    host.hidden = false;
+  }
+
+  function renderGroupScores(result) {
+    const host = document.getElementById('interactive-group-scores');
+    if (!host) return;
+    const scores = result?.diagnostics?.group_scores;
+    const weak = result?.diagnostics?.group_weak;
+    if (!scores || typeof scores !== 'object') { host.hidden = true; return; }
+    const en = state.locale === 'en';
+    const labels = {
+      pose: en ? 'Body pose' : '身体姿态',
+      left_hand: en ? 'Left hand' : '左手动作',
+      right_hand: en ? 'Right hand' : '右手动作',
+      left_hand_shape: en ? 'Left shape' : '左手手形',
+      right_hand_shape: en ? 'Right shape' : '右手手形',
+      face: en ? 'Face' : '面部',
+      two_hand_relation: en ? 'Two-hand relation' : '双手配合',
+      left_hand_motion: en ? 'Left hand process' : '左手过程',
+      right_hand_motion: en ? 'Right hand process' : '右手过程',
+      left_hand_shape_motion: en ? 'Left shape change' : '左手形变化',
+      right_hand_shape_motion: en ? 'Right shape change' : '右手形变化',
+      two_hand_relation_motion: en ? 'Relation change' : '双手配合过程'
+    };
+    const rows = Object.entries(scores).map(([group, score]) => {
+      if (score == null) return '';
+      const isWeak = weak && weak[group];
+      const displayScore = Math.round(score);
+      return `<div class="stage-score-row ${isWeak ? 'weak' : 'ok'}">
+        <span class="stage-score-label">${esc(labels[group] || group)}</span>
+        <span class="stage-score-bar"><i style="width:${Math.max(4, Math.min(100, displayScore))}%"></i></span>
+        <strong class="stage-score-value">${displayScore}</strong>
+      </div>`;
+    }).join('');
+    if (!rows) { host.hidden = true; return; }
+    host.innerHTML = `<h4>🧩 ${esc(en ? 'Semantic part scores (weighted)' : '局部语义评分（加权）')}</h4>${rows}`;
+    host.hidden = false;
+  }
+
+  function renderGroupAdvice(result) {
+    const host = document.getElementById('interactive-group-advice');
+    if (!host) return;
+    const advice = result?.diagnostics?.group_advice;
+    if (!Array.isArray(advice) || !advice.length) { host.hidden = true; return; }
+    const en = state.locale === 'en';
+    const items = advice.map(item => `
+      <li class="stage-advice-item">
+        <strong>⚠️ ${esc(item.group_label || item.group)}</strong>
+        <p>${esc(item.suggestion || '')}</p>
+      </li>`).join('');
+    host.innerHTML = `<h4>💡 ${esc(en ? 'Targeted part guidance' : '针对性局部指导')}</h4><ul>${items}</ul>`;
+    host.hidden = false;
   }
 
   function mountScoring(item) {
@@ -254,6 +353,10 @@
       '<div><span>' + (en ? 'Frames' : '上传帧数') + '</span><strong id="scoring-result-frames">--</strong></div>',
       '<div><span>Worker</span><strong id="scoring-result-worker">--</strong></div>',
       '<div><span>Request</span><strong id="scoring-result-request">--</strong></div><p id="scoring-result-advice">--</p></div>',
+      '<div class="interactive-stage-scores" id="interactive-stage-scores" hidden></div>',
+      '<div class="interactive-stage-advice" id="interactive-stage-advice" hidden></div>',
+      '<div class="interactive-group-scores" id="interactive-group-scores" hidden></div>',
+      '<div class="interactive-group-advice" id="interactive-group-advice" hidden></div>',
       '<div class="result-actions"><button class="action-btn secondary" type="button" onclick="InteractiveLearning.retryScore()">↻ ' + esc(t('retry')) + '</button>',
       '<button class="action-btn primary" type="button" onclick="InteractiveLearning.next()">→ ' + esc(t('nextAfterScore')) + '</button></div>',
       '</div></div>'
