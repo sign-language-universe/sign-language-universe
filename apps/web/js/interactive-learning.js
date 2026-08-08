@@ -378,9 +378,15 @@
   }
 
   function setLocale(locale) {
+    const wasScoringMounted = state.scoringMounted;
     state.locale = locale === 'en' ? 'en' : 'zh';
     window.localStorage.setItem('sluInteractiveLocale', state.locale);
     render();
+    // 语言切换后保持摄像头区域：若之前评分区已挂载，重新打开摄像头预览（不缩回）
+    if (wasScoringMounted && typeof window.ScoringBridge?.ensureCamera === 'function') {
+      if (window.AppState) window.AppState.isRecording = false;
+      window.ScoringBridge.ensureCamera().catch(() => {});
+    }
   }
   function toggleLocale() { setLocale(state.locale === 'en' ? 'zh' : 'en'); }
 
