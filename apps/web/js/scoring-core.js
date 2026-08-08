@@ -1928,9 +1928,13 @@
     const localScores = {};
     const groupWeak = {};
     for (const g of GROUP_KEYS) {
-      // 局部评分：全部组都计算并展示（用户需看到完整局部打分，含表情/姿态等）
-      // weak 判定只针对核心组（focus_groups），保证建议与总分一致性
-      const isFocus = focusGroups ? focusGroups.includes(g) : true;
+      // 局部评分只显示该词核心语义组（focus_groups）——用户确认 v2 行为：
+      // 面板只需词汇对应核心局部的打分，非核心组（如谗的左手/姿态）不显示
+      if (focusGroups && !focusGroups.includes(g)) {
+        localScores[g] = null;
+        groupWeak[g] = false;
+        continue;
+      }
       const env = groupEnvelope[g];
       const d = groupMeans[g];
       if (!env || d == null || !(env.q90 > env.q50)) {
@@ -1941,7 +1945,7 @@
       const z = (d - env.q50) / Math.max(env.q90 - env.q50, 1e-6);
       const score = z <= 0 ? 100 : z <= 1 ? 100 - 25 * z : 75 - 35 * (z - 1);
       localScores[g] = Math.max(0, Math.min(100, score));
-      groupWeak[g] = isFocus && localScores[g] < 80;
+      groupWeak[g] = localScores[g] < 80;
     }
     // 加权综合语义分（只使用该词核心语义组 focus_groups 的权重；motion 组按 relative_motion_weight×base 计算）
     const weightTable = profileGroupWeights(profile, GROUP_KEYS);
