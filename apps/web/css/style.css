@@ -1560,11 +1560,9 @@ body.theme-day .animation-viewer {
 .scoring-camera-overlay {
   position: absolute;
   left: 12px;
-  right: 12px;
-  bottom: 12px;
+  top: 12px; /* 录制标记移到画面左上角 */
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 10px;
   z-index: 7;
   pointer-events: none;
@@ -2499,8 +2497,9 @@ body.theme-day .scoring-countdown-overlay {
 
   .scoring-camera-overlay {
     left: 8px;
-    right: 8px;
-    bottom: 8px;
+    top: 8px;
+    right: auto;
+    bottom: auto;
   }
 
   .scoring-countdown-overlay span {
