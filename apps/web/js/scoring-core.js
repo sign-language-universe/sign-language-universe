@@ -1013,6 +1013,335 @@
     return [weighted, groupMetrics];
   }
 
+  /* ================= 距离（快速路径） =================
+   * 局部距离矩阵是 dtwAlign 的主要瓶颈（6 模板 × 40×40 帧对 × 406 维）。
+   * 快速路径在不改变任何数值的前提下加速：
+   * 1) 组权重/缺失权重/维度权重只预计算一次（原实现逐帧对重复计算）；
+   * 2) 特征向量/掩码直接以组偏移访问，避免 groupSlice 逐对复制数组；
+   * 3) 加权 RMSE 单遍批量累加（Float64Array），避免逐维度二次访问；
+   * 4) poseRobustHandDistance 零分配化（复用 scratch，逐点偏移访问）。
+   * 所有循环的累加顺序与原始实现逐条保持一致，结果浮点位一致。
+   */
+  const DISTANCE_CANDIDATES = ['left_hand', 'right_hand', 'left_hand_shape', 'right_hand_shape',
+    'left_hand_motion', 'right_hand_motion', 'left_hand_shape_motion', 'right_hand_shape_motion',
+    'two_hand_relation', 'two_hand_relation_motion', 'pose', 'face'];
+  const HAND_LIKE_GROUPS = [...HAND_GROUPS, ...RELATIVE_MOTION_GROUPS];
+  const HAND_SWAP_PAIRS = {
+    left_hand: ['left_hand', 'right_hand'], right_hand: ['right_hand', 'left_hand'],
+    left_hand_shape: ['left_hand_shape', 'right_hand_shape'], right_hand_shape: ['right_hand_shape', 'left_hand_shape'],
+    left_hand_motion: ['left_hand_motion', 'right_hand_motion'], right_hand_motion: ['right_hand_motion', 'left_hand_motion'],
+    left_hand_shape_motion: ['left_hand_shape_motion', 'right_hand_shape_motion'], right_hand_shape_motion: ['right_hand_shape_motion', 'left_hand_shape_motion'],
+  };
+
+  /** 检查序列所有帧的组结构（组名与 [start,end] 偏移）完全一致，
+   *  一致时才可安全使用批量快速路径（组数据按帧对固定）。 */
+  function sequenceGroupsUniform(features) {
+    if (!features.length) return true;
+    const first = features[0];
+    const firstKeys = Object.keys(first.groups);
+    for (let i = 1; i < features.length; i++) {
+      const f = features[i];
+      if (Object.keys(f.groups).length !== firstKeys.length) return false;
+      for (let k = 0; k < firstKeys.length; k++) {
+        const g = firstKeys[k];
+        const g0 = first.groups[g], gi = f.groups[g];
+        if (!gi || gi[0] !== g0[0] || gi[1] !== g0[1]) return false;
+      }
+    }
+    return true;
+  }
+
+  /** 构建局部距离矩阵的快速计算上下文：组权重/维度权重/缺失权重/帧权重只算一次 */
+  function buildDistanceContext(s, q, profile) {
+    const ctx = { ready: false, profile };
+    const sF = s.features, qF = q.features;
+    if (!sF.length || !qF.length) return ctx;
+    if (!sequenceGroupsUniform(sF) || !sequenceGroupsUniform(qF)) return ctx;
+    const a0 = sF[0], b0 = qF[0];
+    const groups = [];
+    for (let g = 0; g < DISTANCE_CANDIDATES.length; g++) {
+      const name = DISTANCE_CANDIDATES[g];
+      if (a0.groups[name] && b0.groups[name]) groups.push(name);
+    }
+    ctx.ready = true;
+    ctx.groups = groups;
+    ctx.weights = profileGroupWeights(profile, groups);
+    ctx.handGroups = [];
+    ctx.nonHandGroups = [];
+    for (let g = 0; g < groups.length; g++) {
+      const name = groups[g];
+      if (HAND_LIKE_GROUPS.includes(name)) ctx.handGroups.push(name);
+      else ctx.nonHandGroups.push(name);
+    }
+    ctx.missingWeight = {};
+    ctx.dimW = {};
+    for (let g = 0; g < groups.length; g++) {
+      const name = groups[g];
+      ctx.missingWeight[name] = groupMissingDistanceWeight(profile, name);
+      const ga = a0.groups[name];
+      ctx.dimW[name] = Float64Array.from(dimensionWeights(name, ga[1] - ga[0], profile));
+    }
+    ctx.allowSwap = !!(profile && profile.allow_hand_swap);
+    ctx.dtwCfg = semanticDtwConfig(profile);
+    ctx.scratch = new Int32Array(64);
+    ctx.sFeats = sF;
+    ctx.qFeats = qF;
+    // 预计算每帧 clamp 后的 frameWeight（pairTemporalWeight 用，避免逐帧对重复 clamp）
+    ctx.sFW = new Float64Array(sF.length);
+    ctx.qFW = new Float64Array(qF.length);
+    for (let i = 0; i < sF.length; i++) ctx.sFW[i] = Math.max(0.20, Math.min(3.50, f32(sF[i].frameWeight, 1)));
+    for (let j = 0; j < qF.length; j++) ctx.qFW[j] = Math.max(0.20, Math.min(3.50, f32(qF[j].frameWeight, 1)));
+    return ctx;
+  }
+
+  /** 快速版 poseRobustHandDistance：零分配，直接以组偏移访问切片，
+   *  累加顺序与原始逐点数组版完全一致（both 点 i 升序、通道 k 0..2）。 */
+  function fastPoseRobustHandDistance(ctx, av, bv, am, bm, aOff, bOff, w, dim, rawDist) {
+    if (dim % 3 !== 0) return rawDist;
+    const cfg = ctx.dtwCfg;
+    if (!cfg.pose_robust_hand_position) return rawDist;
+    const nPts = dim / 3;
+    const flag = ctx.scratch;
+    let bothCount = 0;
+    for (let i = 0; i < nPts; i++) {
+      const a3 = aOff + i * 3, b3 = bOff + i * 3;
+      const aOk = (am[a3] + am[a3 + 1] + am[a3 + 2]) / 3 > 0.5;
+      const bOk = (bm[b3] + bm[b3 + 1] + bm[b3 + 2]) / 3 > 0.5;
+      const both = aOk && bOk;
+      flag[i] = both ? 1 : 0;
+      if (both) bothCount++;
+    }
+    if (bothCount < 2) return rawDist;
+    let ax, ay, az, bx, by, bz;
+    if (flag[0]) {
+      ax = av[aOff]; ay = av[aOff + 1]; az = av[aOff + 2];
+      bx = bv[bOff]; by = bv[bOff + 1]; bz = bv[bOff + 2];
+    } else {
+      ax = 0; ay = 0; az = 0; bx = 0; by = 0; bz = 0;
+      for (let i = 0; i < nPts; i++) {
+        if (!flag[i]) continue;
+        const a3 = aOff + i * 3, b3 = bOff + i * 3;
+        ax += av[a3]; ay += av[a3 + 1]; az += av[a3 + 2];
+        bx += bv[b3]; by += bv[b3 + 1]; bz += bv[b3 + 2];
+      }
+      ax /= bothCount; ay /= bothCount; az /= bothCount;
+      bx /= bothCount; by /= bothCount; bz /= bothCount;
+    }
+    // localDist：加权 RMSE，顺序 = both 点 i 升序、通道 k 0..2（与原始 aFlat/bFlat/wFlat 一致）
+    let lDenom = 0, lSq = 0;
+    for (let i = 0; i < nPts; i++) {
+      if (!flag[i]) continue;
+      const a3 = aOff + i * 3, b3 = bOff + i * 3, w3 = i * 3;
+      for (let c = 0; c < 3; c++) {
+        const wc = w[w3 + c];
+        lDenom += wc;
+        // 各通道使用对应轴的锚点（x→ax/bx, y→ay/by, z→az/bz）
+        const aa = c === 0 ? ax : (c === 1 ? ay : az);
+        const bb = c === 0 ? bx : (c === 1 ? by : bz);
+        const d = (av[a3 + c] - aa) - (bv[b3 + c] - bb);
+        lSq += wc * d * d;
+      }
+    }
+    const localDist = lDenom <= 1e-8 ? 0 : Math.sqrt(lSq / lDenom);
+    // similarityAlignedXyRmse：加权 2D 相似对齐（Umeyama 解析解），点顺序与原始一致
+    let alignedXyDist;
+    if (bothCount < 3) {
+      alignedXyDist = Infinity;
+    } else {
+      let wsum = 0;
+      for (let i = 0; i < nPts; i++) {
+        if (!flag[i]) continue;
+        wsum += Math.max(0, (w[i * 3] + w[i * 3 + 1]) / 2);
+      }
+      const uniform = wsum <= 1e-8;
+      if (uniform) wsum = bothCount;
+      const inv = 1 / Math.max(wsum, 1e-8);
+      // 加权去中心（加权质心）
+      let aCx = 0, aCy = 0, bCx = 0, bCy = 0;
+      for (let i = 0; i < nPts; i++) {
+        if (!flag[i]) continue;
+        const a3 = aOff + i * 3, b3 = bOff + i * 3;
+        const wn = uniform ? inv : Math.max(0, (w[i * 3] + w[i * 3 + 1]) / 2) * inv;
+        aCx += wn * av[a3]; aCy += wn * av[a3 + 1];
+        bCx += wn * bv[b3]; bCy += wn * bv[b3 + 1];
+      }
+      let C = 0, S = 0, dnm = 0;
+      for (let i = 0; i < nPts; i++) {
+        if (!flag[i]) continue;
+        const a3 = aOff + i * 3, b3 = bOff + i * 3;
+        const wn = uniform ? inv : Math.max(0, (w[i * 3] + w[i * 3 + 1]) / 2) * inv;
+        const a0x = av[a3] - aCx, a0y = av[a3 + 1] - aCy;
+        const b0x = bv[b3] - bCx, b0y = bv[b3 + 1] - bCy;
+        C += wn * (a0x * b0x + a0y * b0y);
+        S += wn * (a0x * b0y - a0y * b0x);
+        dnm += wn * (b0x * b0x + b0y * b0y);
+      }
+      if (dnm <= 1e-8) {
+        alignedXyDist = Infinity;
+      } else {
+        const theta = Math.atan2(S, C);
+        const scale = Math.max(0.70, Math.min(1.45, Math.sqrt(C * C + S * S) / dnm));
+        const cos = Math.cos(theta), sin = Math.sin(theta);
+        let sq = 0;
+        for (let i = 0; i < nPts; i++) {
+          if (!flag[i]) continue;
+          const a3 = aOff + i * 3, b3 = bOff + i * 3;
+          const wn = uniform ? inv : Math.max(0, (w[i * 3] + w[i * 3 + 1]) / 2) * inv;
+          const b0x = bv[b3] - bCx, b0y = bv[b3 + 1] - bCy;
+          const rx = cos * b0x - sin * b0y, ry = sin * b0x + cos * b0y;
+          const alx = scale * rx + aCx, aly = scale * ry + aCy;
+          const dx = av[a3] - alx, dy = av[a3 + 1] - aly;
+          sq += wn * (dx * dx + dy * dy);
+        }
+        alignedXyDist = Math.sqrt(sq);
+      }
+    }
+    const globalAnchorDist = Math.hypot(ax - bx, ay - by, az - bz);
+    const globalWeight = cfg.hand_global_position_weight;
+    const orientationDist = isFiniteNumber(alignedXyDist) ? alignedXyDist + globalWeight * globalAnchorDist : Infinity;
+    const robustDist = Math.min(localDist + globalWeight * globalAnchorDist, orientationDist);
+    return Math.min(rawDist, robustDist);
+  }
+
+  /** 快速版组距离：单遍 mask 扫描 + 单遍加权 RMSE 批量累加（Float64Array 维度权重），
+   *  累加顺序与原始 groupDistanceBetween 完全一致（维度升序）。 */
+  function fastGroupDistance(ctx, fa, fb, aGroup, bGroup) {
+    const ga = fa.groups[aGroup], gb = fb.groups[bGroup];
+    if (!ga || !gb) return [0, 0];
+    const aLen = ga[1] - ga[0], bLen = gb[1] - gb[0];
+    if (aLen === 0 || aLen !== bLen) return [0, 1];
+    const aOff = ga[0], bOff = gb[0];
+    const av = fa.vector, bv = fb.vector;
+    const am = fa.mask, bm = fb.mask;
+    let eitherSum = 0, mismatchSum = 0, bothCount = 0;
+    for (let i = 0; i < aLen; i++) {
+      const aOk = am[aOff + i] > 0, bOk = bm[bOff + i] > 0;
+      if (aOk && bOk) bothCount++;
+      if (aOk || bOk) eitherSum++;
+      if (aOk !== bOk) mismatchSum++;
+    }
+    let dist = 0;
+    if (bothCount > 0) {
+      const w = ctx.dimW[aGroup];
+      const cap = HAND_SHAPE_GROUPS.includes(aGroup) ? 0.35 : 0;
+      // rawDist：与原始 weightedRmse 相同的累加顺序（denom 与平方差逐维顺序累加）
+      let denom = 0, sq = 0;
+      for (let i = 0; i < aLen; i++) {
+        if (!(am[aOff + i] > 0 && bm[bOff + i] > 0)) continue;
+        const wi = w[i];
+        denom += wi;
+        let d = av[aOff + i] - bv[bOff + i];
+        if (cap > 0) d = Math.max(-cap, Math.min(cap, d));
+        sq += wi * d * d;
+      }
+      let d = denom <= 1e-8 ? 0 : Math.sqrt(sq / denom);
+      const isHand = aGroup === 'left_hand' || aGroup === 'right_hand';
+      if (isHand) d = Math.min(d, fastPoseRobustHandDistance(ctx, av, bv, am, bm, aOff, bOff, w, aLen, d));
+      // scale 修正：alpha 缩放 + log 惩罚（在 pose_robust 之后，min 基于 d）
+      if (isHand || aGroup === 'pose') {
+        let denom2 = 0;
+        for (let i = 0; i < aLen; i++) {
+          if (!(am[aOff + i] > 0 && bm[bOff + i] > 0)) continue;
+          denom2 += w[i] * bv[bOff + i] * bv[bOff + i];
+        }
+        if (denom2 > 1e-8) {
+          let num = 0;
+          for (let i = 0; i < aLen; i++) {
+            if (!(am[aOff + i] > 0 && bm[bOff + i] > 0)) continue;
+            num += w[i] * av[aOff + i] * bv[bOff + i];
+          }
+          const alpha = Math.max(0.70, Math.min(1.45, num / denom2));
+          // scaledDist = weightedRmse(left, right.map(v => alpha * v), w)，无 cap
+          let sDenom = 0, sSq = 0;
+          for (let i = 0; i < aLen; i++) {
+            if (!(am[aOff + i] > 0 && bm[bOff + i] > 0)) continue;
+            const wi = w[i];
+            sDenom += wi;
+            const dd = av[aOff + i] - alpha * bv[bOff + i];
+            sSq += wi * dd * dd;
+          }
+          const scaledDist = sDenom <= 1e-8 ? 0 : Math.sqrt(sSq / sDenom);
+          const scalePenalty = 0.004 * Math.abs(Math.log(Math.max(alpha, 1e-6)));
+          d = Math.min(d, scaledDist + scalePenalty);
+        }
+      }
+      dist = d;
+    }
+    const missingPenalty = eitherSum > 0 ? mismatchSum / eitherSum : 0;
+    return [dist, missingPenalty];
+  }
+
+  /** 快速版 frameDistance：组权重/缺失权重/维度权重全部预计算，
+   *  加权累加顺序与原始 frameDistance 完全一致（手部组 → 非手部组 → missing）。 */
+  function fastFrameDistance(ctx, i, j) {
+    const fa = ctx.sFeats[i], fb = ctx.qFeats[j];
+    const weights = ctx.weights;
+    const handGroups = ctx.handGroups, nonHandGroups = ctx.nonHandGroups;
+    const groupMetrics = {};
+    const directHand = {};
+    for (let g = 0; g < handGroups.length; g++) {
+      const group = handGroups[g];
+      directHand[group] = fastGroupDistance(ctx, fa, fb, group, group);
+    }
+    const swappedHand = {};
+    if (ctx.allowSwap) {
+      for (let g = 0; g < handGroups.length; g++) {
+        const group = handGroups[g];
+        const pair = HAND_SWAP_PAIRS[group];
+        if (pair && fa.groups[pair[0]] && fb.groups[pair[1]]) {
+          swappedHand[group] = fastGroupDistance(ctx, fa, fb, pair[0], pair[1]);
+        }
+      }
+    }
+    let directWeighted = 0;
+    for (let g = 0; g < handGroups.length; g++) {
+      const group = handGroups[g];
+      const pr = directHand[group];
+      directWeighted += (weights[group] || 0) * (pr[0] + ctx.missingWeight[group] * pr[1]);
+    }
+    let swappedWeighted = 0;
+    for (let g = 0; g < handGroups.length; g++) {
+      const group = handGroups[g];
+      const pr = swappedHand[group] || directHand[group] || [0, 0];
+      swappedWeighted += (weights[group] || 0) * (pr[0] + ctx.missingWeight[group] * pr[1]);
+    }
+    const useSwapped = Object.keys(swappedHand).length > 0 && swappedWeighted < directWeighted - 1e-6;
+    const selectedHand = useSwapped ? swappedHand : directHand;
+    let weighted = 0, missingWeighted = 0, missingWeightSum = 0;
+    for (let g = 0; g < handGroups.length; g++) {
+      const group = handGroups[g];
+      const pr = selectedHand[group] || directHand[group] || [0, 0];
+      const dist = pr[0], miss = pr[1];
+      const missingDistance = ctx.missingWeight[group] * miss;
+      groupMetrics[group] = dist;
+      groupMetrics[group + '_missing_penalty'] = miss;
+      groupMetrics[group + '_missing_distance'] = missingDistance;
+      const gw = weights[group] || 0;
+      weighted += gw * (dist + missingDistance);
+      missingWeighted += gw * miss;
+      missingWeightSum += gw;
+    }
+    groupMetrics.hand_side_swapped = useSwapped ? 1 : 0;
+    for (let g = 0; g < nonHandGroups.length; g++) {
+      const group = nonHandGroups[g];
+      const pr = fastGroupDistance(ctx, fa, fb, group, group);
+      const dist = pr[0], miss = pr[1];
+      const missingDistance = ctx.missingWeight[group] * miss;
+      groupMetrics[group] = dist;
+      groupMetrics[group + '_missing_penalty'] = miss;
+      groupMetrics[group + '_missing_distance'] = missingDistance;
+      const gw = weights[group] || 0;
+      weighted += gw * (dist + missingDistance);
+      missingWeighted += gw * miss;
+      missingWeightSum += gw;
+    }
+    const missing = missingWeightSum > 1e-6 ? missingWeighted / missingWeightSum : 0;
+    weighted += (weights.missing !== undefined ? weights.missing : (GROUP_WEIGHTS.missing !== undefined ? GROUP_WEIGHTS.missing : 0.06)) * missing;
+    groupMetrics.missing = missing;
+    groupMetrics.weighted = weighted;
+    return [weighted, groupMetrics];
+  }
+
   /* ================= DTW 主流程 ================= */
   function semanticActionWindow(seq) {
     const values = seq.features.map(f => f32(f.frameWeight, 1));
@@ -1560,25 +1889,53 @@
     const localMetrics = [];
     const phaseWeight = profile && profile.semantic_dtw && profile.semantic_dtw.enabled ? (profile.semantic_dtw.local_phase_weight || 0) : 0;
 
-    for (let i = 0; i < n; i++) {
-      const a = s.features[i];
-      for (let j = 0; j < m; j++) {
-        const b = q.features[j];
-        const [dist, metrics] = frameDistance(a, b, profile);
-        const phaseGap = Math.abs(a.semanticPhase - b.semanticPhase);
-        const phasePenalty = phaseWeight * Math.pow(phaseGap, 1.35);
-        const pairWeight = pairTemporalWeight(a, b);
-        const scoringDist = dist + phasePenalty;
-        local[i * m + j] = scoringDist * pairWeight;
-        metrics.base_weighted = dist;
-        metrics.semantic_phase_gap = phaseGap;
-        metrics.semantic_phase_penalty = phasePenalty;
-        metrics.frame_pair_weight = pairWeight;
-        metrics.temporal_weighted_distance = local[i * m + j];
-        metrics.standard_frame_weight = a.frameWeight;
-        metrics.query_frame_weight = b.frameWeight;
-        metrics.weighted = scoringDist;
-        localMetrics.push(metrics);
+    // 局部距离矩阵快速路径：组权重/维度权重只算一次，批量累加（数值与原始 frameDistance 一致）
+    const dctx = buildDistanceContext(s, q, profile);
+    if (dctx.ready) {
+      for (let i = 0; i < n; i++) {
+        const a = s.features[i];
+        const aw = dctx.sFW[i];
+        for (let j = 0; j < m; j++) {
+          const b = q.features[j];
+          const [dist, metrics] = fastFrameDistance(dctx, i, j);
+          const phaseGap = Math.abs(a.semanticPhase - b.semanticPhase);
+          const phasePenalty = phaseWeight * Math.pow(phaseGap, 1.35);
+          const pairWeight = 0.70 * aw + 0.30 * dctx.qFW[j];
+          const scoringDist = dist + phasePenalty;
+          local[i * m + j] = scoringDist * pairWeight;
+          metrics.base_weighted = dist;
+          metrics.semantic_phase_gap = phaseGap;
+          metrics.semantic_phase_penalty = phasePenalty;
+          metrics.frame_pair_weight = pairWeight;
+          metrics.temporal_weighted_distance = local[i * m + j];
+          metrics.standard_frame_weight = a.frameWeight;
+          metrics.query_frame_weight = b.frameWeight;
+          metrics.weighted = scoringDist;
+          localMetrics.push(metrics);
+        }
+      }
+    } else {
+      // 兜底：组结构不一致等异常情况退回原始逐对 frameDistance，保证行为一致
+      for (let i = 0; i < n; i++) {
+        const a = s.features[i];
+        for (let j = 0; j < m; j++) {
+          const b = q.features[j];
+          const [dist, metrics] = frameDistance(a, b, profile);
+          const phaseGap = Math.abs(a.semanticPhase - b.semanticPhase);
+          const phasePenalty = phaseWeight * Math.pow(phaseGap, 1.35);
+          const pairWeight = pairTemporalWeight(a, b);
+          const scoringDist = dist + phasePenalty;
+          local[i * m + j] = scoringDist * pairWeight;
+          metrics.base_weighted = dist;
+          metrics.semantic_phase_gap = phaseGap;
+          metrics.semantic_phase_penalty = phasePenalty;
+          metrics.frame_pair_weight = pairWeight;
+          metrics.temporal_weighted_distance = local[i * m + j];
+          metrics.standard_frame_weight = a.frameWeight;
+          metrics.query_frame_weight = b.frameWeight;
+          metrics.weighted = scoringDist;
+          localMetrics.push(metrics);
+        }
       }
     }
     const localAt = (i, j) => local[i * m + j];
@@ -2019,6 +2376,6 @@
       POSE_CORE_INDICES, FACE_CORE_INDICES, GROUP_WEIGHTS,
       HAND_GROUPS, RELATIVE_MOTION_GROUPS, FINGER_TIPS, FINGER_MCPS, FINGER_PIPS, FINGER_DIPS, SPREAD_PAIRS,
     },
-    _internal: { landmarkArray, handShapeFeature, normalizationFromPose, groupDistance, groupDistanceBetween, profileGroupWeights, computeSemanticFrameWeightValues, semanticPhaseFromWeights, adjacentGroupMotion, dimensionWeights, weightedRmse, twoHandRelationFeature, sequenceWithRelativeMotionFeatures, poseRobustHandDistance, similarityAlignedXyRmse, svd2x2, groupMissingDistanceWeight, softenEnvelopeDistance },
+    _internal: { landmarkArray, handShapeFeature, normalizationFromPose, groupDistance, groupDistanceBetween, profileGroupWeights, computeSemanticFrameWeightValues, semanticPhaseFromWeights, adjacentGroupMotion, dimensionWeights, weightedRmse, twoHandRelationFeature, sequenceWithRelativeMotionFeatures, poseRobustHandDistance, similarityAlignedXyRmse, svd2x2, groupMissingDistanceWeight, softenEnvelopeDistance, buildDistanceContext, fastFrameDistance, fastGroupDistance, fastPoseRobustHandDistance },
   };
 })(typeof window !== 'undefined' ? window : globalThis);
