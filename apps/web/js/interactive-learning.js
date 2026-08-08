@@ -291,12 +291,27 @@
       host.hidden = false;
       return;
     }
-    const items = advice.map(item => `
-      <li class="stage-advice-item">
-        <strong>⚠️ ${esc(item.group_label || item.group)}</strong>
-        <p>${esc(item.suggestion || '')}</p>
-      </li>`).join('');
-    host.innerHTML = `<h4>💡 ${esc(en ? 'Targeted part guidance' : '针对性局部指导')}</h4><ul>${items}</ul>`;
+    // 布局：多个小标题 chips（弱组 + 分数）→ 一段去重的合并建议
+    const heads = advice.map(item => `<span class="advice-head">${esc(item.group_label || item.group)} ${item.group_score != null ? item.group_score : '--'}</span>`).join('');
+    const seenDetails = new Set();
+    const bodyParts = [];
+    for (const item of advice) {
+      const detail = item.related_stage_detail;
+      const label = item.related_stage_label;
+      if (detail && !seenDetails.has(detail)) {
+        seenDetails.add(detail);
+        bodyParts.push(
+          en ? `Focus on the semantic stage "${label}": ${detail}.` : `重点练习核心语义【${label}】：${detail}。`
+        );
+      }
+    }
+    const tail = en
+      ? 'Compare with the reference video and practice these parts.'
+      : '请对照示范视频，重点练习上述局部动作。';
+    const body = bodyParts.length ? bodyParts.join(' ') + ' ' + tail : tail;
+    host.innerHTML = `<h4>💡 ${esc(en ? 'Targeted part guidance' : '针对性局部指导')}</h4>
+      <div class="advice-heads">${heads}</div>
+      <p class="advice-body">${esc(body)}</p>`;
     host.hidden = false;
   }
 
