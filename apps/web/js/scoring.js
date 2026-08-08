@@ -1831,10 +1831,18 @@
     const practiceAdvice = buildPracticeAdvice(result);
     if (practiceAdvice) return practiceAdvice;
     if (mode === 'web_holistic_core_local') {
-      return scoreText(
+      const base = scoreText(
         '已在浏览器本机完成与后端一致的 DTW 语义评分（无网络依赖）；该分数仍需结合真实用户标注继续校准。',
         'Scored locally in the browser with the same DTW semantic core as the backend (no network needed); this score still needs calibration with real-user labels.'
       );
+      // 追加针对性建议：各核心语义（局部组 + 语义阶段）的做对程度与具体练习指导
+      const groupAdvice = (result.diagnostics?.group_advice || []).map(a => `• ${a.suggestion}`).join('\n');
+      const stageAdvice = (result.diagnostics?.stage_advice || []).map(a => `• ${a.suggestion}`).join('\n');
+      const adviceLines = [groupAdvice, stageAdvice].filter(Boolean).join('\n');
+      if (adviceLines) {
+        return `${base}\n\n${scoreText('针对性建议（按核心语义打分）：', 'Targeted advice (by semantic part score):')}\n${adviceLines}`;
+      }
+      return base;
     }
     if (mode === 'web_holistic_template_similarity') {
       return scoreText(
