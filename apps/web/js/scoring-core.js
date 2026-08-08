@@ -1954,9 +1954,12 @@
     }
     const groupCompositeScore = weightTotal > 0 ? Math.round(weightedSum / weightTotal) : null;
     const hasGroupEnvelope = Object.keys(groupEnvelope).length > 0;
-    // 注意：prototypeScore 保持总体包络线性映射（21/21 交叉验证判定），
-    // groupCompositeScore 仅作为诊断信息展示（各组做对程度），不覆盖总分，
-    // 避免"组内归一"对难例（整体距离小的跨词动作）产生虚高分。
+    // 总分与核心组评分联动：取 min(总体包络分, 核心组加权评分)——
+    // 核心组严重做错（如超市 right_hand 0 分）时总分必须明显降低，
+    // 避免"核心局部全错却接近通过线"的虚高。交叉验证判定基于距离阈值，不受影响。
+    if (groupCompositeScore != null && focusGroups) {
+      prototypeScore = Math.min(prototypeScore, groupCompositeScore);
+    }
     void hasGroupEnvelope;
 
     return {
