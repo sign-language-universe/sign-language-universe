@@ -3511,5 +3511,40 @@ body.theme-day .interactive-score-result {
   .semantic-contract-panel { padding: 14px; }
   .interactive-summary { font-size: 14px; }
   .semantic-guidance-intro { grid-template-columns: 1fr; }
+
+/* ============ 互动学习评分结果：针对性建议与局部语义评分 ============ */
+.interactive-group-advice ul { list-style: none; padding: 0; margin: 8px 0 0; }
+.stage-advice-item {
+  list-style: none; /* 去掉左侧 bullet */
+  background: rgba(77, 166, 255, 0.07);
+  border-left: 3px solid var(--accent-orange, #ff8c42);
+  border-radius: 8px;
+  padding: 7px 11px;
+  margin: 6px 0;
+  font-size: 12.5px; /* 调小字号 */
+  line-height: 1.55;
+}
+.stage-advice-item strong {
+  color: var(--accent-orange, #ff8c42);
+  display: block;
+  margin-bottom: 2px;
+  font-size: 12.5px;
+}
+.stage-advice-item p { margin: 0; color: var(--text-secondary); font-size: 12.5px; }
+.stage-advice-all-ok { color: var(--accent-green, #4de8a0); font-size: 13px; margin: 8px 0 0; }
+.interactive-group-advice h4, .interactive-group-scores h4 { font-size: 14px; margin: 10px 0 6px; color: var(--text-primary); }
+.stage-score-row {
+  display: flex; align-items: center; gap: 8px; margin: 5px 0; font-size: 12.5px;
+}
+.stage-score-row .stage-score-label { width: 96px; color: var(--text-secondary); }
+.stage-score-row.weak .stage-score-label { color: var(--accent-orange, #ff8c42); font-weight: 600; }
+.stage-score-row .stage-score-bar {
+  flex: 1; height: 8px; background: rgba(255,255,255,0.10); border-radius: 4px; overflow: hidden;
+}
+.stage-score-row .stage-score-bar i { display: block; height: 100%; background: var(--accent-green, #4de8a0); border-radius: 4px; }
+.stage-score-row.weak .stage-score-bar i { background: var(--accent-orange, #ff8c42); }
+.stage-score-row .stage-score-value { width: 30px; text-align: right; color: var(--text-primary); font-weight: 600; }
+/* 日间（浅色）主题：分数条轨道用浅灰，避免白底白条 */
+body.theme-day .stage-score-row .stage-score-bar { background: rgba(22, 32, 51, 0.12); }
   .semantic-illustration img { max-height: 320px; }
 }
