@@ -1838,7 +1838,7 @@
     const practiceAdvice = buildPracticeAdvice(result);
     if (practiceAdvice) return practiceAdvice;
     if (mode === 'web_holistic_core_local') {
-      return scoreText('已在本机完成评分。', 'Scored locally.');
+      return ''; // 无低分建议时不再显示兜底文案
     }
     if (mode === 'web_holistic_template_similarity') {
       return scoreText(

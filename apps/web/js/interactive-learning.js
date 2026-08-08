@@ -285,8 +285,14 @@
     const host = document.getElementById('interactive-group-advice');
     if (!host) return;
     const advice = result?.diagnostics?.group_advice;
-    if (!Array.isArray(advice) || !advice.length) { host.hidden = true; return; }
     const en = state.locale === 'en';
+    if (!Array.isArray(advice) || !advice.length) {
+      // 评分完成但无低分局部：显示达标反馈，避免"评分后无提示"的困惑
+      host.innerHTML = `<h4>💡 ${esc(en ? 'Targeted part guidance' : '针对性局部指导')}</h4>
+        <p class="stage-advice-all-ok">✅ ${esc(en ? 'All semantic parts passed (≥80). Great job!' : '各核心语义局部均达标（≥80），动作标准！')}</p>`;
+      host.hidden = false;
+      return;
+    }
     const items = advice.map(item => `
       <li class="stage-advice-item">
         <strong>⚠️ ${esc(item.group_label || item.group)}</strong>
