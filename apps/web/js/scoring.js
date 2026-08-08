@@ -1506,14 +1506,23 @@
   };
   function buildGroupAdvice(result, word) {
     // 由 group_weak（局部语义特征组做偏）生成针对性指导建议。
-    // 预设规则：把"没做对的局部组"映射到该词具体的核心语义阶段（label + detail），
-    // 让建议落到"这个语义动作具体该怎么练"。
+    // 预设规则：把"没做对的局部组"映射到该词具体的核心语义阶段（label + detail）。
+    // 低总分但无 weak 组时（如某些组无包络导致漏判），取最低分局部组作为"相对薄弱"给建议，
+    // 避免"总分很低却显示全部达标"的矛盾。
     const weak = result.group_weak || {};
     const scores = result.group_scores || {};
     const info = stageInfoForWord(word);
     const stages = info.labels || [];
+    let weakEntries = Object.entries(weak).filter(([, isWeak]) => isWeak);
+    const isLowScore = result.prototype_score != null && result.prototype_score < 80;
+    if (!weakEntries.length && isLowScore) {
+      // 相对薄弱：取分数最低的 2 个已评分局部组
+      const scored = Object.entries(scores).filter(([, s]) => s != null).sort((a, b) => a[1] - b[1]);
+      weakEntries = scored.slice(0, 2).map(([g]) => [g, true]);
+      if (!weakEntries.length) return [];
+    }
     const advice = [];
-    for (const [group, isWeak] of Object.entries(weak)) {
+    for (const [group, isWeak] of weakEntries) {
       if (!isWeak) continue;
       const label = GROUP_LABELS[group];
       const score = scores[group];
@@ -1533,6 +1542,10 @@
       }
       const related = relatedStage ? stageTextForGroup(relatedStage, group, isInteractiveEnglish()) : null;
       const groupName = label ? (isInteractiveEnglish() ? label.en : label.zh) : group;
+      // 措辞：明确是"做偏"还是"相对最弱"
+      const verb = isWeak && weak[group]
+        ? (isInteractiveEnglish() ? 'is off' : '做偏了')
+        : (isInteractiveEnglish() ? 'is relatively the weakest' : '是相对最弱的局部');
       if (related && related.stage_label) {
         advice.push({
           group,
@@ -1541,8 +1554,8 @@
           related_stage_label: related.stage_label,
           related_stage_detail: related.stage_detail,
           suggestion: isInteractiveEnglish()
-            ? `"${groupName}" scored ${scoreText ?? '--'}/100 and is key to the semantic stage "${related.stage_label}": ${related.stage_detail || ''}. Practice this part against the reference video.`
-            : `「${groupName}」得分 ${scoreText ?? '--'}/100，与该词核心语义【${related.stage_label}】密切相关：${related.stage_detail || ''}。请对照示范视频，重点练习这一局部动作的完成度。`,
+            ? `"${groupName}" ${verb} (${scoreText ?? '--'}/100) and is key to the semantic stage "${related.stage_label}": ${related.stage_detail || ''}. Practice this part against the reference video.`
+            : `「${groupName}」${verb}（${scoreText ?? '--'}/100），与该词核心语义【${related.stage_label}】密切相关：${related.stage_detail || ''}。请对照示范视频，重点练习这一局部动作的完成度。`,
         });
       } else {
         advice.push({
@@ -1550,8 +1563,8 @@
           group_label: groupName,
           group_score: scoreText,
           suggestion: isInteractiveEnglish()
-            ? `"${groupName}" scored ${scoreText ?? '--'}/100; practice this part against the reference video.`
-            : `「${groupName}」得分 ${scoreText ?? '--'}/100，请对照示范视频重点练习该局部动作。`,
+            ? `"${groupName}" ${verb} (${scoreText ?? '--'}/100); practice this part against the reference video.`
+            : `「${groupName}」${verb}（${scoreText ?? '--'}/100），请对照示范视频重点练习该局部动作。`,
         });
       }
     }
