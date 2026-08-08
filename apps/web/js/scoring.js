@@ -1516,8 +1516,11 @@
     let weakEntries = Object.entries(weak).filter(([, isWeak]) => isWeak);
     const isLowScore = result.prototype_score != null && result.prototype_score < 80;
     if (!weakEntries.length && isLowScore) {
-      // 相对薄弱：取分数最低的 2 个已评分局部组
-      const scored = Object.entries(scores).filter(([, s]) => s != null).sort((a, b) => a[1] - b[1]);
+      // 相对薄弱：从核心组（group_focus）取分数最低的 2 个已评分局部组
+      const focus = Array.isArray(result.group_focus) ? result.group_focus : null;
+      const scored = Object.entries(scores)
+        .filter(([g, s]) => s != null && (!focus || focus.includes(g)))
+        .sort((a, b) => a[1] - b[1]);
       weakEntries = scored.slice(0, 2).map(([g]) => [g, true]);
       if (!weakEntries.length) return [];
     }
