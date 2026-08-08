@@ -193,10 +193,7 @@
     if (message) message.textContent = scoringResultMessage(result, passed);
     const status = document.getElementById('interactive-score-state');
     if (status) status.textContent = passed ? t('success') : t('retryHint');
-    // 语义阶段评分 + 针对性指导建议（基于加权数据库的阶段距离）
-    renderStageScores(result);
-    renderStageAdvice(result);
-    // 局部语义特征组评分 + 组级指导建议（landmark 局部加权）
+    // 核心语义局部（特征组）打分 + 低分针对性建议（主展示）
     renderGroupScores(result);
     renderGroupAdvice(result);
     if (passed && typeof AppState !== 'undefined') {
@@ -353,8 +350,6 @@
       '<div><span>' + (en ? 'Frames' : '上传帧数') + '</span><strong id="scoring-result-frames">--</strong></div>',
       '<div><span>Worker</span><strong id="scoring-result-worker">--</strong></div>',
       '<div><span>Request</span><strong id="scoring-result-request">--</strong></div><p id="scoring-result-advice">--</p></div>',
-      '<div class="interactive-stage-scores" id="interactive-stage-scores" hidden></div>',
-      '<div class="interactive-stage-advice" id="interactive-stage-advice" hidden></div>',
       '<div class="interactive-group-scores" id="interactive-group-scores" hidden></div>',
       '<div class="interactive-group-advice" id="interactive-group-advice" hidden></div>',
       '<div class="result-actions"><button class="action-btn secondary" type="button" onclick="InteractiveLearning.retryScore()">↻ ' + esc(t('retry')) + '</button>',

@@ -1827,13 +1827,11 @@
   function buildResultAdvice(result) {
     if (!result) return '--';
     const mode = result.diagnostics?.scoring_mode || result.level || '';
-    // 语义建议优先（各核心语义打分的针对性指导）
+    // 语义建议优先（各核心语义局部打分的针对性指导）
     if (mode === 'web_holistic_core_local') {
       const groupAdvice = (result.diagnostics?.group_advice || []).map(a => `• ${a.suggestion}`).join('\n');
-      const stageAdvice = (result.diagnostics?.stage_advice || []).map(a => `• ${a.suggestion}`).join('\n');
-      const adviceLines = [groupAdvice, stageAdvice].filter(Boolean).join('\n');
-      if (adviceLines) {
-        return `${scoreText('针对性建议（按核心语义打分）：', 'Targeted advice (by semantic part score):')}\n${adviceLines}`;
+      if (groupAdvice) {
+        return `${scoreText('针对性建议（按核心语义打分）：', 'Targeted advice (by semantic part score):')}\n${groupAdvice}`;
       }
     }
     // 质量建议（帧数/手部可见性/动作幅度）作为补充
