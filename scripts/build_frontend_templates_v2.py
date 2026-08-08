@@ -253,6 +253,7 @@ def main(argv=None) -> int:
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--templates-per-word", type=int, default=3, help="每词模板数（默认 3）")
     parser.add_argument("--positive-manifest", type=Path, default=None, help="trusted_positive_manifest.csv（计算各组局部距离包络）")
+    parser.add_argument("--fill-envelope-from", type=Path, default=None, help="前端交叉验证结果 JSON（每词 envelope q50/q90，回填总体包络）")
     parser.add_argument("--force-bbox", action="store_true")
     args = parser.parse_args(argv)
 
@@ -320,6 +321,18 @@ def main(argv=None) -> int:
             templates[word]["group_envelope"] = envelope or {}
         n_with = sum(1 for t in templates.values() if t["group_envelope"])
         print(f"完成：{n_with}/{len(templates)} 词含 group_envelope（总耗时 {_time.time()-t0:.0f}s）", file=sys.stderr)
+
+    # 回填总体 envelope（前端交叉验证的 q50/q90）——缺包络时总分退化为指数映射会严重偏低
+    if args.fill_envelope_from is not None and args.fill_envelope_from.is_file():
+        cv = json.loads(args.fill_envelope_from.read_text(encoding="utf-8"))
+        env_by_word = {row.get("word"): row.get("envelope") for row in cv if isinstance(row, dict) and row.get("envelope")}
+        filled = 0
+        for word, tpl_entry in templates.items():
+            env = env_by_word.get(word)
+            if env:
+                tpl_entry["envelope"] = env
+                filled += 1
+        print(f"回填总体 envelope：{filled}/{len(templates)} 词", file=sys.stderr)
 
     if not templates:
         print("错误：没有可用的模板", file=sys.stderr)
