@@ -1920,9 +1920,19 @@
         groupMeans[g] = values.length ? values.reduce((s, v) => s + v, 0) / values.length : null;
       }
     }
+    // 局部语义评分只针对该词的核心语义组（focus_groups）：
+    // 非核心组（如谗的左手/姿态）做错不影响总分，也不显示分数/判 weak，避免"总分 100 却显示一堆低分"的视觉矛盾。
+    const focusGroups = (profile && Array.isArray(profile.focus_groups) && profile.focus_groups.length)
+      ? profile.focus_groups.map(String)
+      : null;
     const localScores = {};
     const groupWeak = {};
     for (const g of GROUP_KEYS) {
+      if (focusGroups && !focusGroups.includes(g)) {
+        localScores[g] = null;
+        groupWeak[g] = false;
+        continue;
+      }
       const env = groupEnvelope[g];
       const d = groupMeans[g];
       if (!env || d == null || !(env.q90 > env.q50)) {
