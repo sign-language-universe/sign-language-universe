@@ -125,8 +125,9 @@
   }
 
   function isInteractiveEnglish() {
+    // 与 interactive-learning 默认英文一致：localStorage 无值或非 'zh' 都视为英文
     return state.uiMode === 'interactive'
-      && window.localStorage.getItem('sluInteractiveLocale') === 'en';
+      && window.localStorage.getItem('sluInteractiveLocale') !== 'zh';
   }
 
   function scoreText(zh, en) {
