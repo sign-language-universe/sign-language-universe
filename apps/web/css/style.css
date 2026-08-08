@@ -1522,23 +1522,15 @@ body.theme-day .animation-viewer {
   box-shadow: 0 0 30px rgba(77,166,255,0.08), inset 0 0 30px rgba(0,0,0,0.5);
 }
 
-/* 摄像头扫描线装饰 */
+/* 摄像头扫描线装饰（移除：用户反馈扫描线造成边框视觉抖动） */
 .challenge-camera-frame::after {
   content: '';
   position: absolute;
   top: 0; left: 0; right: 0;
   height: 2px;
   background: linear-gradient(90deg, transparent, rgba(77,166,255,0.6), transparent);
-  animation: scanLine 3s ease-in-out infinite;
   pointer-events: none;
   z-index: 5;
-}
-
-@keyframes scanLine {
-  0% { top: 0; opacity: 0; }
-  10% { opacity: 1; }
-  90% { opacity: 1; }
-  100% { top: 100%; opacity: 0; }
 }
 
 .challenge-camera-inner {
