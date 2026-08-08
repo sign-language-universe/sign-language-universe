@@ -3568,3 +3568,7 @@ body.theme-day .stage-score-row .stage-score-bar { background: rgba(22, 32, 51, 
   line-height: 1.6;
   color: var(--text-secondary);
 }
+
+/* 建议 chips 居中；下一个按钮更扁 */
+.interactive-group-advice .advice-heads { justify-content: center; }
+.interactive-score-result .result-actions .action-btn { padding: 5px 14px; font-size: 13px; border-radius: 8px; line-height: 1.3; }
