@@ -1601,23 +1601,20 @@ body.theme-day .animation-viewer {
   pointer-events: none;
 }
 
+/* 日间（浅色）主题：浅色遮罩 + 黑字，保证倒计时数字可见 */
+body.theme-day .scoring-countdown-overlay {
+  background: rgba(255,255,255,0.40);
+}
+
 .scoring-countdown-overlay.hidden {
   display: none;
 }
 
 .scoring-countdown-overlay span {
-  width: 104px;
-  height: 104px;
-  display: grid;
-  place-items: center;
-  border-radius: 50%;
-  border: 3px solid rgba(255,255,255,0.78);
-  background: rgba(10,16,35,0.72);
-  color: #ffffff; /* 固定白色：倒计时始终深底白字，避免浅色主题下深字看不见 */
+  color: var(--text-primary); /* 主题自适应：日间黑字 / 夜间白字（无圆底遮挡） */
   font-size: 46px;
   font-weight: 900;
   font-variant-numeric: tabular-nums;
-  box-shadow: 0 0 28px rgba(77,166,255,0.3);
 }
 
 .scoring-capture-complete {
