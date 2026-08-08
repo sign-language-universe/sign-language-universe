@@ -128,20 +128,22 @@
 
   function syncChallengeWord(item) {
     if (typeof CHALLENGE_WORDS === 'undefined' || typeof AppState === 'undefined') return -1;
-    const target = item.practice_word || item.zh;
-    let index = CHALLENGE_WORDS.findIndex(entry =>
-      entry.word === target || (target === '汽车（一）' && entry.word === '汽车')
-    );
+    // practice_word 是老词名（馋/汽车），归一到 21 词模板词名（谗（羡慕）/汽车（一））
+    const rawTarget = item.practice_word || item.zh;
+    const target = (typeof CANONICAL_WORD_ALIASES !== 'undefined' && CANONICAL_WORD_ALIASES[rawTarget])
+      ? CANONICAL_WORD_ALIASES[rawTarget]
+      : rawTarget;
+    let index = CHALLENGE_WORDS.findIndex(entry => entry.word === target);
     if (index < 0) {
       CHALLENGE_WORDS.push({
         word: target,
         pinyin: item.pinyin,
         definition: state.locale === 'en' ? item.summary_en : item.summary_zh,
-        usage: state.locale === 'en' ? 'Interactive-learning candidate demo.' : '互动学习候选评分 Demo。',
+        usage: state.locale === 'en' ? 'Interactive-learning scoring.' : '互动学习评分。',
         category: '互动学习实验室',
         model: target,
         scoringReady: true,
-        statusLabel: item.scoring_template_status === 'experimental' ? t('experimental') : t('available'),
+        statusLabel: t('available'),
         statusText: state.locale === 'en' ? item.summary_en : item.summary_zh,
         hasRewardModel: false
       });
