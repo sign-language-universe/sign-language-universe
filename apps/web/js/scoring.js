@@ -1361,13 +1361,13 @@
       return;
     }
     setServiceStatus('checking', scoreText(
-      `采集完成：${state.capturePlan.candidateFrames} 帧计划，${routeText} ${readyCount} 帧；请点击「评分」`,
-      `Capture complete: ${state.capturePlan.candidateFrames} planned, ${readyCount} ${routeText}; click Score to evaluate`
+      `采集完成：${state.capturePlan.candidateFrames} 帧计划，${routeText} ${readyCount} 帧；正在自动评分`,
+      `Capture complete: ${state.capturePlan.candidateFrames} planned, ${readyCount} ${routeText}; scoring automatically`
     ));
-    // 不自动评分：启用评分按钮，由用户点击（之前自动评分导致 ⭐ 按钮永远不可用）
-    const scoreBtnReady = uiElement('btn-score');
-    if (scoreBtnReady) scoreBtnReady.disabled = false;
-    show(scoreText('采集完成，请点击「评分」', 'Capture complete; click Score to evaluate'));
+    setAutoScoreStatus(scoreText('采集完成，正在自动评分：0.0s', 'Capture complete; scoring automatically: 0.0s'), true);
+    show(scoreText('采集完成，正在自动评分', 'Capture complete; scoring automatically'));
+    await new Promise(resolve => setTimeout(resolve, 160));
+    if (runId === state.captureRunId) await scoreChallengeWithApi();
   }
 
   function availableSampleCount() {
