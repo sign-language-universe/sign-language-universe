@@ -1376,6 +1376,7 @@
 
   const LOCAL_TEMPLATES_URL = new URL('assets/content/scoring_templates_v2.json', document.baseURI).href;
   const LOCAL_CONTRACTS_URL = new URL('assets/content/interactive_learning_contracts.json', document.baseURI).href;
+  const COLLECT_URL = 'http://127.0.0.1:8200/collect';
   // 语义阶段数据（ordered_sequence：各阶段指导文案），供本地评分组装针对性建议
   let localStages = null;
   let localStagesLoading = null;
@@ -1975,6 +1976,39 @@
     }
   }
 
+  async function collectSample(word, label) {
+    // 收集正/负样本：把本次录制的 landmarkRows 上传到本地收集服务（127.0.0.1:8200）
+    const rows = state.landmarkRows || [];
+    if (rows.length < 3) {
+      return { ok: false, error: 'landmark_rows_too_few' };
+    }
+    const payload = {
+      word,
+      label, // 'pos' | 'neg'
+      landmark_rows: rows,
+      fps: state.capturePlan?.candidateFps || state.capturePlan?.uploadFps || 25,
+      total_frames: rows.length,
+      captured_at: new Date().toISOString(),
+      meta: {
+        score: AppState.challengeScore ?? null,
+        browser_holistic: state.browserHolisticStats ?? null,
+      },
+    };
+    try {
+      const response = await fetch(COLLECT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await response.json();
+      return data.ok
+        ? { ok: true, sample_id: data.sample_id }
+        : { ok: false, error: data.error || 'collect_failed' };
+    } catch (error) {
+      return { ok: false, error: String(error.message || error) };
+    }
+  }
+
   window.ScoringBridge = {
     startChallengeRecording,
     ensureCamera,
@@ -1987,7 +2021,8 @@
     saveApiBaseFromInput,
     preloadBrowserHolistic,
     retryBrowserHolistic,
-    updateCaptureHint
+    updateCaptureHint,
+    collectSample
   };
 
   document.addEventListener('DOMContentLoaded', () => {
