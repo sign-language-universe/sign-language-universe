@@ -423,6 +423,8 @@
     const wasScoringMounted = state.scoringMounted;
     state.locale = locale === 'en' ? 'en' : 'zh';
     window.localStorage.setItem('sluInteractiveLocale', state.locale);
+    // 同步到 AppState（model-scoring 等模块按此读取界面语言）
+    if (window.AppState) window.AppState.locale = state.locale;
     render();
     // 语言切换后保持摄像头区域：若之前评分区已挂载，重新打开摄像头预览（不缩回）
     if (wasScoringMounted && typeof window.ScoringBridge?.ensureCamera === 'function') {
