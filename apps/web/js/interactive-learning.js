@@ -399,12 +399,24 @@
       '<div class="interactive-group-advice" id="interactive-group-advice" hidden></div>',
       '<div class="interactive-group-scores" id="interactive-group-scores" hidden></div>',
       '<div class="result-actions">',
-      '<button class="action-btn secondary collect-btn" type="button" onclick="InteractiveLearning.collectSample(true)">✅ ' + (en ? 'Save as positive' : '记为正样本') + '</button>',
-      '<button class="action-btn secondary collect-btn" type="button" onclick="InteractiveLearning.collectSample(false)">❌ ' + (en ? 'Save as negative' : '记为负样本') + '</button>',
+      (isCollectMode()
+        ? '<button class="action-btn secondary collect-btn" type="button" onclick="InteractiveLearning.collectSample(true)">✅ ' + (en ? 'Save as positive' : '记为正样本') + '</button>' +
+          '<button class="action-btn secondary collect-btn" type="button" onclick="InteractiveLearning.collectSample(false)">❌ ' + (en ? 'Save as negative' : '记为负样本') + '</button>'
+        : ''),
       '<button class="action-btn secondary" type="button" onclick="InteractiveLearning.retryScore()">↻ ' + esc(t('retry')) + '</button>',
       '<button class="action-btn primary" type="button" onclick="InteractiveLearning.next()">→ ' + esc(t('nextAfterScore')) + '</button></div>',
       '</div></div>'
     ].join('');
+  }
+
+  /** 测试模式：本地地址（localhost/127.0.0.1）或 URL 带 collect=1 时显示样本收集按钮（正式公开版隐藏；?collect=0 可强制隐藏） */
+  function isCollectMode() {
+    const host = (typeof window !== 'undefined' && window.location && window.location.hostname) || '';
+    const local = host === 'localhost' || host === '127.0.0.1' || host.startsWith('192.168.') || host.startsWith('172.');
+    const search = (typeof window !== 'undefined' && window.location) ? new URLSearchParams(window.location.search) : null;
+    const flagOff = search && search.get('collect') === '0';
+    const flag = search && search.get('collect') === '1';
+    return (local && !flagOff) || flag;
   }
 
   function setLocale(locale) {
