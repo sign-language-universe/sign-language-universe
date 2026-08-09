@@ -15,8 +15,8 @@ if fuser -k "${CURRENT_PORT}/tcp" >/dev/null 2>&1; then
 fi
 sleep 1
 
-# 2. 起新端口
-setsid nohup python3 -m http.server "${NEW_PORT}" --directory "${WEB_DIR}" \
+# 2. 起新端口（serve_nocache：响应带 no-store，杜绝浏览器缓存旧版）
+setsid nohup python3 "${WEB_DIR}/../../scripts/serve_nocache.py" --port "${NEW_PORT}" --dir "${WEB_DIR}" \
   > "/tmp/smoke/http_${NEW_PORT}.log" 2>&1 &
 sleep 2
 
