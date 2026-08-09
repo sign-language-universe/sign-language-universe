@@ -14,7 +14,7 @@
   const MOTION_SIG_HEIGHT = 24;
   const DEFAULT_CAPTURE_DURATION_SEC = 3;
   const DEFAULT_CAPTURE_FPS = 10;
-  const DEFAULT_FRAME_WIDTH = 1280;
+  const DEFAULT_FRAME_WIDTH = 720;
   const HOLISTIC_PACKAGE_VERSION = '0.5.1675471629';
   const HOLISTIC_LOCAL_BASE = new URL('vendor/mediapipe/holistic', document.baseURI).href.replace(/\/$/, '');
   const HOLISTIC_ASSET_SOURCES = [
@@ -787,7 +787,7 @@
     const rec = getCaptureRecommendation(word);
     const durationSec = clampNumber(inputValue('scoring-duration-sec', DEFAULT_CAPTURE_DURATION_SEC), 1, 8, DEFAULT_CAPTURE_DURATION_SEC);
     const uploadFps = Math.round(clampNumber(inputValue('scoring-capture-fps', DEFAULT_CAPTURE_FPS), 1, 12, DEFAULT_CAPTURE_FPS));
-    const frameWidth = Math.round(clampNumber(inputValue('scoring-frame-width', DEFAULT_FRAME_WIDTH), 240, 1920, DEFAULT_FRAME_WIDTH));
+    const frameWidth = Math.round(clampNumber(inputValue('scoring-frame-width', DEFAULT_FRAME_WIDTH), 480, 1280, DEFAULT_FRAME_WIDTH));
     const requestedDurationSec = durationSec;
     const requestedUploadFps = uploadFps;
     const targetFrames = Math.max(1, Math.min(MAX_FRAMES, Math.round(durationSec * uploadFps)));
