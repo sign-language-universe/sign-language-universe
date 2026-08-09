@@ -1,0 +1,174 @@
+{
+ "version": "20260809",
+ "note_zh": "语义阶段完整性门控（G1）：cov=0.15（只抓几乎未覆盖）+ length_min_ratio=0.6（截断缺阶段）+ shape 通用检测禁用 + gate_cap=60。由 930 条正样本校准。",
+ "words": {
+  "人们（人民）": {
+   "cov_threshold": 0.15,
+   "shape_gate_min_span": 1000000000.0,
+   "length_min_ratio": 0.6,
+   "gate_cap": 60,
+   "stage_count": 2,
+   "samples": 2
+  },
+  "公交车": {
+   "cov_threshold": 0.15,
+   "shape_gate_min_span": 1000000000.0,
+   "length_min_ratio": 0.6,
+   "gate_cap": 60,
+   "stage_count": 3,
+   "samples": 4
+  },
+  "勇敢": {
+   "cov_threshold": 0.15,
+   "shape_gate_min_span": 1000000000.0,
+   "length_min_ratio": 0.6,
+   "gate_cap": 60,
+   "stage_count": 1,
+   "samples": 2
+  },
+  "唱歌": {
+   "cov_threshold": 0.15,
+   "shape_gate_min_span": 1000000000.0,
+   "length_min_ratio": 0.6,
+   "gate_cap": 60,
+   "stage_count": 1,
+   "samples": 4
+  },
+  "指示": {
+   "cov_threshold": 0.15,
+   "shape_gate_min_span": 1000000000.0,
+   "length_min_ratio": 0.6,
+   "gate_cap": 60,
+   "stage_count": 2,
+   "samples": 2
+  },
+  "月亮": {
+   "cov_threshold": 0.15,
+   "shape_gate_min_span": 1000000000.0,
+   "length_min_ratio": 0.6,
+   "gate_cap": 60,
+   "stage_count": 1,
+   "samples": 2
+  },
+  "朋友": {
+   "cov_threshold": 0.15,
+   "shape_gate_min_span": 1000000000.0,
+   "length_min_ratio": 0.6,
+   "gate_cap": 60,
+   "stage_count": 3,
+   "samples": 2
+  },
+  "森林": {
+   "cov_threshold": 0.15,
+   "shape_gate_min_span": 1000000000.0,
+   "length_min_ratio": 0.6,
+   "gate_cap": 60,
+   "stage_count": 3,
+   "samples": 2
+  },
+  "汽车（一）": {
+   "cov_threshold": 0.15,
+   "shape_gate_min_span": 1000000000.0,
+   "length_min_ratio": 0.6,
+   "gate_cap": 60,
+   "stage_count": 2,
+   "samples": 2
+  },
+  "汽车（二）": {
+   "cov_threshold": 0.15,
+   "shape_gate_min_span": 1000000000.0,
+   "length_min_ratio": 0.6,
+   "gate_cap": 60,
+   "stage_count": 2,
+   "samples": 2
+  },
+  "烤串": {
+   "cov_threshold": 0.15,
+   "shape_gate_min_span": 1000000000.0,
+   "length_min_ratio": 0.6,
+   "gate_cap": 60,
+   "stage_count": 3,
+   "samples": 4
+  },
+  "牛奶": {
+   "cov_threshold": 0.15,
+   "shape_gate_min_span": 1000000000.0,
+   "length_min_ratio": 0.6,
+   "gate_cap": 60,
+   "stage_count": 2,
+   "samples": 3
+  },
+  "科学": {
+   "cov_threshold": 0.15,
+   "shape_gate_min_span": 1000000000.0,
+   "length_min_ratio": 0.6,
+   "gate_cap": 60,
+   "stage_count": 3,
+   "samples": 4
+  },
+  "船（轮船）": {
+   "cov_threshold": 0.15,
+   "shape_gate_min_span": 1000000000.0,
+   "length_min_ratio": 0.6,
+   "gate_cap": 60,
+   "stage_count": 1,
+   "samples": 4
+  },
+  "花": {
+   "cov_threshold": 0.15,
+   "shape_gate_min_span": 1000000000.0,
+   "length_min_ratio": 0.6,
+   "gate_cap": 60,
+   "stage_count": 2,
+   "samples": 4
+  },
+  "虎": {
+   "cov_threshold": 0.15,
+   "shape_gate_min_span": 1000000000.0,
+   "length_min_ratio": 0.6,
+   "gate_cap": 60,
+   "stage_count": 2,
+   "samples": 4
+  },
+  "谗（羡慕）": {
+   "cov_threshold": 0.15,
+   "shape_gate_min_span": 1000000000.0,
+   "length_min_ratio": 0.6,
+   "gate_cap": 60,
+   "stage_count": 1,
+   "samples": 4
+  },
+  "超市": {
+   "cov_threshold": 0.15,
+   "shape_gate_min_span": 1000000000.0,
+   "length_min_ratio": 0.6,
+   "gate_cap": 60,
+   "stage_count": 7,
+   "samples": 4
+  },
+  "跳": {
+   "cov_threshold": 0.15,
+   "shape_gate_min_span": 1000000000.0,
+   "length_min_ratio": 0.6,
+   "gate_cap": 60,
+   "stage_count": 2,
+   "samples": 2
+  },
+  "香蕉": {
+   "cov_threshold": 0.15,
+   "shape_gate_min_span": 1000000000.0,
+   "length_min_ratio": 0.6,
+   "gate_cap": 60,
+   "stage_count": 1,
+   "samples": 2
+  },
+  "鸡蛋": {
+   "cov_threshold": 0.15,
+   "shape_gate_min_span": 1000000000.0,
+   "length_min_ratio": 0.6,
+   "gate_cap": 60,
+   "stage_count": 3,
+   "samples": 4
+  }
+ }
+}
