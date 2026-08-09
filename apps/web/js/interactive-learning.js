@@ -373,7 +373,7 @@
       '<div class="scoring-capture-settings" id="scoring-capture-settings">',
       '<label><span>' + (en ? 'Duration' : '采集时长') + '</span><input id="scoring-duration-sec" type="number" min="1" max="8" step="0.5" value="3"></label>',
       '<label><span>' + (en ? 'Upload FPS' : '上传 FPS') + '</span><input id="scoring-capture-fps" type="number" min="1" max="12" step="1" value="10"></label>',
-      '<label><span>' + (en ? 'Frame width' : '帧宽') + '</span><input id="scoring-frame-width" type="number" min="240" max="1920" step="40" value="1280"></label>',
+      '<label><span>' + (en ? 'Frame width' : '帧宽') + '</span><input id="scoring-frame-width" type="number" min="480" max="1280" step="40" value="720"></label>',
       '</div>',
       '<div class="scoring-capture-hint" id="scoring-capture-hint">' + (en ? 'Capture settings loading' : '采样参数待确认') + '</div>',
       '<div class="scoring-web-holistic-note" id="scoring-web-holistic-note">Web Holistic ' + (en ? 'loading' : '准备中') + '</div>',
