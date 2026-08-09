@@ -4846,5 +4846,270 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     return 0
 
 
+# =============================================================================
+# 语义阶段完整性检查（G1 门控）
+# -----------------------------------------------------------------------------
+# 目的：对"缺核心语义阶段 / 阶段覆盖不足"做硬性门控。
+# 输入：dtw_align 的 alignment_path（每项含 standard_semantic_phase /
+#       query_frame_idx / distance / frame_pair_weight），与评分用 standard/query。
+# 输出：逐阶段覆盖率 cov[k]、动静分类 dynamic[k]、阶段距离 stage_distances[k]、
+#       缺失判定 missing[k]、门控结论 gate。
+# 该函数为纯新增，不改动 dtw_align 既有返回结构。
+# =============================================================================
+
+
+def semantic_stage_completeness(
+    standard: SequenceData,
+    query: SequenceData,
+    alignment_path: Sequence[Dict[str, Any]],
+    stage_count: int,
+    config: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """语义阶段完整性：阶段覆盖率 + 动静分类 + 目标形态检测 + 缺失判定。
+
+    - cov[k]：标准阶段 k 的帧被映射到的查询独特帧数 / 标准阶段 k 帧数。
+      动态阶段覆盖率低 → 该阶段疑似未被执行（被 DTW 压缩）。
+    - dynamic[k]：标准阶段内帧间运动幅度是否超过阈值（动态阶段需要动作展开）。
+    - stage_distances[k]：标准阶段 k 的平均加权距离（与 JS stage_distances 同公式）。
+    - 目标形态检测（v3）：标准每阶段提取锚点形态（focus 组，离阶段均值最近的实际帧），
+      查询所有帧到锚点形态的最短距离 d_target[k] 与阶段间形态差 span_k 比较；
+      查询中从未出现该阶段的目标形态（d_target 远超 span）→ 缺阶段
+      （解决"保持相似姿态但跳过关键形态变化"的场景，如花只含苞不张开）。
+    - missing[k]：动态阶段 cov 过低，或阶段距离过高，或目标形态未达到。
+    - gate：missing 非空 → capped；缺失 ≥2 或存在 cov<0.10 → blocked。
+
+    阈值均从 config 读取，供校准脚本用正样本分布调整，避免拍脑袋。
+    """
+    cfg = config or {}
+    cov_threshold = float(cfg.get("cov_threshold", 0.15))
+    dist_ratio_threshold = float(cfg.get("dist_ratio_threshold", 1.6))
+    dist_abs_threshold = float(cfg.get("dist_abs_threshold", 0.08))
+    motion_threshold = float(cfg.get("motion_threshold", 0.02))
+    # 相对动静判定：阶段 motion 超过该词阶段 motion 中位数的 motion_rel_ratio 倍才算动态
+    motion_rel_ratio = float(cfg.get("motion_rel_ratio", 0.5))
+    # shape 门：通用目标形态检测默认关闭（跨用户不可靠，误伤高）；
+    # 花词缺张开由 flower_opening_guard 专门负责；词级 shape 留待数据成熟后按词启用
+    shape_gate_ratio_threshold = float(cfg.get("shape_gate_ratio_threshold", 0.75))
+    shape_gate_min_span = float(cfg.get("shape_gate_min_span", 1e9))
+    # 时长完整性门：查询/标准 长度比低于该值 → 序列被截断（缺后半阶段），直接判缺失
+    # 用户无关信号（花截断 0.49 vs 跨用户正样本 0.74+，0.6 阈值可分）
+    # 仅对多阶段词启用（单阶段词无"后半阶段"概念，谗等短动作正样本帧数少会被误伤）
+    length_min_ratio = float(cfg.get("length_min_ratio", 0.0)) if stage_count >= 2 else 0.0
+    focus_groups = [str(g) for g in (cfg.get("focus_groups") or [])]
+    stage_count = max(1, min(int(stage_count), 12))
+
+    def _stage_of(phase: float) -> int:
+        return max(0, min(stage_count - 1, int(math.floor(float(phase) * stage_count))))
+
+    # 阶段距离 + 查询侧覆盖（沿对齐路径；标准阶段帧数按路径上的独特标准帧统计，
+    # 与"评分路径覆盖了哪些标准阶段"一致——被切窗裁掉的帧不算）
+    stage_weighted = [0.0] * stage_count
+    stage_wsum = [0.0] * stage_count
+    qry_sets: List[set] = [set() for _ in range(stage_count)]
+    std_sets: List[set] = [set() for _ in range(stage_count)]
+    for row in alignment_path:
+        k = _stage_of(float(row.get("standard_semantic_phase", 0.0)))
+        pw = float(row.get("frame_pair_weight", 1.0))
+        d = float(row.get("distance", 0.0))
+        stage_weighted[k] += pw * d
+        stage_wsum[k] += pw
+        qry_sets[k].add(int(row.get("query_frame_idx", -1)))
+        std_sets[k].add(int(row.get("standard_frame_idx", -1)))
+    std_frames = [len(std_sets[k]) for k in range(stage_count)]
+    stage_distances: List[Optional[float]] = [
+        stage_weighted[k] / stage_wsum[k] if stage_wsum[k] > 1e-6 else None
+        for k in range(stage_count)
+    ]
+    cov = [len(qry_sets[k]) / max(std_frames[k], 1) for k in range(stage_count)]
+
+    # 动静分类：标准序列阶段内相邻帧的加权距离（相对判定——超过该词中位数的 motion_rel_ratio 倍）
+    motion = [0.0] * stage_count
+    dynamic = [False] * stage_count
+    std_phase_by_idx = [_stage_of(float(f.semantic_phase)) for f in standard.features]
+    for k in range(stage_count):
+        idxs = [i for i, s_ in enumerate(std_phase_by_idx) if s_ == k]
+        if len(idxs) < 2:
+            motion[k] = 0.0
+            dynamic[k] = False
+            continue
+        acc = 0.0
+        cnt = 0
+        for a, b in zip(idxs[:-1], idxs[1:]):
+            va, ma = standard.features[a].vector, standard.features[a].mask
+            vb, mb = standard.features[b].vector, standard.features[b].mask
+            valid = (ma > 0) & (mb > 0)
+            if not bool(valid.any()):
+                continue
+            diff = (va - vb)[valid]
+            acc += float(np.sqrt(float(np.mean(diff * diff))))
+            cnt += 1
+        motion[k] = acc / cnt if cnt else 0.0
+        dynamic[k] = motion[k] >= motion_threshold
+    # 相对判定：静态准备阶段（如烤串 S1"准备形"）motion 低 → 不判动态 → cov 不触发
+    pos_motions = [m for m in motion if m > 0]
+    if pos_motions:
+        motion_median = float(np.median(pos_motions))
+        dynamic = [m >= max(motion_threshold, motion_rel_ratio * motion_median) for m in motion]
+
+    # 阶段全局距离基线（避免空/单帧阶段把 ratio 放大）
+    valid_dists = [d for d in stage_distances if d is not None and d >= 0.0]
+    global_mean = float(np.mean(valid_dists)) if valid_dists else 0.0
+    global_mean = max(global_mean, 1e-6)
+
+    # ---- v3 目标形态检测：标准每阶段锚点形态 + 查询最短到达距离 ----
+    def _focus_vector(feature: FrameFeature) -> Optional[np.ndarray]:
+        """focus 组拼接向量；组内存在 mask=0 维度则视为不可用（跳过该帧）"""
+        if not focus_groups:
+            return None
+        sel: List[float] = []
+        for g in focus_groups:
+            sl = feature.groups.get(g)
+            if sl is None:
+                return None
+            seg = feature.vector[sl]
+            mseg = feature.mask[sl]
+            if float(mseg.min()) <= 0.0:
+                return None
+            sel.extend(float(v) for v in seg)
+        return np.asarray(sel, dtype=np.float32) if sel else None
+
+    # ---- 阶段目标形态检测（v7：末态接近度） ----
+    # 主模板 S_k 锚点形态；查询末段(20%)形态与锚点的距离 / 首段(20%)与锚点距离。
+    # 完整动作：查询末段向目标形态靠近 → approach 小（<1）；缺阶段（如花只含苞
+    # 不张开）：末段仍是起点形态 → approach ≈1 或更大 → 缺阶段。
+    # 比值形式对用户无关（查询内部相对变化），跨用户鲁棒。
+    anchor_standards = list(cfg.get("anchor_standards") or [])
+    all_standards = [standard] + [s for s in anchor_standards if s is not None]
+
+    # 每模板每阶段锚点（方向/目标形态取主模板；approach 用查询内部相对变化）
+    template_anchors: List[List[Optional[np.ndarray]]] = []
+    for std_seq in all_standards:
+        phase_idx = [_stage_of(float(f.semantic_phase)) for f in std_seq.features]
+        per_stage: List[Optional[np.ndarray]] = []
+        for k in range(stage_count):
+            vecs = []
+            for i, f in enumerate(std_seq.features):
+                if phase_idx[i] == k:
+                    v = _focus_vector(f)
+                    if v is not None:
+                        vecs.append(v)
+            if not vecs:
+                per_stage.append(None)
+                continue
+            stacked = np.stack(vecs)
+            centroid = stacked.mean(axis=0)
+            dists = np.linalg.norm(stacked - centroid, axis=1)
+            per_stage.append(vecs[int(np.argmin(dists))])
+        template_anchors.append(per_stage)
+
+    d_target = [None] * stage_count
+    span_k = [0.0] * stage_count
+    shape_ratio = [None] * stage_count
+    main_anchors = template_anchors[0] if template_anchors else [None] * stage_count
+    for k in range(1, stage_count):
+        a_prev, a_k = main_anchors[k - 1], main_anchors[k]
+        if a_prev is None or a_k is None or a_prev.shape != a_k.shape:
+            continue
+        span = float(np.linalg.norm(a_k - a_prev))
+        if span < shape_gate_min_span:
+            continue
+        span_k[k] = span
+        d_target[k] = min(
+            (float(np.linalg.norm(v - a_k)) for f in query.features if (v := _focus_vector(f)) is not None and v.shape == a_k.shape),
+            default=None,
+        )
+        # 查询首末段均值到锚点的距离比（末态接近度）
+        qv = [v for f in query.features if (v := _focus_vector(f)) is not None and v.shape == a_k.shape]
+        if len(qv) >= 4:
+            n = len(qv)
+            cut = max(1, int(n * 0.2))
+            start_mean = np.mean(np.stack(qv[:cut]), axis=0)
+            end_mean = np.mean(np.stack(qv[-cut:]), axis=0)
+            d_start = float(np.linalg.norm(start_mean - a_k))
+            d_end = float(np.linalg.norm(end_mean - a_k))
+            if d_start > 1e-6:
+                shape_ratio[k] = float(d_end / d_start)
+
+    # 缺失判定
+    missing = [False] * stage_count
+    reasons: List[str] = []
+    # 时长完整性门：序列被截断（缺后半阶段）→ 所有动态阶段判缺失
+    # 条件：长度比过低 且 至少一个阶段覆盖率低（区分"截断"与"完整快动作"——
+    # 指示等词正样本可短（len_ratio<0.6）但 cov 正常，花截断 len_ratio 低且 cov 低）
+    if length_min_ratio > 0:
+        _n = len(standard.features)
+        _m = len(query.features)
+        _lr = min(_n, _m) / max(max(_n, _m), 1)
+        _cov_min = min(cov) if cov else 1.0
+        if _lr < length_min_ratio and _cov_min < 0.5:
+            for _k in range(stage_count):
+                if dynamic[_k]:
+                    missing[_k] = True
+            reasons.append("sequence_truncated")
+    for k in range(stage_count):
+        d_k = stage_distances[k]
+        if d_k is None or std_frames[k] == 0:
+            continue
+        cov_low = dynamic[k] and cov[k] < cov_threshold
+        dist_high = d_k > dist_ratio_threshold * global_mean and d_k > dist_abs_threshold
+        # shape 检测（v7）：查询末段未向目标形态靠近（approach 过大）→ 该阶段目标形态未达到
+        shape_miss = (
+            shape_ratio[k] is not None
+            and span_k[k] > shape_gate_min_span
+            and shape_ratio[k] > shape_gate_ratio_threshold
+        )
+        if cov_low:
+            missing[k] = True
+            reasons.append(f"stage_{k}_not_covered")
+        if dist_high:
+            missing[k] = True
+            reasons.append(f"stage_{k}_distance_too_high")
+        if shape_miss:
+            missing[k] = True
+            reasons.append(f"stage_{k}_shape_not_reached")
+
+    missing_count = int(sum(missing))
+    min_cov = float(min(cov)) if cov else 1.0
+    if missing_count == 0:
+        gate_level = "passed"
+    elif missing_count >= 2 or min_cov < 0.10:
+        gate_level = "blocked"
+    else:
+        gate_level = "capped"
+    gate_cap = float(cfg.get("gate_cap", 60.0))
+
+    return {
+        "stage_count": stage_count,
+        "stage_distances": stage_distances,
+        "stage_coverage": cov,
+        "stage_motion": motion,
+        "stage_dynamic": dynamic,
+        "stage_shape_target_distance": d_target,
+        "stage_shape_span": span_k,
+        "stage_shape_ratio": shape_ratio,
+        "stage_missing": missing,
+        "missing_count": missing_count,
+        "min_coverage": min_cov,
+        "global_mean_distance": global_mean,
+        "reasons": reasons,
+        "gate": {
+            "level": gate_level,
+            "cap": gate_cap,
+            "blocked": gate_level == "blocked",
+            "capped": gate_level == "capped",
+            "passed": gate_level == "passed",
+        },
+        "config": {
+            "cov_threshold": cov_threshold,
+            "dist_ratio_threshold": dist_ratio_threshold,
+            "dist_abs_threshold": dist_abs_threshold,
+            "motion_threshold": motion_threshold,
+            "shape_gate_ratio_threshold": shape_gate_ratio_threshold,
+            "gate_cap": gate_cap,
+            "focus_groups": focus_groups,
+        },
+    }
+
+
 if __name__ == "__main__":
     raise SystemExit(main())

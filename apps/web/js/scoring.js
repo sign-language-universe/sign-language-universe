@@ -1376,6 +1376,9 @@
 
   const LOCAL_TEMPLATES_URL = new URL('assets/content/scoring_templates_v2.json', document.baseURI).href;
   const LOCAL_CONTRACTS_URL = new URL('assets/content/interactive_learning_contracts.json', document.baseURI).href;
+  const LOCAL_STAGE_GATE_URL = new URL('assets/content/stage_gate_config_20260809.json', document.baseURI).href;
+  const LOCAL_DISCRIMINATOR_URL = new URL('assets/content/stage_discriminators_20260809.json', document.baseURI).href;
+  const COLLECT_URL = 'http://127.0.0.1:8200/collect';
   // 语义阶段数据（ordered_sequence：各阶段指导文案），供本地评分组装针对性建议
   let localStages = null;
   let localStagesLoading = null;
@@ -1490,6 +1493,54 @@
     return state.localTemplatesLoading;
   }
 
+  // 语义阶段完整性门控（G1）阈值配置：由 930 条正样本校准生成
+  let localStageGate = null;
+  let localStageGateLoading = null;
+  // ② 高维语义空间判别器配置（乱做/错词软压分，AUC>=0.85 词启用）
+  let localDiscriminators = null;
+  let localDiscriminatorsLoading = null;
+  async function loadLocalStageGate() {
+    if (localStageGate) return localStageGate;
+    if (localStageGateLoading) return localStageGateLoading;
+    localStageGateLoading = (async () => {
+      const response = await fetch(LOCAL_STAGE_GATE_URL, { cache: 'force-cache' });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const payload = await response.json();
+      localStageGate = payload;
+      return payload;
+    })().catch(error => {
+      localStageGateLoading = null;
+      throw error;
+    });
+    return localStageGateLoading;
+  }
+  async function loadLocalDiscriminators() {
+    if (localDiscriminators) return localDiscriminators;
+    if (localDiscriminatorsLoading) return localDiscriminatorsLoading;
+    localDiscriminatorsLoading = (async () => {
+      const response = await fetch(LOCAL_DISCRIMINATOR_URL, { cache: 'force-cache' });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const payload = await response.json();
+      localDiscriminators = payload;
+      return payload;
+    })().catch(error => {
+      localDiscriminatorsLoading = null;
+      throw error;
+    });
+    return localDiscriminatorsLoading;
+  }
+  function stageGateForWord(word) {
+    const cfg = (localStageGate && localStageGate.words && localStageGate.words[word]) || null;
+    if (!cfg) return null;
+    // 转成 dtwAlign 的 stage_gate_* 配置（通用 shape 检测禁用；时长门拦截截断缺阶段）
+    return {
+      stage_gate_cov_threshold: cfg.cov_threshold,
+      stage_gate_shape_min_span: cfg.shape_gate_min_span,
+      stage_gate_length_min_ratio: cfg.length_min_ratio,
+      stage_gate_cap: cfg.gate_cap,
+    };
+  }
+
   const GROUP_LABELS = {
     pose: { zh: '身体姿态', en: 'Body pose' },
     left_hand: { zh: '左手动作', en: 'Left hand motion' },
@@ -1578,12 +1629,54 @@
     // 浏览器本地评分核心：与后端 Python 完全一致的 DTW 语义评分
     const template = state.localTemplates?.words?.[word];
     if (!template) return null;
+    // 核心手部入画检查：该词核心语义要求的手部组（focus 中的 hand/hand_shape）若在查询中
+    // 关键点缺失（未入画/检测失败），会被 mask 全 0 当"距离 0 = 做对"→ 乱做也满分。
+    // 前置拦截：核心手部组有效率过低 → 直接低分 + 明确提示（不进入评分核心）。
+    const HAND_KEYS = { left_hand: 'left_hand_landmarks', right_hand: 'right_hand_landmarks',
+      left_hand_shape: 'left_hand_landmarks', right_hand_shape: 'right_hand_landmarks' };
+    const focusGroups = (template.profile && template.profile.focus_groups) || [];
+    const requiredHands = focusGroups.filter(g => HAND_KEYS[g]);
+    if (requiredHands.length && rows.length >= 3) {
+      const handOk = requiredHands.some(g => {
+        const key = HAND_KEYS[g];
+        const valid = rows.filter(r => Array.isArray(r[key]) && r[key].length >= 5).length;
+        return valid / rows.length > 0.5;
+      });
+      if (!handOk) {
+        return {
+          request_id: `local_core_hand_missing_${Date.now()}`,
+          score: 0,
+          prototype_score: 0,
+          score_valid: false,
+          level: 'web_core_local_hand_missing',
+          feedback: [{
+            type: 'core',
+            message: scoreText(
+              `「${word}」的核心手部动作未被摄像头捕捉到（手部未入画/被遮挡），请让双手完整入画后重新录制。`,
+              `The key hand motion for "${word}" was not captured (hand out of frame or occluded); keep both hands fully visible and record again.`
+            ),
+          }],
+          diagnostics: {
+            scoring_mode: 'web_holistic_core_local',
+            word,
+            hand_missing: true,
+            required_hand_groups: requiredHands,
+            frame_count: totalFrames,
+            local_score_ms: 0,
+          },
+        };
+      }
+    }
     const t0 = performance.now();
     let result;
     try {
       const stageInfo = stageInfoForWord(word);
+      const stageGate = stageGateForWord(word);
+      // 注：② 判别器压分暂不启用（JS/Python dtwAlign 特征口径未完全对齐，避免误伤正样本）；
+      // G1 硬门（时长门/cov/dist/flower guard）已覆盖缺阶段/截断/乱做场景。
       result = globalThis.ScorerCore.scoreQuery(template, rows, fps, totalFrames, {
         stageCount: stageInfo.stageCount,
+        stageGate, // G1 校准阈值（cov=0.15 / 时长门 0.6 / cap=60）
       });
       result.stage_labels = stageInfo.labels;
       result.stage_advice = buildStageAdvice(word, result);
@@ -1593,13 +1686,36 @@
       return null;
     }
     const elapsedMs = performance.now() - t0;
+    // ---- G1 语义阶段完整性门控反馈：缺核心语义阶段 → 明确提示 ----
+    // 由 stage_missing（布尔数组）+ contracts ordered_sequence 的 label 组装；
+    // 提示文案指出缺了哪个核心语义阶段，帮助用户理解为何被硬性压分。
+    const feedback = [{ type: 'core', message: scoreText('浏览器评分核心（与后端一致）', 'Browser scoring core (matches backend)') }];
+    if (Array.isArray(result.stage_missing)) {
+      const labels = stageInfo.labels || [];
+      const missingStages = [];
+      result.stage_missing.forEach((isMissing, k) => {
+        if (isMissing && labels[k]) {
+          missingStages.push(isInteractiveEnglish() ? labels[k].label_en : labels[k].label_zh);
+        }
+      });
+      if (missingStages.length) {
+        const joined = missingStages.join('、');
+        feedback.push({
+          type: 'stage_gate',
+          message: scoreText(
+            `缺少核心语义阶段：「${joined}」。动作流程不完整，请完整做出「${joined}」后重新录制。`,
+            `Missing core semantic stage(s): "${joined}". The motion sequence is incomplete — perform "${joined}" completely and record again.`
+          ),
+        });
+      }
+    }
     return {
       request_id: `local_core_${Date.now()}`,
       score: Number.isFinite(result.prototype_score) ? result.prototype_score : 0,
       prototype_score: result.prototype_score,
       score_valid: Number.isFinite(result.prototype_score),
       level: 'web_core_local',
-      feedback: [{ type: 'core', message: scoreText('浏览器评分核心（与后端一致）', 'Browser scoring core (matches backend)') }],
+      feedback,
       diagnostics: {
         scoring_mode: 'web_holistic_core_local',
         word,
@@ -1618,6 +1734,10 @@
         stage_distances: result.stage_distances,
         stage_ratios: result.stage_ratios,
         stage_weak: result.stage_weak,
+        stage_coverage: result.stage_coverage,
+        stage_missing: result.stage_missing,
+        stage_gate: result.stage_gate,
+        stage_gate_reasons: result.stage_gate_reasons,
         stage_advice: result.stage_advice,
         group_scores: result.group_scores,
         group_weak: result.group_weak,
@@ -1671,11 +1791,45 @@
     const word = wordData.word;
     const fps = plan.candidateFps || plan.uploadFps || DEFAULT_CAPTURE_FPS;
 
-    // 本地评分核心优先：模板词 + landmark 帧 → 浏览器端直接评分（不依赖后端）
-    if (useLandmarks && localCoreAvailable()) {
+    // 本地评分优先：模型语义动作打分（主）→ DTW 本地核心（降级）→ 后端（兜底）
+    if (useLandmarks) {
+      // ★ 主路径：轻量模型语义动作打分（纯前端，无词判定干预）
+      if (typeof ModelScorer !== 'undefined') {
+        try {
+          const ms = await ModelScorer.score(state.landmarkRows, word, fps);
+          const stageLabels = ms.actions.map(a => ({ label_zh: a.name, label_en: a.name }));
+          const modelResult = {
+            request_id: `web_model_${Date.now()}`,
+            score: ms.total,
+            prototype_score: ms.total / 100,
+            score_valid: true,
+            level: 'web_model_semantic',
+            feedback: [{ type: 'model', message: scoreText(ms.advice.join('；'), ms.advice.join('; ')) }],
+            diagnostics: {
+              scoring_mode: 'web_model_semantic',
+              word,
+              frame_count: state.landmarkRows.length,
+              model_composite: ms.composite,
+              // 兼容交互面板"局部语义评分"展示（复用 stage_scores 结构）
+              stage_scores: ms.actions.map(a => a.score),
+              stage_labels: stageLabels,
+            },
+            model_score: ms,
+          };
+          setServiceStatus('ready', scoreText('模型语义动作评分完成（纯前端）', 'Model semantic-action scoring complete (frontend-only)'));
+          return modelResult;
+        } catch (error) {
+          console.warn('[scoring] model score unavailable, fallback to core:', error);
+        }
+      }
+      // 降级：DTW 本地核心（模型不可用时）
       try {
         // 模板 + 语义阶段数据（ordered_sequence 指导文案）并行加载
-        await Promise.all([loadLocalTemplates(), loadLocalStages()]);
+        await Promise.all([
+          loadLocalTemplates(), loadLocalStages(),
+          loadLocalStageGate().catch(() => null),
+          loadLocalDiscriminators().catch(() => null),
+        ]);
         const localResult = localCoreScore(word, state.landmarkRows, fps, state.landmarkRows.length);
         if (localResult) {
           setServiceStatus('ready', scoreText('浏览器评分核心完成（无需后端）', 'Browser scoring core complete (no backend needed)'));
@@ -1950,6 +2104,49 @@
     finishChallengeScore(result);
   }
 
+  async function attachModelScore(result, word, rows, fps) {
+    // 附加轻量模型语义动作分（ModelScorer 未就绪/失败时静默忽略，不影响主流程）
+    if (typeof ModelScorer === 'undefined') return result;
+    try {
+      const ms = await ModelScorer.score(rows, word, fps);
+      result.model_score = ms;
+      if (Array.isArray(ms.advice) && ms.advice.length) {
+        result.feedback = Array.isArray(result.feedback) ? result.feedback : [];
+        result.feedback.push({ type: 'model', message: scoreText(ms.advice.join('；'), ms.advice.join('; ')) });
+      }
+      if (ms.diagnosis) {
+        result.feedback.push({ type: 'model_diagnosis', message: scoreText(ms.diagnosis, ms.diagnosis) });
+      }
+    } catch (error) {
+      console.warn('[scoring] model score unavailable:', error);
+    }
+    return result;
+  }
+
+  function renderModelScoreBlock(result) {
+    const ms = result && result.model_score;
+    const host = document.querySelector('#challenge-result');
+    if (!ms || !host) return;
+    let block = host.querySelector('.model-score-block');
+    if (!block) {
+      block = document.createElement('div');
+      block.className = 'model-score-block';
+      block.style.cssText = 'margin-top:12px;padding:10px 12px;border:1px solid var(--accent-cyan,#22d3ee);border-radius:8px;background:rgba(34,211,238,0.06);';
+      host.appendChild(block);
+    }
+    const en = window.AppState?.locale === 'en';
+    const actionRows = (ms.actions || []).map(a => {
+      const color = a.score >= 80 ? '#4ade80' : a.score >= 60 ? '#facc15' : '#f87171';
+      return `<div style="display:flex;justify-content:space-between;margin-top:4px;font-size:13px;">
+        <span>${a.name}</span><span style="color:${color};font-weight:600;">${a.score}</span></div>`;
+    }).join('');
+    block.innerHTML = `<div style="font-weight:700;font-size:14px;margin-bottom:6px;">
+      🤖 ${en ? 'Model semantic-action score' : '模型语义动作评分'}：
+      <span style="font-size:20px;color:var(--accent-cyan,#22d3ee);">${ms.total}</span><small>/100</small>
+      <span style="margin-left:8px;color:#94a3b8;font-size:12px;">${en ? 'composite' : '动作综合度'} ${Math.round(ms.composite * 100)}%</span>
+    </div>${actionRows}${ms.diagnosis ? `<div style="margin-top:6px;color:#fbbf24;font-size:13px;">${ms.diagnosis}</div>` : ''}`;
+  }
+
   function finishChallengeScore(result) {
     const elapsedMs = state.scoringStartedAt ? performance.now() - state.scoringStartedAt : 0;
     stopScoringWaitStatus(scoreText(`评分完成：${formatSeconds(elapsedMs)}`, `Scoring complete: ${formatSeconds(elapsedMs)}`));
@@ -1957,6 +2154,7 @@
     const score = Number.isFinite(Number(result.score)) ? Math.round(Number(result.score)) : 0;
     AppState.challengeScore = score;
     renderScoreDetails(result);
+    renderModelScoreBlock(result);
     if (state.uiMode === 'interactive') {
       const active = uiElement('challenge-active');
       if (active) active.style.display = 'none';
@@ -1975,6 +2173,39 @@
     }
   }
 
+  async function collectSample(word, label) {
+    // 收集正/负样本：把本次录制的 landmarkRows 上传到本地收集服务（127.0.0.1:8200）
+    const rows = state.landmarkRows || [];
+    if (rows.length < 3) {
+      return { ok: false, error: 'landmark_rows_too_few' };
+    }
+    const payload = {
+      word,
+      label, // 'pos' | 'neg'
+      landmark_rows: rows,
+      fps: state.capturePlan?.candidateFps || state.capturePlan?.uploadFps || 25,
+      total_frames: rows.length,
+      captured_at: new Date().toISOString(),
+      meta: {
+        score: AppState.challengeScore ?? null,
+        browser_holistic: state.browserHolisticStats ?? null,
+      },
+    };
+    try {
+      const response = await fetch(COLLECT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await response.json();
+      return data.ok
+        ? { ok: true, sample_id: data.sample_id }
+        : { ok: false, error: data.error || 'collect_failed' };
+    } catch (error) {
+      return { ok: false, error: String(error.message || error) };
+    }
+  }
+
   window.ScoringBridge = {
     startChallengeRecording,
     ensureCamera,
@@ -1987,7 +2218,8 @@
     saveApiBaseFromInput,
     preloadBrowserHolistic,
     retryBrowserHolistic,
-    updateCaptureHint
+    updateCaptureHint,
+    collectSample
   };
 
   document.addEventListener('DOMContentLoaded', () => {

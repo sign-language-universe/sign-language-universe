@@ -45,6 +45,9 @@ temp/
 *.pth
 *.onnx
 
+# 前端轻量打分模型（onnxruntime-web 推理核心，需提交）
+!apps/web/assets/model/*.onnx
+
 # Approved self-generated anonymous Avatar teaching videos
 !apps/web/assets/content/reference-videos/
 !apps/web/assets/content/reference-videos/*.mp4

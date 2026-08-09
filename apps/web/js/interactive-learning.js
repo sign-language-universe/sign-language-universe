@@ -322,6 +322,27 @@
     host.hidden = false;
   }
 
+  function collectSample(isPositive) {
+    const item = state.contracts[state.index];
+    if (!item) return;
+    const alias = { '馋': '谗（羡慕）', '汽车': '汽车（一）' };
+    const word = alias[item.practice_word || item.zh] || item.practice_word || item.zh;
+    const label = isPositive ? 'pos' : 'neg';
+    if (typeof window.ScoringBridge?.collectSample !== 'function') {
+      showToast('收集服务未连接（需本地 127.0.0.1:8200）', 'error');
+      return;
+    }
+    window.ScoringBridge.collectSample(word, label).then(res => {
+      if (res.ok) {
+        showToast(state.locale === 'en'
+          ? `Saved as ${label === 'pos' ? 'positive' : 'negative'} sample: ${res.sample_id}`
+          : `已记录${label === 'pos' ? '正' : '负'}样本：${res.sample_id}`);
+      } else {
+        showToast(state.locale === 'en' ? `Save failed: ${res.error}` : `保存失败：${res.error}`, 'error');
+      }
+    });
+  }
+
   function mountScoring(item) {
     const host = document.getElementById('interactive-score-host');
     if (!host || !window.ScoringBridge?.mountInteractive) return false;
@@ -377,7 +398,10 @@
       '<div><span>Request</span><strong id="scoring-result-request">--</strong></div><p id="scoring-result-advice">--</p></div>',
       '<div class="interactive-group-advice" id="interactive-group-advice" hidden></div>',
       '<div class="interactive-group-scores" id="interactive-group-scores" hidden></div>',
-      '<div class="result-actions"><button class="action-btn secondary" type="button" onclick="InteractiveLearning.retryScore()">↻ ' + esc(t('retry')) + '</button>',
+      '<div class="result-actions">',
+      '<button class="action-btn secondary collect-btn" type="button" onclick="InteractiveLearning.collectSample(true)">✅ ' + (en ? 'Save as positive' : '记为正样本') + '</button>',
+      '<button class="action-btn secondary collect-btn" type="button" onclick="InteractiveLearning.collectSample(false)">❌ ' + (en ? 'Save as negative' : '记为负样本') + '</button>',
+      '<button class="action-btn secondary" type="button" onclick="InteractiveLearning.retryScore()">↻ ' + esc(t('retry')) + '</button>',
       '<button class="action-btn primary" type="button" onclick="InteractiveLearning.next()">→ ' + esc(t('nextAfterScore')) + '</button></div>',
       '</div></div>'
     ].join('');
@@ -690,7 +714,7 @@
 
   global.InteractiveLearning = {
     init, load, render, select, previous, next, setLocale, toggleLocale,
-    togglePlay, replay, toggleReferenceVideo, setReferenceVideoMode, setReferenceMode, openPractice, startScore, beginRecording, retryScore, stop
+    togglePlay, replay, toggleReferenceVideo, setReferenceVideoMode, setReferenceMode, openPractice, startScore, beginRecording, retryScore, stop, collectSample
   };
   document.addEventListener('DOMContentLoaded', init);
 })(window);
