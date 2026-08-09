@@ -166,17 +166,21 @@ const ModelScorer = (() => {
     return exps.map(x => x / s);
   }
 
-  /** 建议文本生成（按动作分数区间 + 动作详情） */
-  function adviceText(name, score, detail) {
-    if (score >= 90) return `「${name}」做得非常标准，继续保持。`;
-    if (score >= 75) return `「${name}」基本到位，可在幅度和手形上再完善。${detail || ''}`;
-    if (score >= 55) return `「${name}」有雏形但不标准，请对照示范重点练习手形与动作轨迹。${detail || ''}`;
-    if (score >= 30) return `「${name}」偏差较大，建议重新观看示范后逐步分解练习。${detail || ''}`;
-    return `「${name}」几乎未完成，请先熟悉动作的整体流程。${detail || ''}`;
-  }
-
-  /** 综合练习建议：抓取语义打分中最差的动作重点提建议（非泛泛而谈） */
-  function buildCompositeAdvice(word, total, actions) {
+  /** 综合练习建议：抓取语义打分中最差的动作重点提建议（非泛泛而谈；支持中英文） */
+  function buildCompositeAdvice(word, total, actions, en) {
+    if (en) {
+      if (total >= 90) return [`Excellent! All core semantic actions of "${word}" are well performed — very standard!`];
+      if (!actions.length) return [`"${word}": no semantic actions captured. Keep both hands fully in frame and record again.`];
+      const worst = actions.slice().sort((a, b) => a.score - b.score)[0];
+      const d = worst.detail ? `Key points: ${worst.detail}` : '';
+      if (total >= 80) {
+        if (worst.score >= 85) return [`Great job on "${word}" — keep it up!`];
+        return [`Overall good! Focus on "${worst.name}" (${worst.score}). ${d} Adjust the range and hand shape against the reference.`];
+      }
+      if (worst.score >= 55) return [`Most needed improvement: "${worst.name}" (${worst.score}). ${d} Practice slowly in parts against the reference, focusing on the hand shape and trajectory.`];
+      if (worst.score >= 30) return [`"${worst.name}" scored only ${worst.score} — significant deviation. ${d} Compare frame by frame: check the starting hand shape, middle trajectory, and ending position, then redo the whole word.`];
+      return [`"${worst.name}" is barely performed (${worst.score}). ${d} Watch only that part of the reference, follow along 3-5 times, then do the full word.`];
+    }
     if (total >= 90) return [`太棒了！「${word}」的核心语义动作全部到位，动作非常标准！`];
     if (!actions.length) return [`「${word}」当前未能有效采集到语义动作，请让双手完整入画后重录。`];
     // 抓取最差的 1 个动作（避免分散注意力）
@@ -235,14 +239,24 @@ const ModelScorer = (() => {
     const total01 = gate ? composite * (0.7 + 0.3 * conf) : composite;
     const total = Math.round(Math.max(0, Math.min(1, total01)) * 100);
 
-    const actions = gids.map(g => ({
-      name: meta.action_names[g],
-      detail: meta.action_details[g],
-      score: Math.round(Math.max(0, Math.min(1, scores[g])) * 100),
-    }));
+    const en = typeof window !== 'undefined' && window.AppState?.locale === 'en';
+    const actions = gids.map(g => {
+      const nameZh = meta.action_names[g];
+      const nameEn = (meta.action_names_en && meta.action_names_en[g]) || nameZh;
+      const detailZh = meta.action_details[g];
+      const detailEn = (meta.action_details_en && meta.action_details_en[g]) || detailZh;
+      return {
+        name: en ? nameEn : nameZh,
+        name_zh: nameZh,
+        name_en: nameEn,
+        detail: en ? detailEn : detailZh,
+        score: Math.round(Math.max(0, Math.min(1, scores[g])) * 100),
+      };
+    });
 
-    // 综合练习建议：总分维度 + 弱动作明细，高分表扬
-    const advice = buildCompositeAdvice(targetWord, total, actions);
+    // 综合练习建议：总分维度 + 弱动作明细，高分表扬（中英文随界面语言）
+    const advice = buildCompositeAdvice(targetWord, total, actions,
+      typeof window !== 'undefined' && window.AppState?.locale === 'en');
 
     // 词判定诊断提示：默认关闭（用户审核中，不干扰）；仅 gate 模式开启
     const topIdx = probs.indexOf(Math.max(...probs));

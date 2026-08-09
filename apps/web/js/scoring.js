@@ -1797,7 +1797,11 @@
       if (typeof ModelScorer !== 'undefined') {
         try {
           const ms = await ModelScorer.score(state.landmarkRows, word, fps);
-          const stageLabels = ms.actions.map(a => ({ label_zh: a.name, label_en: a.name }));
+          // stage 面板双语标签（label_zh/label_en 固定双语，不受当前界面语言影响）
+          const stageLabels = ms.actions.map(a => ({ label_zh: a.name_zh || a.name, label_en: a.name_en || a.name }));
+          // 语义动作彩色 bar（复用"局部语义评分"面板：对象格式 动作名→分）
+          const groupScores = {};
+          ms.actions.forEach(a => { groupScores[a.name] = a.score; });
           // 结构化弱动作建议（interactive 面板"针对性局部指导"展示用，聚焦最差 2 个）
           const weakActions = ms.actions.slice().sort((a, b) => a.score - b.score).filter(a => a.score < 85).slice(0, 2);
           const groupAdvice = weakActions.map(a => ({
@@ -1816,7 +1820,9 @@
               word,
               frame_count: state.landmarkRows.length,
               model_composite: ms.composite,
-              // 兼容交互面板"局部语义评分"与"针对性指导"展示
+              // 语义动作彩色 bar（对象格式，复用"局部语义评分"面板）
+              group_scores: groupScores,
+              // 兼容阶段面板 + 针对性指导
               stage_scores: ms.actions.map(a => a.score),
               stage_labels: stageLabels,
               group_advice: groupAdvice,
@@ -2161,7 +2167,7 @@
     const score = Number.isFinite(Number(result.score)) ? Math.round(Number(result.score)) : 0;
     AppState.challengeScore = score;
     renderScoreDetails(result);
-    renderModelScoreBlock(result);
+    // 模型语义动作分已作为主评分（interactive 面板彩色 bar + 指导展示），不再单独渲染模型小框
     if (state.uiMode === 'interactive') {
       const active = uiElement('challenge-active');
       if (active) active.style.display = 'none';
