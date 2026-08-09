@@ -36,6 +36,9 @@ MAX_FILE_BYTES = 95 * 1024 * 1024
 # 已人工审核通过的匿名 Avatar 教学视频（apps/web/assets/content/reference-videos/）
 # 允许进入仓库供 GitHub Pages 与互动学习板块使用；其余 .mp4 一律禁止。
 ALLOWED_VIDEO_PREFIX = "apps/web/assets/content/reference-videos/"
+# 前端轻量打分模型（apps/web/assets/model/）：onnxruntime-web 纯前端推理核心，
+# 需随 GitHub Pages 静态托管；允许 .onnx 入库（自训练模型，体积 <5MB）。
+ALLOWED_MODEL_PREFIX = "apps/web/assets/model/"
 
 
 def tracked_files() -> list[str]:
@@ -59,6 +62,8 @@ def main() -> int:
             continue
         if any(rel.endswith(suffix) for suffix in FORBIDDEN_SUFFIXES):
             if rel.endswith(".mp4") and rel.startswith(ALLOWED_VIDEO_PREFIX):
+                continue
+            if rel.endswith(".onnx") and rel.startswith(ALLOWED_MODEL_PREFIX):
                 continue
             bad.append(rel)
             continue
