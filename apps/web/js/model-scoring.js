@@ -166,6 +166,17 @@ const ModelScorer = (() => {
     return exps.map(x => x / s);
   }
 
+  /** 界面语言检测（多源：AppState.locale / localStorage / html lang），保证建议语言与界面一致 */
+  function isEnglishLocale() {
+    if (typeof window === 'undefined') return false;
+    try {
+      if (window.AppState && window.AppState.locale === 'en') return true;
+      if (window.localStorage && window.localStorage.getItem('sluInteractiveLocale') === 'en') return true;
+      if (document.documentElement && document.documentElement.lang === 'en') return true;
+    } catch (e) { /* ignore */ }
+    return false;
+  }
+
   /** 综合练习建议：抓取语义打分中最差的动作重点提建议（非泛泛而谈；支持中英文） */
   function buildCompositeAdvice(word, total, actions, en) {
     if (en) {
@@ -239,7 +250,7 @@ const ModelScorer = (() => {
     const total01 = gate ? composite * (0.7 + 0.3 * conf) : composite;
     const total = Math.round(Math.max(0, Math.min(1, total01)) * 100);
 
-    const en = typeof window !== 'undefined' && window.AppState?.locale === 'en';
+    const en = isEnglishLocale();
     const actions = gids.map(g => {
       const nameZh = meta.action_names[g];
       const nameEn = (meta.action_names_en && meta.action_names_en[g]) || nameZh;
@@ -255,8 +266,7 @@ const ModelScorer = (() => {
     });
 
     // 综合练习建议：总分维度 + 弱动作明细，高分表扬（中英文随界面语言）
-    const advice = buildCompositeAdvice(targetWord, total, actions,
-      typeof window !== 'undefined' && window.AppState?.locale === 'en');
+    const advice = buildCompositeAdvice(targetWord, total, actions, en);
 
     // 词判定诊断提示：默认关闭（用户审核中，不干扰）；仅 gate 模式开启
     const topIdx = probs.indexOf(Math.max(...probs));
