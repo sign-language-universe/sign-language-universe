@@ -244,10 +244,14 @@ const ModelScorer = (() => {
       const i = meta.word_list.indexOf(w);
       return i >= 0 ? Math.max(m, probs[i]) : m;
     }, 0);
-    // 门控：默认关闭（纯语义动作程度打分）——词判定不干预总分，仅保留可选开关
-    // total = composite：核心语义动作程度即综合分（用户审核后确认更合理）
-    const gate = opts.gate === true;
-    const total01 = gate ? composite * (0.7 + 0.3 * conf) : composite;
+    // 分段门控（默认开启）：conf≥0.5 时总分=composite（正常动作不打折）；
+    // conf<0.5 时按比例压低（动作"不像这个词"→ 分数显著下降，拦截错位负样本）。
+    // 依据：正样本 conf median 0.998（<0.5 仅 1.9%）；错位负样本 conf 0-0.1 → 分数 ×0-0.2。
+    const gate = opts.gate !== false;
+    let total01 = composite;
+    if (gate) {
+      total01 = composite * Math.min(1, conf / 0.5);
+    }
     const total = Math.round(Math.max(0, Math.min(1, total01)) * 100);
 
     const en = isEnglishLocale();
