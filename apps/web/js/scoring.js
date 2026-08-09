@@ -1798,6 +1798,12 @@
         try {
           const ms = await ModelScorer.score(state.landmarkRows, word, fps);
           const stageLabels = ms.actions.map(a => ({ label_zh: a.name, label_en: a.name }));
+          // 结构化弱动作建议（interactive 面板"针对性局部指导"展示用，聚焦最差 2 个）
+          const weakActions = ms.actions.slice().sort((a, b) => a.score - b.score).filter(a => a.score < 85).slice(0, 2);
+          const groupAdvice = weakActions.map(a => ({
+            group: a.name, group_label: a.name, group_score: a.score,
+            related_stage_label: a.name, related_stage_detail: a.detail || '',
+          }));
           const modelResult = {
             request_id: `web_model_${Date.now()}`,
             score: ms.total,
@@ -1810,9 +1816,10 @@
               word,
               frame_count: state.landmarkRows.length,
               model_composite: ms.composite,
-              // 兼容交互面板"局部语义评分"展示（复用 stage_scores 结构）
+              // 兼容交互面板"局部语义评分"与"针对性指导"展示
               stage_scores: ms.actions.map(a => a.score),
               stage_labels: stageLabels,
+              group_advice: groupAdvice,
             },
             model_score: ms,
           };
