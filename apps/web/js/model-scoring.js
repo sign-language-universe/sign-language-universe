@@ -136,7 +136,9 @@ const ModelScorer = (() => {
       const right = points3(row.right_hand_landmarks);
       const faceAll = (row.face_core_landmarks && row.face_core_landmarks.length)
         ? points3(row.face_core_landmarks)
-        : FACE_CORE_IDS.map(i => (row.face_landmarks && row.face_landmarks[i]) || { x: 0, y: 0, z: 0 });
+        : (row.face_landmarks && row.face_landmarks.length === 12)
+          ? points3(row.face_landmarks)   // sparse_core_12：face 直接 12 点（勿按 468 索引）
+          : FACE_CORE_IDS.map(i => (row.face_landmarks && row.face_landmarks[i]) || { x: 0, y: 0, z: 0 });
       const norm = normalizeFrame(poseAll, left, right, faceAll);
       const vec = [];
       const push = arr => { arr.forEach(p => vec.push(p[0], p[1], p[2])); };

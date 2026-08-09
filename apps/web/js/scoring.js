@@ -1796,7 +1796,14 @@
       // ★ 主路径：轻量模型语义动作打分（纯前端，无词判定干预）
       if (typeof ModelScorer !== 'undefined') {
         try {
-          const ms = await ModelScorer.score(state.landmarkRows, word, fps);
+          // 并行双打分：v5 扁平模型（带门控）+ 语义树模型（三层检测器）
+          const [ms, ts] = await Promise.all([
+            ModelScorer.score(state.landmarkRows, word, fps),
+            (typeof TreeScorer !== 'undefined') ? TreeScorer.score(state.landmarkRows, word, fps).catch(() => null) : null,
+          ]);
+          // 细粒度建议：树模型（手形/运动层诊断）优先，v5 建议兜底
+          const treeAdvice = (ts && Array.isArray(ts.advice) && ts.advice.length) ? ts.advice : [];
+          const advice = treeAdvice.length ? treeAdvice : ms.advice;
           // stage 面板双语标签（label_zh/label_en 固定双语，不受当前界面语言影响）
           const stageLabels = ms.actions.map(a => ({ label_zh: a.name_zh || a.name, label_en: a.name_en || a.name }));
           // 语义动作彩色 bar（复用"局部语义评分"面板：对象格式 动作名→分）
@@ -1814,7 +1821,7 @@
             prototype_score: ms.total / 100,
             score_valid: true,
             level: 'web_model_semantic',
-            feedback: [{ type: 'model', message: scoreText(ms.advice.join('；'), ms.advice.join('; ')) }],
+            feedback: [{ type: 'model', message: scoreText(advice.join('；'), advice.join('; ')) }],
             diagnostics: {
               scoring_mode: 'web_model_semantic',
               word,
@@ -1828,6 +1835,7 @@
               group_advice: groupAdvice,
             },
             model_score: ms,
+            tree_score: ts,   // 语义树模型结果（三层检测 + 细粒度建议）
           };
           setServiceStatus('ready', scoreText('模型语义动作评分完成（纯前端）', 'Model semantic-action scoring complete (frontend-only)'));
           return modelResult;
@@ -2148,16 +2156,31 @@
       host.appendChild(block);
     }
     const en = window.AppState?.locale === 'en';
+    const ts = result.tree_score;
     const actionRows = (ms.actions || []).map(a => {
       const color = a.score >= 80 ? '#4ade80' : a.score >= 60 ? '#facc15' : '#f87171';
       return `<div style="display:flex;justify-content:space-between;margin-top:4px;font-size:13px;">
         <span>${a.name}</span><span style="color:${color};font-weight:600;">${a.score}</span></div>`;
     }).join('');
+    // 语义树模型：细粒度建议（手形/运动层诊断）+ 树总分
+    let treeHtml = '';
+    if (ts) {
+      const shapeHit = (ts.shapeDiag || []).filter(d => d.ok).length;
+      const motionHit = (ts.motionDiag || []).filter(d => d.ok).length;
+      const diagRows = [...(ts.shapeDiag || []), ...(ts.motionDiag || [])].filter(d => !d.ok)
+        .map(d => `<div style="font-size:12px;color:#fbbf24;margin-top:2px;">⚠ ${en ? 'Hand shape/Motion' : '手形/运动'}「${d.name}」${en ? 'weakly activated' : '激活不足'}（${Math.round(d.activ * 100)}%）</div>`).join('');
+      treeHtml = `<div style="margin-top:8px;border-top:1px dashed #334155;padding-top:6px;">
+        <div style="font-size:13px;color:#a5f3fc;">🌳 ${en ? 'Semantic tree' : '语义树模型'}：<b>${ts.total}</b>/100
+          <span style="font-size:12px;color:#94a3b8;">· ${en ? 'shape' : '手形'} ${shapeHit}/${(ts.shapeDiag || []).length} · ${en ? 'motion' : '运动'} ${motionHit}/${(ts.motionDiag || []).length}</span>
+        </div>${diagRows}
+        ${(ts.advice || []).slice(0, 3).map(a => `<div style="font-size:12px;color:#e2e8f0;margin-top:2px;">· ${a}</div>`).join('')}
+      </div>`;
+    }
     block.innerHTML = `<div style="font-weight:700;font-size:14px;margin-bottom:6px;">
-      🤖 ${en ? 'Model semantic-action score' : '模型语义动作评分'}：
+      🤖 ${en ? 'Model semantic-action score (v5)' : '模型语义动作评分（v5）'}：
       <span style="font-size:20px;color:var(--accent-cyan,#22d3ee);">${ms.total}</span><small>/100</small>
       <span style="margin-left:8px;color:#94a3b8;font-size:12px;">${en ? 'composite' : '动作综合度'} ${Math.round(ms.composite * 100)}%</span>
-    </div>${actionRows}${ms.diagnosis ? `<div style="margin-top:6px;color:#fbbf24;font-size:13px;">${ms.diagnosis}</div>` : ''}`;
+    </div>${actionRows}${treeHtml}${ms.diagnosis ? `<div style="margin-top:6px;color:#fbbf24;font-size:13px;">${ms.diagnosis}</div>` : ''}`;
   }
 
   function finishChallengeScore(result) {
