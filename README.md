@@ -19,16 +19,19 @@
 ```text
 GitHub Pages 静态前端
   -> 浏览器 Web Holistic 提取 landmarks
-  -> 前端 scoring-core 本地加权 DTW 并集打分（21 词模板，无后端依赖）
+  -> 前端 ModelScorer 轻量模型语义动作打分（onnxruntime-web WASM，无后端依赖）
+     · BiLSTM 模型输出 47 个核心语义动作程度分（每词 1-7 个，稀疏激活）
+     · 综合分 = 核心语义动作程度加权；练习建议聚焦最差语义动作
+  -> 模型不可用时降级：scoring-core 本地加权 DTW 并集打分
   -> 可选：ModelScope lite Docker FastAPI 后端（服务端评分/回退路线）
 ```
 
-- 前端默认本地打分：浏览器提取匿名运动关键点后由 `scoring-core.js` 直接完成加权 DTW 打分；评分 API 连接行默认隐藏、不再必需。
+- 前端默认打分（主）：轻量模型语义动作打分（`model-scoring.js` + `assets/model/*.onnx`），纯前端推理、无词判定干预；模型文件见 `apps/web/assets/model/`（action/word ONNX，~4.8MB each），推理库 `vendor/onnxruntime/` 本地同源。
 - 前端默认采集参数：`3s / 10fps / 1280px`
 - 连接评分 API 时优先上传 `landmark_rows`，不上传图片帧。
 - `deploy/modelscope-space-lite/` 是可选线上演示后端，不安装 MediaPipe worker。
 - `deploy/modelscope-space/` 保留为 full Docker 验证和服务端 Holistic worker 回退路线。
-- 挑战模式覆盖全部 `47` 个学习词汇；互动学习 21 词已全部上线评分模板（并集评分：每词 3 模板 top-2 均值 + 判别力组权重 + 包络软化），Python 校准与前端交叉验证 21/21 通过。
+- 挑战模式覆盖全部 `47` 个学习词汇；互动学习 21 词已全部上线评分模板（DTW 兜底：每词 3 模板 top-2 均值 + 判别力组权重 + 包络软化），Python 校准与前端交叉验证 21/21 通过。
 - 互动学习实验室当前不携带私人志愿者视频、切片、真人预览图或未授权 landmark 缓存；超市、人们（人民）、跳、汽车（一）已发布经人工审核的匿名 Avatar 自生成参考视频，评分模板由这些公开动画视频提取。
 
 ## 本地预览前端
