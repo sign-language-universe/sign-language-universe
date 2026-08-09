@@ -2,6 +2,18 @@
 
 团队主仓库，用于整合手语学习前端、手语打分服务、评分核心算法、共享 API 契约与项目协作文档。
 
+## 🚀 线上服务（点击直达）
+
+**手语学习应用（GitHub Pages 部署，免登录）：**
+
+```text
+https://sign-language-universe.github.io/sign-language-universe/
+```
+
+- 功能：21 词互动学习（中英双语）、摄像头实时采集、**轻量模型语义动作打分**（纯前端 ONNX 推理，无需后端）
+- 打分：核心语义动作程度综合分（0-100）+ 各语义动作彩色评分 + 聚焦最差动作的练习建议
+- 浏览器要求：Chrome / Edge / Safari 最新版（onnxruntime WASM）
+
 ## 当前模块
 
 - `apps/web/`：团队前端静态 Demo，来源于已有 `sign-language-universe` 前端资料。
