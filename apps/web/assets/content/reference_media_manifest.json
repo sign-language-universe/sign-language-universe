@@ -63,7 +63,7 @@
       "contains_face_landmarks": false,
       "public_release": true,
       "semantic_overlay_path": "assets/content/reference-videos/word-13-car-one-avatar-semantic-overlay.mp4",
-      "semantic_overlay_status": "pending_user_review"
+      "semantic_overlay_status": "manually_approved"
     },
     {
       "word_index": 14,
