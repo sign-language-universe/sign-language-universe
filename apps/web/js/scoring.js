@@ -76,6 +76,10 @@
     captureStillUrl: '',
     uiTimer: null,
     recordStartedAt: 0,
+    /* 回看数据槽位：只保存最后一次录制的视频（frames + landmarkRows），
+     * 结果对象不携带大数组，仅通过 ScoringBridge.getLastReviewData() 读取；
+     * 每次新录制开始即清空，旧数据无引用后自动 GC。 */
+    lastReviewData: null,
     capturePlan: null,
     captureDurationMs: 0,
     captureRunId: 0,
@@ -1179,6 +1183,7 @@
     const useBrowserHolistic = state.browserHolisticActive === true;
     state.frames = [];
     state.landmarkRows = [];
+    state.lastReviewData = null;   // 只保留最后一次录制的视频：新录制开始即清空旧回看数据
     state.recordStartedAt = Date.now();
     state.captureDurationMs = Math.round(plan.durationSec * 1000);
     AppState.isRecording = true;
@@ -1201,7 +1206,7 @@
       if (runId !== state.captureRunId) return [];
       updateTimerUi();
       const captured = captureFrame(plan.frameWidth, i, {
-        includeImage: !useBrowserHolistic,
+        includeImage: true,   // 一律保存视频帧（landmark 模式也保留，供"回看"模块使用）
         keepCanvas: useBrowserHolistic
       });
       if (captured) {
@@ -1266,7 +1271,15 @@
         }
       }
       state.landmarkRows = rows;
-      state.frames = [];
+      // 保存回看帧（原始视频帧 + 与 landmark 对齐的 candidateIndex）
+      state.frames = selected
+        .filter(item => item.frame && item.frame.image_base64)
+        .map(item => ({
+          index: item.candidateIndex,
+          timestamp_ms: Math.round(item.timestampMs),
+          image_base64: item.frame.image_base64
+        }));
+      state.lastReviewData = { frames: state.frames, landmarkRows: state.landmarkRows };
       state.browserHolisticStats = {
         ...(state.browserHolisticStats || {}),
         selected_frames: selected.length,
@@ -1292,6 +1305,7 @@
           image_base64: item.frame.image_base64
         }));
       state.landmarkRows = [];
+      state.lastReviewData = { frames: state.frames, landmarkRows: state.landmarkRows };
       if (countEl) countEl.textContent = scoreText(`${state.frames.length} 上传帧`, `${state.frames.length} uploaded frames`);
     }
     return selected;
@@ -1908,6 +1922,8 @@
               model_composite: bestMs.composite,
               // 摄像头镜像/惯用手：是否采用镜像打分（调试用）
               mirror: { ms: useMirrorMs, tree: useMirrorTs },
+              // 回看可用性（数据只存最后一次录制槽位，经 ScoringBridge.getLastReviewData() 读取）
+              review_available: !!(state.lastReviewData && state.lastReviewData.frames && state.lastReviewData.frames.length),
               // 语义动作彩色 bar（对象格式，复用"局部语义评分"面板）
               group_scores: groupScores,
               // 兼容阶段面板 + 针对性指导
@@ -2336,7 +2352,9 @@
     preloadBrowserHolistic,
     retryBrowserHolistic,
     updateCaptureHint,
-    collectSample
+    collectSample,
+    /** 最后一次录制的回看数据（frames + landmarkRows）；新录制开始即清空 */
+    getLastReviewData: () => state.lastReviewData
   };
 
   document.addEventListener('DOMContentLoaded', () => {
