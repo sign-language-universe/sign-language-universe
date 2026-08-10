@@ -198,6 +198,7 @@
     renderGroupAdvice(result);
     renderGroupScores(result);
     renderTreeScore(result);
+    renderReviewButton(result);
     if (passed && typeof AppState !== 'undefined') {
       AppState.collectedWords.add(item.zh);
       if (typeof playUiSound === 'function') playUiSound('reward');
@@ -308,6 +309,28 @@
       ${diagRows ? `<div class="interactive-tree-diag">${diagRows}</div>` : ''}
       ${adviceRows ? `<ul class="interactive-tree-advice">${adviceRows}</ul>` : ''}`;
     host.hidden = false;
+  }
+
+  /** 回看按钮：打开录制回看（原始视频 / 骨架叠加 / 纯骨架三视图）。
+   *  数据只保留最后一次录制（ScoringBridge.getLastReviewData），录制新动作后旧回看自动失效。 */
+  function renderReviewButton(result) {
+    const host = document.getElementById('interactive-review-slot');
+    if (!host) return;
+    const available = result?.diagnostics?.review_available === true;
+    if (!available) { host.innerHTML = ''; return; }
+    const en = state.locale === 'en';
+    host.innerHTML = `<button type="button" class="action-btn secondary review-open-btn" data-review-open>📹 ${en ? 'Review recording' : '回看录制'}</button>`;
+    host.querySelector('[data-review-open]').addEventListener('click', () => {
+      if (typeof ReviewPlayer === 'undefined') return;
+      const data = (typeof ScoringBridge !== 'undefined' && ScoringBridge.getLastReviewData)
+        ? ScoringBridge.getLastReviewData() : null;
+      if (!data || !data.frames || !data.frames.length) return;
+      ReviewPlayer.ensureStyle();
+      document.querySelectorAll('.review-modal').forEach(p => p.remove());
+      const panel = ReviewPlayer.createPanel(state.locale);
+      document.body.appendChild(panel);
+      ReviewPlayer.open(panel, data);
+    });
   }
 
   function renderGroupAdvice(result) {
@@ -429,6 +452,7 @@
       '<div class="interactive-group-advice" id="interactive-group-advice" hidden></div>',
       '<div class="interactive-group-scores" id="interactive-group-scores" hidden></div>',
       '<div class="interactive-tree-score" id="interactive-tree-score" hidden></div>',
+      '<div class="interactive-review-slot" id="interactive-review-slot"></div>',
       '<div class="result-actions">',
       (isCollectMode()
         ? '<button class="action-btn secondary collect-btn" type="button" onclick="InteractiveLearning.collectSample(true)">✅ ' + (en ? 'Save as positive' : '记为正样本') + '</button>' +
