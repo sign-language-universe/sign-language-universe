@@ -14,7 +14,7 @@ https://sign-language-universe.github.io/sign-language-universe/
 
 - Features: 21-word interactive learning (EN/ZH), real-time camera capture, **lightweight model semantic-action scoring** (pure front-end ONNX inference, no backend needed)
 - **Semantic tree model (v6.3)**: hand-shape/motion/leaf 3-layer detector (tree_model_v63.onnx), fine-grained diagnostics (shape/motion layer activation hints) + reference-video comparison
-- **Semantic overlay reference videos**: 7 words (supermarket/bus/car-one/car-two/people/forest/jump) with semantic-label animation, VL-approved (clear icons/readable labels/no occlusion)
+- **Semantic overlay reference video**: supermarket (word-03) as scene-overlay example; other words reworking
 - Scoring: core semantic-action composite score (0-100) + per-action color bars + practice advice focused on the weakest action
 - Browser: latest Chrome / Edge / Safari (onnxruntime WASM)
 

@@ -22,8 +22,8 @@
       "word_zh": "公交车",
       "word_en": "Bus",
       "path": "assets/content/reference-videos/word-05-bus-avatar.mp4",
-      "semantic_overlay_path": "assets/content/reference-videos/word-05-bus-avatar-semantic-overlay.mp4",
-      "semantic_overlay_status": "manually_approved",
+      "semantic_overlay_path": "",
+      "semantic_overlay_status": "none",
       "title_zh": "公交车｜匿名 Avatar 正视角演示",
       "title_en": "Bus | Anonymous Avatar front-view demo",
       "source_type": "self_generated_demonstration",
@@ -46,8 +46,8 @@
       "contains_real_person_video": false,
       "contains_face_landmarks": false,
       "public_release": true,
-      "semantic_overlay_path": "assets/content/reference-videos/word-13-car-one-avatar-semantic-overlay.mp4",
-      "semantic_overlay_status": "manually_approved"
+      "semantic_overlay_path": "",
+      "semantic_overlay_status": "none"
     },
     {
       "word_index": 14,
@@ -62,8 +62,8 @@
       "contains_real_person_video": false,
       "contains_face_landmarks": false,
       "public_release": true,
-      "semantic_overlay_path": "assets/content/reference-videos/word-14-car-two-avatar-semantic-overlay.mp4",
-      "semantic_overlay_status": "manually_approved"
+      "semantic_overlay_path": "",
+      "semantic_overlay_status": "none"
     },
     {
       "word_index": 15,
@@ -78,16 +78,16 @@
       "contains_real_person_video": false,
       "contains_face_landmarks": false,
       "public_release": true,
-      "semantic_overlay_path": "assets/content/reference-videos/word-15-people-avatar-semantic-overlay.mp4",
-      "semantic_overlay_status": "manually_approved"
+      "semantic_overlay_path": "",
+      "semantic_overlay_status": "none"
     },
     {
       "word_index": 16,
       "word_zh": "森林",
       "word_en": "Forest",
       "path": "assets/content/reference-videos/word-16-forest-avatar.mp4",
-      "semantic_overlay_path": "assets/content/reference-videos/word-16-forest-avatar-semantic-overlay.mp4",
-      "semantic_overlay_status": "manually_approved",
+      "semantic_overlay_path": "",
+      "semantic_overlay_status": "none",
       "title_zh": "森林｜匿名 Avatar 正视角演示",
       "title_en": "Forest | Anonymous Avatar front-view demo",
       "source_type": "self_generated_demonstration",
@@ -110,8 +110,8 @@
       "contains_real_person_video": false,
       "contains_face_landmarks": false,
       "public_release": true,
-      "semantic_overlay_path": "assets/content/reference-videos/word-17-jump-avatar-semantic-overlay.mp4",
-      "semantic_overlay_status": "manually_approved"
+      "semantic_overlay_path": "",
+      "semantic_overlay_status": "none"
     }
   ],
   "policy": {
