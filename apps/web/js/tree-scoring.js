@@ -24,7 +24,13 @@ const TreeScorer = (() => {
       meta = m; session = s;
       status = 'ready';
       statusDetail = `语义树就绪（${m.n_shape} 手形 / ${m.n_motion} 运动 / ${m.n_leaf} 叶子）`;
-    })().catch(e => { status = 'error'; statusDetail = String(e && e.message || e); throw e; });
+    })().catch(e => {
+      // 加载失败不缓存拒绝：重置 initPromise 允许下次打分重试（网络抖动/首次加载超时后自愈）
+      status = 'error';
+      statusDetail = String(e && e.message || e);
+      initPromise = null;
+      throw e;
+    });
     return initPromise;
   }
 
