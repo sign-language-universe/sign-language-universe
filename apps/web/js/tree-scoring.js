@@ -2,13 +2,22 @@
  * TreeScorer —— 语义树结构打分模块（手形/运动/叶子三层检测器）
  * 输入：landmarkRows + 目标词；输出：叶子综合分 + 手形/运动层诊断 + 细粒度建议
  * 依赖：全局 ort、ModelScorer.buildModelInput（复用特征构建）
- * 模型：tree_model.onnx（shape_scores 12 + motion_scores 20 + leaf_scores 47 + leaf_exists 47）
+ * 模型：tree_model_v63.onnx（shape_scores 12 + motion_scores 20 + leaf_scores 47 + leaf_exists 47）
+ * 缓存：加载版本化文件名（tree_model_v63.*），路径级击穿 VSCode Webview 顽固缓存（见下方注释）
  */
 const TreeScorer = (() => {
   const MODEL_BASE = new URL('assets/model/', document.baseURI).href;
   const T = 30, D = 235;
   let meta = null, session = null, initPromise = null;
   let status = 'idle', statusDetail = '';
+  // 模型缓存击穿（v3 加固 20260810）：改用「版本化文件名」而非 ?v= 查询参数。
+  // VSCode Simple Browser/Webview 的缓存存在客户端 Code/Service Worker/CacheStorage，
+  // 有已知的「不按 Cache-Control/no-store 失效、不清理」问题（microsoft/vscode#132376/#320928）。
+  // 查询参数击穿对按路径做键的缓存无效；版本化文件名（tree_model_v63.*）路径唯一，
+  // 旧页面引用旧文件名、新页面引用新文件名，路径级缓存不可能跨版本串模型。
+  // 注意：后续更新模型时必须同步改这两个文件名（tree_model_v62 → 新版本号）。
+  const MODEL_ONNX = 'tree_model_v63.onnx';
+  const MODEL_JSON = 'tree_model_v63.json';
 
   async function init() {
     if (initPromise) return initPromise;
@@ -18,8 +27,8 @@ const TreeScorer = (() => {
       ort.env.wasm.wasmPaths = new URL('vendor/onnxruntime/', document.baseURI).href;
       ort.env.wasm.numThreads = 1;
       const [m, s] = await Promise.all([
-        fetch(MODEL_BASE + 'tree_model.json').then(r => r.json()),
-        ort.InferenceSession.create(MODEL_BASE + 'tree_model.onnx', { executionProviders: ['wasm'] }),
+        fetch(MODEL_BASE + MODEL_JSON).then(r => r.json()),
+        ort.InferenceSession.create(MODEL_BASE + MODEL_ONNX, { executionProviders: ['wasm'] }),
       ]);
       meta = m; session = s;
       status = 'ready';
@@ -111,7 +120,11 @@ const TreeScorer = (() => {
   }
 
   function getStatus() { return { status, statusDetail }; }
-  return { init, score, getStatus };
+  /** 模型版本（tree_model.json 的 version 字段；换模型只需更新 json） */
+  function getVersion() {
+    return (meta && meta.version) || '';
+  }
+  return { init, score, getStatus, getVersion };
 })();
 globalThis.TreeScorer = TreeScorer;
 if (typeof window !== 'undefined') window.TreeScorer = TreeScorer;

@@ -13,6 +13,7 @@ https://sign-language-universe.github.io/sign-language-universe/
 ```
 
 - Features: 21-word interactive learning (EN/ZH), real-time camera capture, **lightweight model semantic-action scoring** (pure front-end ONNX inference, no backend needed)
+- **Semantic tree model (v6.3)**: hand-shape/motion/leaf 3-layer detector (tree_model_v63.onnx), fine-grained diagnostics (shape/motion layer activation hints) + reference-video comparison
 - Scoring: core semantic-action composite score (0-100) + per-action color bars + practice advice focused on the weakest action
 - Browser: latest Chrome / Edge / Safari (onnxruntime WASM)
 
@@ -31,6 +32,7 @@ https://sign-language-universe.github.io/sign-language-universe/
 GitHub Pages static front-end
   -> Browser Web Holistic extracts landmarks
   -> Front-end ModelScorer lightweight model semantic-action scoring (onnxruntime-web WASM, no backend)
+  -> TreeScorer semantic tree model (tree_model_v63.onnx): 3-layer hand-shape/motion/leaf detection + fine-grained diagnostic advice
      · BiLSTM outputs 47 core semantic-action scores per input (1-7 sparse per word)
      · Composite score = weighted core semantic actions; advice focuses on the weakest action
   -> Fallback when model unavailable: scoring-core local weighted DTW union scoring

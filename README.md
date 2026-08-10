@@ -14,6 +14,7 @@ https://sign-language-universe.github.io/sign-language-universe/
 
 - 功能：21 词互动学习（中英双语）、摄像头实时采集、**轻量模型语义动作打分**（纯前端 ONNX 推理，无需后端）
 - 打分：核心语义动作程度综合分（0-100）+ 各语义动作彩色评分 + 聚焦最差动作的练习建议
+- **语义树模型（v6.3）**：手形/运动/叶子三层检测器（tree_model_v63.onnx），细粒度诊断（手形/运动层激活不足 → 针对性建议）+ 参考视频对照
 - 浏览器要求：Chrome / Edge / Safari 最新版（onnxruntime WASM）
 
 ## 当前模块
@@ -36,6 +37,7 @@ GitHub Pages 静态前端
   -> 前端 ModelScorer 轻量模型语义动作打分（onnxruntime-web WASM，无后端依赖）
      · BiLSTM 模型输出 47 个核心语义动作程度分（每词 1-7 个，稀疏激活）
      · 综合分 = 核心语义动作程度加权；练习建议聚焦最差语义动作
+  -> TreeScorer 语义树模型（tree_model_v63.onnx）：手形/运动/叶子三层检测 + 细粒度诊断建议
   -> 模型不可用时降级：scoring-core 本地加权 DTW 并集打分
   -> 可选：ModelScope lite Docker FastAPI 后端（服务端评分/回退路线）
 ```

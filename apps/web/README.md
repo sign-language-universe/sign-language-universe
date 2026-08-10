@@ -19,6 +19,30 @@ python -m http.server 5173
 http://127.0.0.1:5173
 ```
 
+## 无缓存本地服务（推荐，避开 VSCode 内置浏览器缓存）
+
+```bash
+python3 /data/WYC/sign-language-universe/scripts/serve_nocache.py --port 8147 --dir /data/WYC/sign-language-universe/apps/web
+```
+
+浏览器打开：
+
+```text
+http://127.0.0.1:8147
+```
+
+- 服务只绑 `127.0.0.1`；所有响应带 `Cache-Control: no-store`（含 onnx/json）。
+- 树模型/元数据按**版本化文件名**加载（`assets/model/tree_model_v62.onnx` / `tree_model_v62.json`，见 `js/tree-scoring.js`），路径级击穿缓存——更新模型时必须同步改这两个文件名。
+- 8145 端口是旧版服务（保留未动）；若页面仍显示旧模型/0 分，改用 **8147 新端口**：浏览器对该 origin 无任何缓存，必然全量重载。
+
+### VSCode 内置浏览器（Simple Browser）顽固缓存说明（20260810 排查结论）
+
+- 根因：本仓库运行在 VSCode Remote-SSH 的 server 端，Simple Browser/Webview 跑在**用户客户端**的 VSCode Electron 里，其 HTTP 缓存存于客户端 `Code/Service Worker/CacheStorage`（Windows 为 `%APPDATA%\Code\Service Worker\CacheStorage`），存在已知的不按 `Cache-Control: no-store` 失效、不自动清理的问题（microsoft/vscode#132376 / #320928）。
+- 彻底避开缓存的做法（按优先级）：
+  1. **改用 8147 新端口**（`http://127.0.0.1:8147`）——全新 origin，无任何历史缓存，最可靠。
+  2. 用**系统浏览器**（Chrome/Edge）打开 `http://127.0.0.1:8145` 或 8147——系统浏览器严格遵守 no-store，不共享 VSCode webview 缓存。
+  3. 清理客户端 VSCode 缓存：完全退出 VSCode → 删除客户端 `Code/Service Worker/CacheStorage` 与 `Code/Cache/Cache_Data` 内容（Windows: `%APPDATA%\Code\...`；Linux/macOS: `~/.config/Code/...`）→ 重启 VSCode。⚠️ 会同时清掉 VSCode 自身的界面缓存，首次启动略慢，不影响用户数据。
+
 ## 当前状态
 
 - 原生 HTML/CSS/JS。

@@ -1,5 +1,5 @@
 {
- "onnx": "/data/WYC/sign-language-universe/apps/web/assets/model/tree_model_v63.onnx",
+ "onnx": "/data/WYC/sign-language-universe/apps/web/assets/model/tree_model_v62.onnx",
  "n_shape": 12,
  "n_motion": 20,
  "n_leaf": 47,
@@ -234,6 +234,5 @@
   "向两边",
   "指挥",
   "指挥"
- ],
- "version": "v6.3"
+ ]
 }

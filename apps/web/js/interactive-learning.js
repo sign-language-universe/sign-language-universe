@@ -303,7 +303,11 @@
       </div>`).join('');
     const adviceRows = (ts.advice || []).slice(0, 3)
       .map(a => `<li class="stage-advice-item"><p>${esc(a)}</p></li>`).join('');
-    host.innerHTML = `<h4>🌳 ${esc(en ? 'Semantic tree score (v3)' : '语义树模型分（v3）')}：
+    // 树模型版本从 tree_model.json 读（TreeScorer.getVersion()），换模型无需改 JS
+    const treeVer = (typeof TreeScorer !== 'undefined' && typeof TreeScorer.getVersion === 'function')
+      ? TreeScorer.getVersion() : '';
+    const verTag = treeVer ? `（${treeVer}）` : '';
+    host.innerHTML = `<h4>🌳 ${esc(en ? 'Semantic tree score' + (verTag ? ' (' + treeVer + ')' : '') : '语义树模型分' + verTag)}：
       <span style="color:var(--accent-cyan,#22d3ee);font-size:16px;font-weight:700;">${ts.total}</span><small>/100</small>
       <span class="tree-layer-hit">· ${esc(en ? 'shape' : '手形')} ${shapeHit}/${(ts.shapeDiag || []).length} · ${esc(en ? 'motion' : '运动')} ${motionHit}/${(ts.motionDiag || []).length}</span></h4>
       ${diagRows ? `<div class="interactive-tree-diag">${diagRows}</div>` : ''}
