@@ -1973,7 +1973,7 @@ body.theme-day .scoring-countdown-overlay {
 }
 
 .result-score {
-  font-size: 48px; font-weight: 900;
+  font-size: 32px; font-weight: 900;
   margin-bottom: 8px;
 }
 
@@ -2535,7 +2535,7 @@ body.theme-day .scoring-countdown-overlay {
   }
 
   .result-score {
-    font-size: 40px;
+    font-size: 28px;
   }
 
   .result-actions {
@@ -2678,7 +2678,7 @@ body.theme-day .scoring-countdown-overlay {
   }
 
   .result-score {
-    font-size: 34px;
+    font-size: 26px;
   }
 
   .reward-title {
@@ -3025,7 +3025,7 @@ model-viewer {
    ============================================= */
 @media (max-width: 400px) {
   .challenge-word-zh { font-size: 20px; }
-  .result-score { font-size: 36px; }
+  .result-score { font-size: 26px; }
   .reward-title { font-size: 22px; }
   .reward-model-area { width: 150px; height: 150px; }
   .constellation-svg-area { aspect-ratio: 4/5; }
