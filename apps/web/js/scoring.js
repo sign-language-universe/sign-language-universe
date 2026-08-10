@@ -1783,6 +1783,69 @@
     };
   }
 
+  /* ========== 摄像头镜像 / 惯用手：landmark 水平镜像 ==========
+   * 前置摄像头镜像显示 + 用户惯用手不同 → 实际手势可能整体左右翻转。
+   * 打分期对原序列与镜像序列各打一次分，取分数高者（见 submitFrames）。
+   * 镜像 = x 翻转（归一化坐标 1-x）+ 左右对称点交换（pose 肩/髋/肘/腕对、face core 对）+ 左右手整体交换。
+   */
+  const POSE_MIRROR_PAIRS = [[11, 12], [13, 14], [15, 16], [17, 18], [19, 20], [21, 22], [23, 24], [25, 26], [27, 28], [29, 30], [31, 32]];
+  const FACE_CORE_MIRROR_PAIRS = [[0, 4], [1, 5], [2, 6], [3, 7], [8, 9], [10, 11]];
+  const FACE_CORE_IDS_MIRROR = [33, 133, 159, 145, 362, 263, 386, 374, 61, 291, 13, 14];
+
+  /** 水平翻转点列表（x → 1-x） */
+  function mirrorFlipPoints(pts) {
+    return (pts || []).map(p => ({
+      x: 1 - (Number(p && p.x) || 0),
+      y: Number(p && p.y) || 0,
+      z: Number(p && p.z) || 0,
+    }));
+  }
+  /** 按左右对称配对交换点位置 */
+  function mirrorSwapPoints(pts, pairs) {
+    const out = (pts || []).slice();
+    (pairs || []).forEach(([a, b]) => {
+      if (out[a] && out[b]) { const t = out[a]; out[a] = out[b]; out[b] = t; }
+    });
+    return out;
+  }
+  /** face 镜像：统一输出 sparse_core_12（已翻转 + 配对交换） */
+  function mirrorFaceCore(row) {
+    const f468 = row.face_landmarks;
+    if (row.face_core_landmarks && row.face_core_landmarks.length >= 12) {
+      return mirrorSwapPoints(mirrorFlipPoints(row.face_core_landmarks), FACE_CORE_MIRROR_PAIRS);
+    }
+    if (f468 && f468.length === 12) {
+      return mirrorSwapPoints(mirrorFlipPoints(f468), FACE_CORE_MIRROR_PAIRS);
+    }
+    if (f468 && f468.length > 12) {
+      const flipped = mirrorFlipPoints(f468);
+      const core = FACE_CORE_IDS_MIRROR.map(i => flipped[i] || { x: 0, y: 0, z: 0 });
+      return mirrorSwapPoints(core, FACE_CORE_MIRROR_PAIRS);
+    }
+    return null;
+  }
+  /** 整行 landmark 镜像：x 翻转 + pose/face 对称交换 + 左右手互换 */
+  function mirrorLandmarkRow(row) {
+    const out = {};
+    ['timestamp_ms', 'frame_idx'].forEach(k => { if (row[k] !== undefined) out[k] = row[k]; });
+    if (row.pose_landmarks && row.pose_landmarks.length) {
+      out.pose_landmarks = mirrorSwapPoints(mirrorFlipPoints(row.pose_landmarks), POSE_MIRROR_PAIRS);
+    }
+    // 左右手：x 翻转后整体互换（惯用手镜像的核心）
+    const left = mirrorFlipPoints(row.left_hand_landmarks);
+    const right = mirrorFlipPoints(row.right_hand_landmarks);
+    if (row.left_hand_landmarks || row.right_hand_landmarks) {
+      out.left_hand_landmarks = right.length ? right : row.left_hand_landmarks;
+      out.right_hand_landmarks = left.length ? left : row.right_hand_landmarks;
+    }
+    const fc = mirrorFaceCore(row);
+    if (fc) out.face_core_landmarks = fc;
+    return out;
+  }
+  function mirrorLandmarkRows(rows) {
+    return (rows || []).map(mirrorLandmarkRow);
+  }
+
   async function submitFrames() {
     const wordData = currentWordData();
     const plan = state.capturePlan || buildCapturePlan();
@@ -1799,31 +1862,42 @@
           // 双打分（串行推理）：v5 扁平模型（带门控）+ 语义树模型（三层检测器）
           // 注：onnxruntime-web WASM 后端下两个 session.run 并行偶发竞态失败，
           // 改为顺序执行（先 v5 后树）保证两路分数都稳定产出；单次推理 ~10-50ms 可忽略。
-          const ms = await ModelScorer.score(state.landmarkRows, word, fps);
+          // 摄像头镜像 / 惯用手：原序列与镜像序列各打一次分，取分数高者。
+          const rows = state.landmarkRows;
+          const mirrorRows = mirrorLandmarkRows(rows);
+          const ms = await ModelScorer.score(rows, word, fps);
+          const msM = mirrorRows.length ? await ModelScorer.score(mirrorRows, word, fps) : ms;
+          const useMirrorMs = msM.total > ms.total;
+          const bestMs = useMirrorMs ? msM : ms;
           const ts = (typeof TreeScorer !== 'undefined')
-            ? await TreeScorer.score(state.landmarkRows, word, fps).catch(err => {
+            ? await TreeScorer.score(rows, word, fps).catch(err => {
                 console.warn('[scoring] tree model score failed, keep v5 only:', err && err.message || err);
                 return null;
               })
             : null;
-          // 细粒度建议：树模型（手形/运动层诊断）优先，v5 建议兜底
-          const treeAdvice = (ts && Array.isArray(ts.advice) && ts.advice.length) ? ts.advice : [];
-          const advice = treeAdvice.length ? treeAdvice : ms.advice;
+          const tsM = (ts && mirrorRows.length)
+            ? await TreeScorer.score(mirrorRows, word, fps).catch(() => ts)
+            : ts;
+          const useMirrorTs = !!(ts && tsM && tsM.total > ts.total);
+          const bestTs = useMirrorTs ? tsM : ts;
+          // 细粒度建议：树模型（手形/运动层诊断）优先，v5 建议兜底（均取高分一路）
+          const treeAdvice = (bestTs && Array.isArray(bestTs.advice) && bestTs.advice.length) ? bestTs.advice : [];
+          const advice = treeAdvice.length ? treeAdvice : bestMs.advice;
           // stage 面板双语标签（label_zh/label_en 固定双语，不受当前界面语言影响）
-          const stageLabels = ms.actions.map(a => ({ label_zh: a.name_zh || a.name, label_en: a.name_en || a.name }));
+          const stageLabels = bestMs.actions.map(a => ({ label_zh: a.name_zh || a.name, label_en: a.name_en || a.name }));
           // 语义动作彩色 bar（复用"局部语义评分"面板：对象格式 动作名→分）
           const groupScores = {};
-          ms.actions.forEach(a => { groupScores[a.name] = a.score; });
+          bestMs.actions.forEach(a => { groupScores[a.name] = a.score; });
           // 结构化弱动作建议（interactive 面板"针对性局部指导"展示用，聚焦最差 2 个）
-          const weakActions = ms.actions.slice().sort((a, b) => a.score - b.score).filter(a => a.score < 85).slice(0, 2);
+          const weakActions = bestMs.actions.slice().sort((a, b) => a.score - b.score).filter(a => a.score < 85).slice(0, 2);
           const groupAdvice = weakActions.map(a => ({
             group: a.name, group_label: a.name, group_score: a.score,
             related_stage_label: a.name, related_stage_detail: a.detail || '',
           }));
           const modelResult = {
             request_id: `web_model_${Date.now()}`,
-            score: ms.total,
-            prototype_score: ms.total / 100,
+            score: bestMs.total,
+            prototype_score: bestMs.total / 100,
             score_valid: true,
             level: 'web_model_semantic',
             feedback: [{ type: 'model', message: scoreText(advice.join('；'), advice.join('; ')) }],
@@ -1831,16 +1905,18 @@
               scoring_mode: 'web_model_semantic',
               word,
               frame_count: state.landmarkRows.length,
-              model_composite: ms.composite,
+              model_composite: bestMs.composite,
+              // 摄像头镜像/惯用手：是否采用镜像打分（调试用）
+              mirror: { ms: useMirrorMs, tree: useMirrorTs },
               // 语义动作彩色 bar（对象格式，复用"局部语义评分"面板）
               group_scores: groupScores,
               // 兼容阶段面板 + 针对性指导
-              stage_scores: ms.actions.map(a => a.score),
+              stage_scores: bestMs.actions.map(a => a.score),
               stage_labels: stageLabels,
               group_advice: groupAdvice,
             },
-            model_score: ms,
-            tree_score: ts,   // 语义树模型结果（三层检测 + 细粒度建议）
+            model_score: bestMs,
+            tree_score: bestTs,   // 语义树模型结果（三层检测 + 细粒度建议）
           };
           setServiceStatus('ready', scoreText('模型语义动作评分完成（纯前端）', 'Model semantic-action scoring complete (frontend-only)'));
           return modelResult;
