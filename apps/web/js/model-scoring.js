@@ -14,6 +14,8 @@ const ModelScorer = (() => {
   let initPromise = null;
   let status = 'idle'; // idle | loading | ready | error
   let statusDetail = '';
+  // 模型缓存击穿：版本参数随模型更新变化，强制浏览器重新下载模型（避免 VSCode 缓存旧模型）
+  const MODEL_VER = '20260810-v5';
 
   async function fetchJson(url) {
     const r = await fetch(url);
@@ -29,9 +31,9 @@ const ModelScorer = (() => {
       ort.env.wasm.wasmPaths = new URL('vendor/onnxruntime/', document.baseURI).href;
       ort.env.wasm.numThreads = 1;
       const [m, act, wrd] = await Promise.all([
-        fetchJson(MODEL_BASE + 'action_meta.json'),
-        ort.InferenceSession.create(MODEL_BASE + 'action_model.onnx', { executionProviders: ['wasm'] }),
-        ort.InferenceSession.create(MODEL_BASE + 'word_model.onnx', { executionProviders: ['wasm'] }),
+        fetchJson(MODEL_BASE + 'action_meta.json?v=' + MODEL_VER),
+        ort.InferenceSession.create(MODEL_BASE + 'action_model.onnx?v=' + MODEL_VER, { executionProviders: ['wasm'] }),
+        ort.InferenceSession.create(MODEL_BASE + 'word_model.onnx?v=' + MODEL_VER, { executionProviders: ['wasm'] }),
       ]);
       meta = m;
       actionSession = act;
