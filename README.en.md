@@ -40,7 +40,7 @@ GitHub Pages static front-end
 ```
 
 - Primary front-end scoring: lightweight model semantic-action scoring (`model-scoring.js` + `assets/model/*.onnx`), pure front-end inference, no word-classification gating; models in `apps/web/assets/model/` (action/word ONNX, ~4.8MB each); inference runtime `vendor/onnxruntime/` served same-origin.
-- Default capture settings: `3s / 10fps / 1280px`
+- Default capture settings: `3s / 10fps / 720p`
 - When connected to the scoring API, `landmark_rows` are uploaded first; image frames are not uploaded.
 - `deploy/modelscope-space-lite/`: optional online demo backend (no MediaPipe worker).
 - `deploy/modelscope-space/`: full Docker validation / server-side Holistic worker fallback route.

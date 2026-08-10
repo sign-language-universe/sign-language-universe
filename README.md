@@ -43,7 +43,7 @@ GitHub Pages 静态前端
 ```
 
 - 前端默认打分（主）：轻量模型语义动作打分（`model-scoring.js` + `assets/model/*.onnx`），纯前端推理、无词判定干预；模型文件见 `apps/web/assets/model/`（action/word ONNX，~4.8MB each），推理库 `vendor/onnxruntime/` 本地同源。
-- 前端默认采集参数：`3s / 10fps / 1280px`
+- 前端默认采集参数：`3s / 10fps / 720p`
 - 连接评分 API 时优先上传 `landmark_rows`，不上传图片帧。
 - `deploy/modelscope-space-lite/` 是可选线上演示后端，不安装 MediaPipe worker。
 - `deploy/modelscope-space/` 保留为 full Docker 验证和服务端 Holistic worker 回退路线。
