@@ -188,12 +188,16 @@
       resultPanel.classList.toggle('retry', !passed);
     }
     if (icon) icon.textContent = passed ? '🎉' : '🔄';
-    if (scoreEl) scoreEl.textContent = `${score} ${state.locale === 'en' ? 'points' : '分'}`;
+    // 主分标注模型来源：submitFrames 主路径（v5 扁平模型语义打分）vs 降级路径
+    const mode = result?.diagnostics?.scoring_mode || result?.level || '';
+    const isV5 = String(mode).includes('web_model_semantic');
+    if (scoreEl) scoreEl.textContent = `${score} ${state.locale === 'en' ? 'points' : '分'}${isV5 ? (state.locale === 'en' ? ' · model v5' : ' · 模型 v5') : ''}`;
     const status = document.getElementById('interactive-score-state');
     if (status) status.textContent = passed ? t('success') : t('retryHint');
     // 展示顺序：针对性建议 → 局部语义评分（分数下方直接是建议，不重复小字提示）
     renderGroupAdvice(result);
     renderGroupScores(result);
+    renderTreeScore(result);
     if (passed && typeof AppState !== 'undefined') {
       AppState.collectedWords.add(item.zh);
       if (typeof playUiSound === 'function') playUiSound('reward');
@@ -276,6 +280,33 @@
     }).join('');
     if (!rows) { host.hidden = true; return; }
     host.innerHTML = `<h4>🧩 ${esc(en ? 'Semantic part scores (weighted)' : '局部语义评分（加权）')}</h4>${rows}`;
+    host.hidden = false;
+  }
+
+  /** 语义树模型分（三层检测器）：树总分 + 手形/运动层命中诊断 + 细粒度建议。
+   *  数据源 = submitFrames 并行双打分的 result.tree_score（TreeScorer.score）。 */
+  function renderTreeScore(result) {
+    const host = document.getElementById('interactive-tree-score');
+    if (!host) return;
+    const ts = result?.tree_score;
+    if (!ts || typeof ts.total !== 'number') { host.hidden = true; return; }
+    const en = state.locale === 'en';
+    const shapeHit = (ts.shapeDiag || []).filter(d => d.ok).length;
+    const motionHit = (ts.motionDiag || []).filter(d => d.ok).length;
+    const diagRows = [...(ts.shapeDiag || []), ...(ts.motionDiag || [])]
+      .filter(d => !d.ok)
+      .map(d => `<div class="stage-score-row weak">
+        <span class="stage-score-label">⚠ ${esc(d.name)}</span>
+        <span class="stage-score-bar"><i style="width:${Math.max(4, Math.min(100, Math.round(d.activ * 100)))}%"></i></span>
+        <strong class="stage-score-value">${Math.round(d.activ * 100)}</strong>
+      </div>`).join('');
+    const adviceRows = (ts.advice || []).slice(0, 3)
+      .map(a => `<li class="stage-advice-item"><p>${esc(a)}</p></li>`).join('');
+    host.innerHTML = `<h4>🌳 ${esc(en ? 'Semantic tree score (v3)' : '语义树模型分（v3）')}：
+      <span style="color:var(--accent-cyan,#22d3ee);font-size:16px;font-weight:700;">${ts.total}</span><small>/100</small>
+      <span class="tree-layer-hit">· ${esc(en ? 'shape' : '手形')} ${shapeHit}/${(ts.shapeDiag || []).length} · ${esc(en ? 'motion' : '运动')} ${motionHit}/${(ts.motionDiag || []).length}</span></h4>
+      ${diagRows ? `<div class="interactive-tree-diag">${diagRows}</div>` : ''}
+      ${adviceRows ? `<ul class="interactive-tree-advice">${adviceRows}</ul>` : ''}`;
     host.hidden = false;
   }
 
@@ -387,7 +418,6 @@
       '<button class="scoring-api-btn" type="button" onclick="ScoringBridge.saveApiBaseFromInput()">' + (en ? 'Connect' : '连接') + '</button></div>',
       '<div class="scoring-worker-note" id="scoring-worker-note">' + (en ? 'Scoring service pending' : '评分服务待连接') + '</div>',
       '<div class="scoring-auto-note" id="scoring-auto-note" hidden></div>',
-      '<div class="challenge-timer" id="challenge-timer">' + (en ? 'Duration: ' : '录制时长：') + '<span id="timer-display">00:00</span></div>',
       '</div>',
       '<div class="challenge-result interactive-score-result" id="challenge-result" style="display:none;">',
       '<div class="result-icon" id="result-icon">🎯</div><div class="result-score" id="result-score">--</div>',
@@ -398,6 +428,7 @@
       '<div><span>Request</span><strong id="scoring-result-request">--</strong></div><p id="scoring-result-advice">--</p></div>',
       '<div class="interactive-group-advice" id="interactive-group-advice" hidden></div>',
       '<div class="interactive-group-scores" id="interactive-group-scores" hidden></div>',
+      '<div class="interactive-tree-score" id="interactive-tree-score" hidden></div>',
       '<div class="result-actions">',
       (isCollectMode()
         ? '<button class="action-btn secondary collect-btn" type="button" onclick="InteractiveLearning.collectSample(true)">✅ ' + (en ? 'Save as positive' : '记为正样本') + '</button>' +
