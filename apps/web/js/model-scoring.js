@@ -39,8 +39,10 @@ const ModelScorer = (() => {
       status = 'ready';
       statusDetail = `模型就绪（${m.num_actions} 语义动作，${m.word_list.length} 词）`;
     })().catch(e => {
+      // 加载失败不缓存拒绝：重置 initPromise 允许下次打分重试（网络抖动/首次加载超时后自愈）
       status = 'error';
       statusDetail = String(e && e.message || e);
+      initPromise = null;
       throw e;
     });
     return initPromise;

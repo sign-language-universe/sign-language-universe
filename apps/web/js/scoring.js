@@ -1796,11 +1796,16 @@
       // ★ 主路径：轻量模型语义动作打分（纯前端，无词判定干预）
       if (typeof ModelScorer !== 'undefined') {
         try {
-          // 并行双打分：v5 扁平模型（带门控）+ 语义树模型（三层检测器）
-          const [ms, ts] = await Promise.all([
-            ModelScorer.score(state.landmarkRows, word, fps),
-            (typeof TreeScorer !== 'undefined') ? TreeScorer.score(state.landmarkRows, word, fps).catch(() => null) : null,
-          ]);
+          // 双打分（串行推理）：v5 扁平模型（带门控）+ 语义树模型（三层检测器）
+          // 注：onnxruntime-web WASM 后端下两个 session.run 并行偶发竞态失败，
+          // 改为顺序执行（先 v5 后树）保证两路分数都稳定产出；单次推理 ~10-50ms 可忽略。
+          const ms = await ModelScorer.score(state.landmarkRows, word, fps);
+          const ts = (typeof TreeScorer !== 'undefined')
+            ? await TreeScorer.score(state.landmarkRows, word, fps).catch(err => {
+                console.warn('[scoring] tree model score failed, keep v5 only:', err && err.message || err);
+                return null;
+              })
+            : null;
           // 细粒度建议：树模型（手形/运动层诊断）优先，v5 建议兜底
           const treeAdvice = (ts && Array.isArray(ts.advice) && ts.advice.length) ? ts.advice : [];
           const advice = treeAdvice.length ? treeAdvice : ms.advice;
