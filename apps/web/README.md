@@ -32,7 +32,7 @@ http://127.0.0.1:8147
 ```
 
 - 服务只绑 `127.0.0.1`；所有响应带 `Cache-Control: no-store`（含 onnx/json）。
-- 树模型/元数据按**版本化文件名**加载（`assets/model/tree_model_v62.onnx` / `tree_model_v62.json`，见 `js/tree-scoring.js`），路径级击穿缓存——更新模型时必须同步改这两个文件名。
+- 树模型/元数据按**版本化文件名**加载（`assets/model/tree_model_v64.onnx` / `tree_model_v64.json`，见 `js/tree-scoring.js`），路径级击穿缓存——更新模型时必须同步改这两个文件名。
 - 8145 端口是旧版服务（保留未动）；若页面仍显示旧模型/0 分，改用 **8147 新端口**：浏览器对该 origin 无任何缓存，必然全量重载。
 
 ### VSCode 内置浏览器（Simple Browser）顽固缓存说明（20260810 排查结论）
