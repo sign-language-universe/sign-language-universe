@@ -37,13 +37,19 @@ const ReviewPlayer = (() => {
         </div>
         <canvas data-review-canvas width="720" height="540"></canvas>
         <div class="review-controls">
+          <button type="button" data-review-prev title="${en ? 'Previous frame' : '上一帧'}">⏮</button>
           <button type="button" data-review-play>▶</button>
+          <button type="button" data-review-next title="${en ? 'Next frame' : '下一帧'}">⏭</button>
+          <input type="range" data-review-seek min="0" max="0" value="0" step="1" aria-label="${en ? 'Frame position' : '帧位置'}">
           <span class="review-pos" data-review-pos>0/0</span>
           <button type="button" data-review-replay title="${en ? 'Replay' : '重播'}">↺</button>
         </div>
       </div>`;
     panel.querySelector('[data-review-close]').addEventListener('click', () => close(panel));
     panel.querySelector('[data-review-play]').addEventListener('click', () => togglePlay(panel));
+    panel.querySelector('[data-review-prev]').addEventListener('click', () => step(panel, -1));
+    panel.querySelector('[data-review-next]').addEventListener('click', () => step(panel, 1));
+    panel.querySelector('[data-review-seek]').addEventListener('input', (event) => seek(panel, event.target.value));
     panel.querySelector('[data-review-replay]').addEventListener('click', () => replay(panel));
     panel.querySelectorAll('[data-review-mode]').forEach(btn => {
       btn.addEventListener('click', () => setMode(panel, btn.getAttribute('data-review-mode')));
@@ -80,6 +86,22 @@ const ReviewPlayer = (() => {
     if (ctx) renderFrame(panel);
   }
 
+  function step(panel, delta) {
+    if (!frames.length) return;
+    pause(panel);
+    current = (current + delta + frames.length) % frames.length;
+    updatePosLabel(panel);
+    renderFrame(panel);
+  }
+
+  function seek(panel, value) {
+    if (!frames.length) return;
+    pause(panel);
+    current = Math.max(0, Math.min(frames.length - 1, Number(value) || 0));
+    updatePosLabel(panel);
+    renderFrame(panel);
+  }
+
   function close(panel) {
     pause();
     panel.hidden = true;
@@ -108,10 +130,12 @@ const ReviewPlayer = (() => {
     }, 100); // ~10fps，与录制帧率一致
   }
 
-  function pause() {
+  function pause(panel = null) {
     playing = false;
     if (timer) { clearInterval(timer); timer = null; }
-    const btn = document.querySelector('[data-review-play]');
+    const btn = panel
+      ? panel.querySelector('[data-review-play]')
+      : document.querySelector('[data-review-play]');
     if (btn) btn.textContent = '▶';
   }
 
@@ -130,17 +154,28 @@ const ReviewPlayer = (() => {
 
   function updatePosLabel(panel) {
     const el = panel.querySelector('[data-review-pos]');
+    const seekEl = panel.querySelector('[data-review-seek]');
+    if (seekEl) {
+      seekEl.max = String(Math.max(0, frames.length - 1));
+      seekEl.value = String(Math.min(current, Math.max(0, frames.length - 1)));
+      seekEl.disabled = !frames.length;
+    }
     if (el) el.textContent = frames.length ? `${current + 1}/${frames.length}` : '0/0';
   }
 
-  /** 找 landmarkRows 中与帧 index 匹配的行 */
-  function rowFor(index) {
-    return landmarkRows.find(r => r.index === index) || null;
+  /** 找与帧对齐的关键点行：优先严格匹配 index；仅对旧的无 index 数据按顺序回退。 */
+  function rowFor(index, framePosition = current) {
+    const indexedRows = landmarkRows.filter(row => row && row.index !== undefined && row.index !== null);
+    if (indexedRows.length) {
+      return indexedRows.find(row => String(row.index) === String(index)) || null;
+    }
+    return landmarkRows[framePosition] || null;
   }
 
-  /** 渲染当前帧（按 mode 决定绘制内容） */
+  /** 渲染当前帧（按 mode 决定绘制内容）。图片异步完成后重新绘制当前帧。 */
   function renderFrame(panel) {
-    const f = frames[current];
+    const framePosition = current;
+    const f = frames[framePosition];
     if (!ctx) return;
     const W = canvas.width || 720, H = canvas.height || 540;
     ctx.clearRect(0, 0, W, H);
@@ -148,11 +183,24 @@ const ReviewPlayer = (() => {
     ctx.fillRect(0, 0, W, H);
     const img = f && f.image_base64 ? loadImage(f.image_base64) : null;
     const drawVideo = mode === 'video' || mode === 'overlay';
-    if (drawVideo && img && img.complete) {
-      ctx.drawImage(img, 0, 0, W, H);
+    if (drawVideo && img) {
+      if (img.complete && img.naturalWidth) {
+        ctx.drawImage(img, 0, 0, W, H);
+      } else {
+        // 闭包只负责触发一次当前状态重绘，避免旧帧异步回调覆盖模式/帧切换。
+        img.onload = () => {
+          if (framePosition === current) renderFrame(panel);
+        };
+        img.onerror = () => {
+          if (framePosition !== current) return;
+          ctx.fillStyle = '#f87171';
+          ctx.font = '13px sans-serif';
+          ctx.fillText('视频帧加载失败', 10, H - 10);
+        };
+      }
     }
     if (mode === 'skeleton' || mode === 'overlay') {
-      const row = f ? rowFor(f.index) : null;
+      const row = f ? rowFor(f.index, framePosition) : null;
       if (row) drawSkeleton(ctx, row, W, H);
       else {
         ctx.fillStyle = '#fbbf24';
@@ -163,8 +211,14 @@ const ReviewPlayer = (() => {
     if (drawVideo && !(img && img.complete)) {
       ctx.fillStyle = '#64748b';
       ctx.font = '13px sans-serif';
-      ctx.fillText('无视频帧', 10, H - 10);
+      ctx.fillText('视频帧加载中…', 10, H - 10);
     }
+  }
+
+  function pointXY(point) {
+    // scoring.js 为节省体积序列化为 [x,y,z,...]；同时兼容对象格式。
+    if (Array.isArray(point)) return { x: Number(point[0]), y: Number(point[1]) };
+    return point || null;
   }
 
   const _imgCache = {};
@@ -180,8 +234,9 @@ const ReviewPlayer = (() => {
   /** 画点 */
   function drawLandmarks(ctx, pts, W, H, color) {
     (pts || []).forEach(p => {
-      const x = (Number(p && p.x) || 0) * W;
-      const y = (Number(p && p.y) || 0) * H;
+      const point = pointXY(p);
+      const x = (Number(point && point.x) || 0) * W;
+      const y = (Number(point && point.y) || 0) * H;
       if (x < 0 || y < 0 || x > W || y > H) return;
       ctx.beginPath();
       ctx.arc(x, y, 3, 0, Math.PI * 2);
@@ -241,10 +296,11 @@ const ReviewPlayer = (() => {
         color: #94a3b8; cursor: pointer; margin-left: auto; }
       .review-close:hover { color: #f87171; }
       .review-modal canvas { width: 100%; max-height: 74vh; object-fit: contain; background: #0f172a; border-radius: 8px; }
-      .review-controls { display: flex; align-items: center; gap: 12px; justify-content: center; }
-      .review-controls button { font-size: 14px; padding: 5px 14px; border-radius: 6px; border: 1px solid rgba(148,163,184,0.4);
+      .review-controls { display: flex; align-items: center; gap: 8px; justify-content: center; flex-wrap: wrap; }
+      .review-controls button { font-size: 14px; padding: 5px 12px; border-radius: 6px; border: 1px solid rgba(148,163,184,0.4);
         background: rgba(148,163,184,0.1); color: #e2e8f0; cursor: pointer; }
       .review-controls button:hover { background: rgba(34,211,238,0.15); }
+      .review-controls input[type="range"] { width: min(42vw, 320px); accent-color: #22d3ee; }
       .review-pos { font-size: 12px; color: #94a3b8; min-width: 56px; text-align: center; }
     `;
     document.head.appendChild(style);

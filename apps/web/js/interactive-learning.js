@@ -284,35 +284,11 @@
     host.hidden = false;
   }
 
-  /** 语义树模型分（三层检测器）：树总分 + 手形/运动层命中诊断 + 细粒度建议。
-   *  数据源 = submitFrames 并行双打分的 result.tree_score（TreeScorer.score）。 */
+  /** 语义树模型分：树模块已下线（纯语义头 v5 打分），树分面板直接隐藏。
+   *  保留函数名与调用点，避免改动调用结构。 */
   function renderTreeScore(result) {
     const host = document.getElementById('interactive-tree-score');
-    if (!host) return;
-    const ts = result?.tree_score;
-    if (!ts || typeof ts.total !== 'number') { host.hidden = true; return; }
-    const en = state.locale === 'en';
-    const shapeHit = (ts.shapeDiag || []).filter(d => d.ok).length;
-    const motionHit = (ts.motionDiag || []).filter(d => d.ok).length;
-    const diagRows = [...(ts.shapeDiag || []), ...(ts.motionDiag || [])]
-      .filter(d => !d.ok)
-      .map(d => `<div class="stage-score-row weak">
-        <span class="stage-score-label">⚠ ${esc(d.name)}</span>
-        <span class="stage-score-bar"><i style="width:${Math.max(4, Math.min(100, Math.round(d.activ * 100)))}%"></i></span>
-        <strong class="stage-score-value">${Math.round(d.activ * 100)}</strong>
-      </div>`).join('');
-    const adviceRows = (ts.advice || []).slice(0, 3)
-      .map(a => `<li class="stage-advice-item"><p>${esc(a)}</p></li>`).join('');
-    // 树模型版本从 tree_model.json 读（TreeScorer.getVersion()），换模型无需改 JS
-    const treeVer = (typeof TreeScorer !== 'undefined' && typeof TreeScorer.getVersion === 'function')
-      ? TreeScorer.getVersion() : '';
-    const verTag = treeVer ? `（${treeVer}）` : '';
-    host.innerHTML = `<h4>🌳 ${esc(en ? 'Semantic tree score' + (verTag ? ' (' + treeVer + ')' : '') : '语义树模型分' + verTag)}：
-      <span style="color:var(--accent-cyan,#22d3ee);font-size:16px;font-weight:700;">${ts.total}</span><small>/100</small>
-      <span class="tree-layer-hit">· ${esc(en ? 'shape' : '手形')} ${shapeHit}/${(ts.shapeDiag || []).length} · ${esc(en ? 'motion' : '运动')} ${motionHit}/${(ts.motionDiag || []).length}</span></h4>
-      ${diagRows ? `<div class="interactive-tree-diag">${diagRows}</div>` : ''}
-      ${adviceRows ? `<ul class="interactive-tree-advice">${adviceRows}</ul>` : ''}`;
-    host.hidden = false;
+    if (host) host.hidden = true;
   }
 
   /** 回看按钮：打开录制回看（原始视频 / 骨架叠加 / 纯骨架三视图）。
@@ -504,12 +480,15 @@
       return response.json();
     })))
       .then(([payload, mediaPayload]) => {
-        state.contracts = Array.isArray(payload.contracts) ? payload.contracts : [];
         state.referenceMedia = {};
         (Array.isArray(mediaPayload.entries) ? mediaPayload.entries : []).forEach(entry => {
           if (entry && entry.word_index && entry.path) state.referenceMedia[String(entry.word_index)] = entry;
         });
+        // 临时展示版：只展示已上线（有已审核 wan 演示视频）的词，其余默认隐藏；恢复全量词时删除下面一行过滤即可
+        state.contracts = (Array.isArray(payload.contracts) ? payload.contracts : [])
+          .filter(item => Boolean(state.referenceMedia[String(item.index)]));
         state.loaded = state.contracts.length > 0;
+        state.index = 0;
         render();
         return state.contracts;
       })

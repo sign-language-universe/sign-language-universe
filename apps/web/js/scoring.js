@@ -1873,30 +1873,16 @@
       // ★ 主路径：轻量模型语义动作打分（纯前端，无词判定干预）
       if (typeof ModelScorer !== 'undefined') {
         try {
-          // 双打分（串行推理）：v5 扁平模型（带门控）+ 语义树模型（三层检测器）
-          // 注：onnxruntime-web WASM 后端下两个 session.run 并行偶发竞态失败，
-          // 改为顺序执行（先 v5 后树）保证两路分数都稳定产出；单次推理 ~10-50ms 可忽略。
+          // 纯语义头加权综合（v5）：gate:false → total = composite（去掉 conf 词判定门控压分）。
           // 摄像头镜像 / 惯用手：原序列与镜像序列各打一次分，取分数高者。
           const rows = state.landmarkRows;
           const mirrorRows = mirrorLandmarkRows(rows);
-          const ms = await ModelScorer.score(rows, word, fps);
-          const msM = mirrorRows.length ? await ModelScorer.score(mirrorRows, word, fps) : ms;
+          const ms = await ModelScorer.score(rows, word, fps, { gate: false });
+          const msM = mirrorRows.length ? await ModelScorer.score(mirrorRows, word, fps, { gate: false }) : ms;
           const useMirrorMs = msM.total > ms.total;
           const bestMs = useMirrorMs ? msM : ms;
-          const ts = (typeof TreeScorer !== 'undefined')
-            ? await TreeScorer.score(rows, word, fps).catch(err => {
-                console.warn('[scoring] tree model score failed, keep v5 only:', err && err.message || err);
-                return null;
-              })
-            : null;
-          const tsM = (ts && mirrorRows.length)
-            ? await TreeScorer.score(mirrorRows, word, fps).catch(() => ts)
-            : ts;
-          const useMirrorTs = !!(ts && tsM && tsM.total > ts.total);
-          const bestTs = useMirrorTs ? tsM : ts;
-          // 细粒度建议：树模型（手形/运动层诊断）优先，v5 建议兜底（均取高分一路）
-          const treeAdvice = (bestTs && Array.isArray(bestTs.advice) && bestTs.advice.length) ? bestTs.advice : [];
-          const advice = treeAdvice.length ? treeAdvice : bestMs.advice;
+          // 建议仅基于 v5 语义头（树建议随树模块移除）
+          const advice = bestMs.advice;
           // stage 面板双语标签（label_zh/label_en 固定双语，不受当前界面语言影响）
           const stageLabels = bestMs.actions.map(a => ({ label_zh: a.name_zh || a.name, label_en: a.name_en || a.name }));
           // 语义动作彩色 bar（复用"局部语义评分"面板：对象格式 动作名→分）
@@ -1921,7 +1907,7 @@
               frame_count: state.landmarkRows.length,
               model_composite: bestMs.composite,
               // 摄像头镜像/惯用手：是否采用镜像打分（调试用）
-              mirror: { ms: useMirrorMs, tree: useMirrorTs },
+              mirror: { ms: useMirrorMs },
               // 回看可用性（数据只存最后一次录制槽位，经 ScoringBridge.getLastReviewData() 读取）
               review_available: !!(state.lastReviewData && state.lastReviewData.frames && state.lastReviewData.frames.length),
               // 语义动作彩色 bar（对象格式，复用"局部语义评分"面板）
@@ -1932,7 +1918,6 @@
               group_advice: groupAdvice,
             },
             model_score: bestMs,
-            tree_score: bestTs,   // 语义树模型结果（三层检测 + 细粒度建议）
           };
           setServiceStatus('ready', scoreText('模型语义动作评分完成（纯前端）', 'Model semantic-action scoring complete (frontend-only)'));
           return modelResult;
@@ -2253,31 +2238,16 @@
       host.appendChild(block);
     }
     const en = window.AppState?.locale === 'en';
-    const ts = result.tree_score;
     const actionRows = (ms.actions || []).map(a => {
       const color = a.score >= 80 ? '#4ade80' : a.score >= 60 ? '#facc15' : '#f87171';
       return `<div style="display:flex;justify-content:space-between;margin-top:4px;font-size:13px;">
         <span>${a.name}</span><span style="color:${color};font-weight:600;">${a.score}</span></div>`;
     }).join('');
-    // 语义树模型：细粒度建议（手形/运动层诊断）+ 树总分
-    let treeHtml = '';
-    if (ts) {
-      const shapeHit = (ts.shapeDiag || []).filter(d => d.ok).length;
-      const motionHit = (ts.motionDiag || []).filter(d => d.ok).length;
-      const diagRows = [...(ts.shapeDiag || []), ...(ts.motionDiag || [])].filter(d => !d.ok)
-        .map(d => `<div style="font-size:12px;color:#fbbf24;margin-top:2px;">⚠ ${en ? 'Hand shape/Motion' : '手形/运动'}「${d.name}」${en ? 'weakly activated' : '激活不足'}（${Math.round(d.activ * 100)}%）</div>`).join('');
-      treeHtml = `<div style="margin-top:8px;border-top:1px dashed #334155;padding-top:6px;">
-        <div style="font-size:13px;color:#a5f3fc;">🌳 ${en ? 'Semantic tree' : '语义树模型'}：<b>${ts.total}</b>/100
-          <span style="font-size:12px;color:#94a3b8;">· ${en ? 'shape' : '手形'} ${shapeHit}/${(ts.shapeDiag || []).length} · ${en ? 'motion' : '运动'} ${motionHit}/${(ts.motionDiag || []).length}</span>
-        </div>${diagRows}
-        ${(ts.advice || []).slice(0, 3).map(a => `<div style="font-size:12px;color:#e2e8f0;margin-top:2px;">· ${a}</div>`).join('')}
-      </div>`;
-    }
     block.innerHTML = `<div style="font-weight:700;font-size:14px;margin-bottom:6px;">
       🤖 ${en ? 'Model semantic-action score (v5)' : '模型语义动作评分（v5）'}：
       <span style="font-size:20px;color:var(--accent-cyan,#22d3ee);">${ms.total}</span><small>/100</small>
       <span style="margin-left:8px;color:#94a3b8;font-size:12px;">${en ? 'composite' : '动作综合度'} ${Math.round(ms.composite * 100)}%</span>
-    </div>${actionRows}${treeHtml}${ms.diagnosis ? `<div style="margin-top:6px;color:#fbbf24;font-size:13px;">${ms.diagnosis}</div>` : ''}`;
+    </div>${actionRows}${ms.diagnosis ? `<div style="margin-top:6px;color:#fbbf24;font-size:13px;">${ms.diagnosis}</div>` : ''}`;
   }
 
   function finishChallengeScore(result) {
