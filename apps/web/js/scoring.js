@@ -1960,12 +1960,12 @@
       const Scorer = (typeof CascadeScorer !== 'undefined') ? CascadeScorer : ModelScorer;
       if (typeof Scorer !== 'undefined') {
         try {
-          // 级联模型（CascadeScorer）：overall 直接作综合分（无 conf 门控）；ModelScorer 兜底：gate:false。
+          // 级联模型（CascadeScorer）：overall × conf 门控（conf=目标词叶子激活度，拦截乱作/非目标词）；ModelScorer 兜底：gate:false。
           // 摄像头镜像 / 惯用手：原序列与镜像序列各打一次分，取分数高者。
           const rows = state.landmarkRows;
           const mirrorRows = mirrorLandmarkRows(rows);
-          const ms = await Scorer.score(rows, word, fps, { gate: false });
-          const msM = mirrorRows.length ? await Scorer.score(mirrorRows, word, fps, { gate: false }) : ms;
+          const ms = await Scorer.score(rows, word, fps, { gate: true });
+          const msM = mirrorRows.length ? await Scorer.score(mirrorRows, word, fps, { gate: true }) : ms;
           const useMirrorMs = msM.total > ms.total;
           const bestMs = useMirrorMs ? msM : ms;
           // 建议仅基于 v5 语义头（树建议随树模块移除）
@@ -1994,6 +1994,8 @@
               word,
               frame_count: state.landmarkRows.length,
               model_composite: bestMs.composite,
+              model_conf: bestMs.conf,
+              model_gate: bestMs.gate,
               // 摄像头镜像/惯用手：是否采用镜像打分（调试用）
               mirror: { ms: useMirrorMs },
               // 回看可用性（数据只存最后一次录制槽位，经 ScoringBridge.getLastReviewData() 读取）
