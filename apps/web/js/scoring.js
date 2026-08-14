@@ -445,6 +445,51 @@
     const startedAt = performance.now();
     state.browserHolisticSource = source;
     state.browserHolisticLoading = (async () => {
+      // 动态加载 MediaPipe Tasks Vision（ESM bundle），提供 HolisticLandmarker
+      if (!window.HolisticLandmarker) {
+        try {
+          const vision = await import(new URL('vendor/mediapipe/tasks-vision/vision_bundle.mjs', document.baseURI).href);
+          window.FilesetResolver = vision.FilesetResolver;
+          window.HolisticLandmarker = vision.HolisticLandmarker;
+        } catch (e) {
+          console.warn('[holistic] Tasks Vision 动态加载失败，回退旧版 Solution API:', e);
+        }
+      }
+      // 优先新版 MediaPipe Tasks API（HolisticLandmarker：手部检测独立，比旧版 pose-ROI 机制更准）
+      if (window.FilesetResolver && window.HolisticLandmarker) {
+        try {
+          const vision = await window.FilesetResolver.forVisionTasks(
+            new URL('vendor/mediapipe/tasks-vision/wasm', document.baseURI).href
+          );
+          const holistic = await window.HolisticLandmarker.createFromOptions(vision, {
+            baseOptions: {
+              modelAssetPath: new URL('assets/model/holistic_landmarker.task', document.baseURI).href,
+              delegate: 'GPU',
+            },
+            minPoseDetectionConfidence: 0.3,
+            minPosePresenceConfidence: 0.3,
+            minHandLandmarksConfidence: 0.3,
+            minFacePresenceConfidence: 0.3,
+            numHands: 2,
+          });
+          state.browserHolistic = holistic;
+          state.browserHolisticIsTasks = true;
+          state.browserHolisticStats = {
+            ...(state.browserHolisticStats || {}),
+            sdk: '@mediapipe/tasks-vision HolisticLandmarker',
+            package_version: '0.10.3',
+            asset_source: source.id,
+            asset_label: source.label,
+            asset_base: source.base,
+            sdk_load_ms: Math.round(performance.now() - startedAt)
+          };
+          state.browserHolisticPreloadMs = state.browserHolisticStats.sdk_load_ms;
+          return holistic;
+        } catch (e) {
+          console.warn('[holistic] Tasks API 初始化失败，回退旧版 Solution API:', e);
+          state.browserHolisticIsTasks = false;
+        }
+      }
       await loadScriptOnce(holisticSourceScriptUrl(source));
       if (!window.Holistic) throw new Error(scoreText('浏览器 Holistic SDK 未正确加载', 'Browser Holistic SDK did not load correctly'));
       const holistic = new window.Holistic({
@@ -465,6 +510,7 @@
         pending.resolve(results);
       });
       state.browserHolistic = holistic;
+      state.browserHolisticIsTasks = false;
       state.browserHolisticStats = {
         ...(state.browserHolisticStats || {}),
         sdk: '@mediapipe/holistic',
@@ -490,7 +536,30 @@
     return preloadBrowserHolistic();
   }
 
+  function mapHolisticTasksResults(results) {
+    const lm = results.landmarks || [];
+    // HolisticLandmarkerResult.landmarks: [face, pose, leftHand, rightHand]
+    if (Array.isArray(lm) && lm.length >= 4) {
+      return {
+        poseLandmarks: lm[1] || [],
+        leftHandLandmarks: lm[2] || [],
+        rightHandLandmarks: lm[3] || [],
+        faceLandmarks: lm[0] || [],
+      };
+    }
+    return results;
+  }
+
   function sendHolisticImage(holistic, image, options = {}) {
+    // 新版 MediaPipe Tasks API：detect 同步返回（无需 onResults 回调）
+    if (state.browserHolisticIsTasks && holistic.detect) {
+      try {
+        const results = holistic.detect(image);
+        return Promise.resolve(mapHolisticTasksResults(results));
+      } catch (error) {
+        return Promise.reject(error);
+      }
+    }
     if (state.browserHolisticPending) {
       throw new Error(scoreText('浏览器 Holistic 仍在处理上一帧', 'Browser Holistic is still processing the previous frame'));
     }
