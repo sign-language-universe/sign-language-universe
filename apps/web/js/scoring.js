@@ -786,10 +786,18 @@
     return CAPTURE_RECOMMENDATIONS[word] || CAPTURE_RECOMMENDATIONS.default;
   }
 
+  // 默认录制时长按词动作数：Web Holistic 需慢速，长步骤词（如超市 7 动作）给 5s，短词 3s
+  function defaultCaptureDuration(word) {
+    if (!word) return 3;
+    if (word.includes('超市')) return 5;   // 7 动作长步骤
+    return 3;                              // 其余（含公交车 3 动作等）
+  }
+
   function buildCapturePlan({ write = false } = {}) {
     const word = currentWordData().word;
     const rec = getCaptureRecommendation(word);
-    const durationSec = clampNumber(inputValue('scoring-duration-sec', DEFAULT_CAPTURE_DURATION_SEC), 1, 8, DEFAULT_CAPTURE_DURATION_SEC);
+    const defaultSec = defaultCaptureDuration(word);
+    const durationSec = clampNumber(inputValue('scoring-duration-sec', defaultSec), 1, 8, defaultSec);
     const uploadFps = Math.round(clampNumber(inputValue('scoring-capture-fps', DEFAULT_CAPTURE_FPS), 1, 12, DEFAULT_CAPTURE_FPS));
     const frameWidth = Math.round(clampNumber(inputValue('scoring-frame-width', DEFAULT_FRAME_WIDTH), 480, 1280, DEFAULT_FRAME_WIDTH));
     const requestedDurationSec = durationSec;
