@@ -43,7 +43,7 @@ GitHub Pages 静态前端
   -> 可选：ModelScope lite Docker FastAPI 后端（服务端评分/回退路线）
 ```
 
-- 前端默认打分（主）：轻量模型语义动作打分（`model-scoring.js` + `assets/model/*.onnx`），纯前端推理、无词判定干预；模型文件见 `apps/web/assets/model/`（action/word ONNX，~4.8MB each），推理库 `vendor/onnxruntime/` 本地同源。
+- 前端默认打分（主）：级联模型语义动作打分（`model-scoring-cascade.js`，CascadeScorer，D6.1 默认），纯前端 ONNX 推理；**conf 门控**：综合分 = overall × min(1, 目标词叶子激活度/0.5)，乱作/非目标词输入自动折减并提示；模型文件见 `apps/web/assets/model/`（级联 ONNX 4.7MB），推理库 `vendor/onnxruntime/` 本地同源。
 - 前端默认采集参数：`3s / 10fps / 720p`
 - 连接评分 API 时优先上传 `landmark_rows`，不上传图片帧。
 - `deploy/modelscope-space-lite/` 是可选线上演示后端，不安装 MediaPipe worker。
