@@ -19,7 +19,7 @@ const CascadeScorer = (() => {
     'T7.1': 'tree_cascade_v1.onnx',
     'T7.2': 'tree_cascade_v72.onnx',
   };
-  const DEFAULT_MODEL = 'D6.2';
+  const DEFAULT_MODEL = 'D6.1';   // 默认 D6.1（现场 MAE 4.92 有区分能力）；D6.2 overall 虚高不上线
   const MODEL_VER = '20260815-cascade';
   const LS_KEY = 'sluCascadeModel';
 
