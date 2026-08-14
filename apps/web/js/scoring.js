@@ -15,6 +15,8 @@
   const DEFAULT_CAPTURE_DURATION_SEC = 3;
   const DEFAULT_CAPTURE_FPS = 10;
   const DEFAULT_FRAME_WIDTH = 720;
+  // 检测后端：默认旧版 Web Holistic（现场 100% pose 检出验证过）；新版 Tasks API（HolisticLandmarker）实测手部未稳定，置 false 回退
+  const HOLISTIC_USE_TASKS = false;
   const HOLISTIC_PACKAGE_VERSION = '0.5.1675471629';
   const HOLISTIC_LOCAL_BASE = new URL('vendor/mediapipe/holistic', document.baseURI).href.replace(/\/$/, '');
   const HOLISTIC_ASSET_SOURCES = [
@@ -445,8 +447,8 @@
     const startedAt = performance.now();
     state.browserHolisticSource = source;
     state.browserHolisticLoading = (async () => {
-      // 动态加载 MediaPipe Tasks Vision（ESM bundle），提供 HolisticLandmarker
-      if (!window.HolisticLandmarker) {
+      // 新版 Tasks API（HolisticLandmarker）仅在开关开启时使用（默认回退旧版 Web Holistic）
+      if (HOLISTIC_USE_TASKS && !window.HolisticLandmarker) {
         try {
           const vision = await import(new URL('vendor/mediapipe/tasks-vision/vision_bundle.mjs', document.baseURI).href);
           window.FilesetResolver = vision.FilesetResolver;
@@ -455,8 +457,8 @@
           console.warn('[holistic] Tasks Vision 动态加载失败，回退旧版 Solution API:', e);
         }
       }
-      // 优先新版 MediaPipe Tasks API（HolisticLandmarker：手部检测独立，比旧版 pose-ROI 机制更准）
-      if (window.FilesetResolver && window.HolisticLandmarker) {
+      // 新版 MediaPipe Tasks API（HolisticLandmarker：手部检测独立）——默认关闭（HOLISTIC_USE_TASKS=false）
+      if (HOLISTIC_USE_TASKS && window.FilesetResolver && window.HolisticLandmarker) {
         try {
           const vision = await window.FilesetResolver.forVisionTasks(
             new URL('vendor/mediapipe/tasks-vision/wasm', document.baseURI).href
@@ -464,7 +466,7 @@
           const holistic = await window.HolisticLandmarker.createFromOptions(vision, {
             baseOptions: {
               modelAssetPath: new URL('assets/model/holistic_landmarker.task', document.baseURI).href,
-              delegate: 'GPU',
+              delegate: 'CPU',   // GPU 在部分浏览器 WebGL 下 detect 输出异常（pose 0-1 点），CPU 更稳
             },
             minPoseDetectionConfidence: 0.3,
             minPosePresenceConfidence: 0.3,
@@ -537,8 +539,14 @@
   }
 
   function mapHolisticTasksResults(results) {
+    // 0.10.14 输出为对象格式（poseLandmarks/leftHandLandmarks 等字段）——直接可用，无需映射
+    if (results.poseLandmarks || results.faceLandmarks || results.leftHandLandmarks || results.rightHandLandmarks) {
+      console.log('[holistic] Tasks 对象格式: pose', (results.poseLandmarks || []).length,
+        'left', (results.leftHandLandmarks || []).length, 'right', (results.rightHandLandmarks || []).length);
+      return results;
+    }
     const lm = results.landmarks || [];
-    // HolisticLandmarkerResult.landmarks: [face, pose, leftHand, rightHand]
+    // 兼容旧版数组格式 [face, pose, leftHand, rightHand]
     if (Array.isArray(lm) && lm.length >= 4) {
       return {
         poseLandmarks: lm[1] || [],
@@ -866,7 +874,8 @@
     const word = currentWordData().word;
     const rec = getCaptureRecommendation(word);
     const defaultSec = defaultCaptureDuration(word);
-    const durationSec = clampNumber(inputValue('scoring-duration-sec', defaultSec), 1, 8, defaultSec);
+    const rawDur = inputValue('scoring-duration-sec', '');
+    const durationSec = clampNumber(rawDur === '' ? defaultSec : rawDur, 1, 8, defaultSec);
     const uploadFps = Math.round(clampNumber(inputValue('scoring-capture-fps', DEFAULT_CAPTURE_FPS), 1, 12, DEFAULT_CAPTURE_FPS));
     const frameWidth = Math.round(clampNumber(inputValue('scoring-frame-width', DEFAULT_FRAME_WIDTH), 480, 1280, DEFAULT_FRAME_WIDTH));
     const requestedDurationSec = durationSec;
@@ -1951,12 +1960,12 @@
       const Scorer = (typeof CascadeScorer !== 'undefined') ? CascadeScorer : ModelScorer;
       if (typeof Scorer !== 'undefined') {
         try {
-          // 级联模型（CascadeScorer）：overall 直接作综合分（无 conf 门控）；ModelScorer 兜底：gate:false。
+          // 级联模型（CascadeScorer）：overall × conf 门控（conf=目标词叶子激活度，拦截乱作/非目标词）；ModelScorer 兜底：gate:false。
           // 摄像头镜像 / 惯用手：原序列与镜像序列各打一次分，取分数高者。
           const rows = state.landmarkRows;
           const mirrorRows = mirrorLandmarkRows(rows);
-          const ms = await Scorer.score(rows, word, fps, { gate: false });
-          const msM = mirrorRows.length ? await Scorer.score(mirrorRows, word, fps, { gate: false }) : ms;
+          const ms = await Scorer.score(rows, word, fps, { gate: true });
+          const msM = mirrorRows.length ? await Scorer.score(mirrorRows, word, fps, { gate: true }) : ms;
           const useMirrorMs = msM.total > ms.total;
           const bestMs = useMirrorMs ? msM : ms;
           // 建议仅基于 v5 语义头（树建议随树模块移除）
@@ -1985,6 +1994,8 @@
               word,
               frame_count: state.landmarkRows.length,
               model_composite: bestMs.composite,
+              model_conf: bestMs.conf,
+              model_gate: bestMs.gate,
               // 摄像头镜像/惯用手：是否采用镜像打分（调试用）
               mirror: { ms: useMirrorMs },
               // 回看可用性（数据只存最后一次录制槽位，经 ScoringBridge.getLastReviewData() 读取）

@@ -1205,9 +1205,9 @@ function showToast(message, sound = 'notice') {
 document.addEventListener('DOMContentLoaded', () => {
   initUiPreferences();
   navigateTo('splash');
-  console.log('🪐 手语小宇宙 Demo v4 已就绪');
+  console.log('🪐 手语小宇宙 Demo v5 已就绪');
   console.log('✨ 本次更新：');
-  console.log('  1. 挑战模式覆盖全部学习词汇，未上线模板词显示待上线');
-  console.log('  2. 默认采用 Web Holistic + ModelScope lite 后端评分路线');
-  console.log('  3. 新增日间/夜间模式与可关闭音效');
+  console.log('  1. 级联模型打分（D6.1/D6.2/T7.1/T7.2 可切换：overall 综合分 + 47 维动作彩条 + 低分建议）');
+  console.log('  2. 迁移 Web Holistic 到 MediaPipe Tasks API（手部检测更准）');
+  console.log('  3. 请慢速做动作、双手入画；长步骤词（如超市）默认录制 5s');
 });

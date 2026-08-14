@@ -40,7 +40,7 @@ GitHub Pages static front-end
   -> Optional: ModelScope lite Docker FastAPI backend (server-side scoring / fallback route)
 ```
 
-- Primary front-end scoring: lightweight model semantic-action scoring (`model-scoring.js` + `assets/model/*.onnx`), pure front-end inference, no word-classification gating; models in `apps/web/assets/model/` (action/word ONNX, ~4.8MB each); inference runtime `vendor/onnxruntime/` served same-origin.
+- Primary front-end scoring: cascade model semantic-action scoring (`model-scoring-cascade.js`, CascadeScorer, D6.1 default), pure front-end ONNX inference; **conf gating**: total = overall × min(1, target-word leaf activation / 0.5), so random/off-target input is auto-discounted with a hint; models in `apps/web/assets/model/` (cascade ONNX 4.7MB); inference runtime `vendor/onnxruntime/` served same-origin.
 - Default capture settings: `3s / 10fps / 720p`
 - When connected to the scoring API, `landmark_rows` are uploaded first; image frames are not uploaded.
 - `deploy/modelscope-space-lite/`: optional online demo backend (no MediaPipe worker).

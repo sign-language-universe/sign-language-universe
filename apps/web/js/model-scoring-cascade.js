@@ -5,7 +5,7 @@
  *
  * 与 ModelScorer 的差异：
  *  - 加载版本化级联 ONNX（dual_cascade_vX / tree_cascade_vX），统一输出 action_head(47) + overall(1)
- *  - 综合分直接用 overall（级联 MLP 输出），去掉 conf 词判定门控
+ *  - 综合分 = overall × conf 门控（conf = 目标词叶子平均激活度，不足阈值按比例折减，拦截乱作/非目标词）
  *  - action_head 47 维直接映射 action_meta.json 的 action_names（彩条）
  *  - 模型切换：setModel / score({model})，localStorage 记忆
  */
@@ -22,6 +22,10 @@ const CascadeScorer = (() => {
   const DEFAULT_MODEL = 'D6.1';   // 默认 D6.1（现场 MAE 4.92 有区分能力）；D6.2 overall 虚高不上线
   const MODEL_VER = '20260815-cascade';
   const LS_KEY = 'sluCascadeModel';
+  // conf 门控：目标词叶子平均激活度（0-1）低于此阈值时，综合分按 conf/阈值 比例折减
+  // 阈值依据：正例 conf 0.51-0.82 vs 乱作负例 0.003-0.034（间距 >10 倍，0.5 落在无人区）
+  const CONF_GATE_THRESHOLD = 0.5;
+  const CONF_GATE_WEAK = 0.1;     // 低于此值视为"几乎未识别到目标词语义动作"（强提示）
 
   let meta = null;
   let sessions = {};      // modelName -> InferenceSession
@@ -158,7 +162,12 @@ const CascadeScorer = (() => {
     const widx = meta.word_list.indexOf(targetWord);
     const gids = widx >= 0 ? (meta.word_actions[targetWord] || []) : [];
     const composite = gids.length ? gids.reduce((s, g) => s + scores[g], 0) / gids.length : 0;
-    const total01 = Math.max(0, Math.min(1, overall[0]));
+    // conf 门控：conf = 目标词叶子平均激活度（该维 sigmoid 输出即"该词被检测到"的置信度）
+    // 总分 = overall × min(1, conf/阈值)；conf 不足时按比例折减，拦截乱作/非目标词输入
+    const conf = Math.round(composite * 1000) / 1000;
+    const gateEnabled = opts.gate !== false;   // 默认启用；显式 gate:false 关闭（调试/兜底路径）
+    const gateFactor = gateEnabled ? Math.min(1, conf / CONF_GATE_THRESHOLD) : 1;
+    const total01 = Math.max(0, Math.min(1, overall[0])) * gateFactor;
     const total = Math.round(total01 * 100);
 
     const en = isEnglishLocale();
@@ -177,11 +186,24 @@ const CascadeScorer = (() => {
     });
 
     const advice = buildAdvice(targetWord, total, actions, en);
+    // conf 不足提示词：放 advice 首位，进入主反馈消息
+    if (gateEnabled && conf < CONF_GATE_THRESHOLD) {
+      const pct = Math.round(conf * 100);
+      const lowHint = conf < CONF_GATE_WEAK
+        ? (en
+          ? [`⚠️ No core semantic action for "${targetWord}" detected (conf ${pct}%). You may not have performed the sign, or your hands were not fully in frame — follow the reference and record again.`]
+          : [`⚠️ 未识别到「${targetWord}」的核心语义动作（conf ${pct}%），可能未做该词动作或双手未完整入画，请对照示范重录。`])
+        : (en
+          ? [`⚠️ Semantic action for "${targetWord}" was only weakly detected (conf ${pct}%). Score discounted — perform the full sign and record again.`]
+          : [`⚠️ 「${targetWord}」的语义动作识别不足（conf ${pct}%），综合分已按置信度折减，请完整示范该词后重录。`]);
+      advice.unshift(...lowHint);
+    }
 
     return {
       total,
       composite: Math.round(composite * 1000) / 1000,
-      conf: 1,
+      conf,
+      gate: gateEnabled ? gateFactor : 1,
       actions,
       advice,
       diagnosis: '',
