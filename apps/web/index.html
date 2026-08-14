@@ -352,6 +352,10 @@
                   <span class="hint-dot"></span>
                   <span>录制完成后自动进入评分</span>
                 </div>
+                <div class="hint-item">
+                  <span class="hint-dot"></span>
+                  <span>请<b>慢速</b>做动作，双手入画且靠近摄像头，便于准确识别手部</span>
+                </div>
                 <div class="hint-item reward-hint-item">
                   <span class="hint-dot reward-dot"></span>
                   <span>评分 ≥ <strong>80 分</strong> 解锁 3D 奖励 🎉</span>
@@ -404,6 +408,16 @@
                   <span class="ctrl-icon">⭐</span>
                   <span>自动评分</span>
                 </button>
+              </div>
+              <div class="cascade-model-select" style="position:fixed;top:10px;right:10px;z-index:9999;font-size:13px;color:#e2e8f0;background:#1e293b;border:1px solid #334155;border-radius:8px;padding:6px 10px;box-shadow:0 2px 8px rgba(0,0,0,.4);">
+                <label for="cascade-model-sel">🔬 级联模型：</label>
+                <select id="cascade-model-sel" style="background:#0f172a;color:#e2e8f0;border:1px solid #334155;border-radius:6px;padding:3px 8px;font-size:13px;">
+                  <option value="D6.1" selected>D6.1（双头级联·默认）</option>
+                  <option value="D6.2">D6.2（双头级联）</option>
+                  <option value="T7.1">T7.1（树级联）</option>
+                  <option value="T7.2">T7.2（树级联）</option>
+                </select>
+                <span id="cascade-model-hint" style="font-size:11px;margin-left:6px;color:#94a3b8;"></span>
               </div>
               <div class="scoring-service-row" id="scoring-service-row">
                 <span class="service-dot idle" id="scoring-service-dot"></span>
@@ -518,10 +532,30 @@
   <script src="js/scoring-core.js?v=20260808-core-v1"></script>
   <script src="vendor/onnxruntime/ort.all.min.js"></script>
   <script src="js/model-scoring.js?v=20260810-model-v5"></script>
+  <script src="js/model-scoring-cascade.js?v=20260815-cascade-v1"></script>
   <script src="js/recording-review.js?v=20260810-review-v1"></script>
   <script src="js/scoring.js?v=20260810-21words-v11"></script>
   <script src="js/interactive-learning.js?v=20260810-21words-v9"></script>
   <!-- 版本徽章：每次合并功能 PR 后更新为最新 PR 号，用户可核对是否为最新版 -->
   <div id="build-badge" style="position:fixed;bottom:6px;left:10px;font-size:11px;color:#94a3b8;opacity:.75;z-index:9999;pointer-events:none;">build PR#88</div>
+  <script>
+  // 级联模型切换：初始化下拉（localStorage 记忆）+ change 绑定
+  (function () {
+    function bindCascadeModel() {
+      var sel = document.getElementById('cascade-model-sel');
+      if (!sel || typeof CascadeScorer === 'undefined') return;
+      var m = CascadeScorer.getModel();
+      if (m) sel.value = m;
+      var hint = document.getElementById('cascade-model-hint');
+      if (hint) hint.textContent = '当前 ' + m;
+      sel.addEventListener('change', function () {
+        CascadeScorer.setModel(this.value);
+        if (hint) hint.textContent = '已切换 ' + this.value + '（下次打分生效）';
+      });
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bindCascadeModel);
+    else bindCascadeModel();
+  })();
+  </script>
 </body>
 </html>

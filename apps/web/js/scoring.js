@@ -455,8 +455,8 @@
         smoothLandmarks: true,
         enableSegmentation: false,
         refineFaceLandmarks: false,
-        minDetectionConfidence: 0.5,
-        minTrackingConfidence: 0.5
+        minDetectionConfidence: 0.3,
+        minTrackingConfidence: 0.3
       });
       holistic.onResults(results => {
         const pending = state.browserHolisticPending;
@@ -1870,15 +1870,16 @@
 
     // 本地评分优先：模型语义动作打分（主）→ DTW 本地核心（降级）→ 后端（兜底）
     if (useLandmarks) {
-      // ★ 主路径：轻量模型语义动作打分（纯前端，无词判定干预）
-      if (typeof ModelScorer !== 'undefined') {
+      // ★ 主路径：级联模型语义动作打分（CascadeScorer 优先，ModelScorer 兜底）
+      const Scorer = (typeof CascadeScorer !== 'undefined') ? CascadeScorer : ModelScorer;
+      if (typeof Scorer !== 'undefined') {
         try {
-          // 纯语义头加权综合（v5）：gate:false → total = composite（去掉 conf 词判定门控压分）。
+          // 级联模型（CascadeScorer）：overall 直接作综合分（无 conf 门控）；ModelScorer 兜底：gate:false。
           // 摄像头镜像 / 惯用手：原序列与镜像序列各打一次分，取分数高者。
           const rows = state.landmarkRows;
           const mirrorRows = mirrorLandmarkRows(rows);
-          const ms = await ModelScorer.score(rows, word, fps, { gate: false });
-          const msM = mirrorRows.length ? await ModelScorer.score(mirrorRows, word, fps, { gate: false }) : ms;
+          const ms = await Scorer.score(rows, word, fps, { gate: false });
+          const msM = mirrorRows.length ? await Scorer.score(mirrorRows, word, fps, { gate: false }) : ms;
           const useMirrorMs = msM.total > ms.total;
           const bestMs = useMirrorMs ? msM : ms;
           // 建议仅基于 v5 语义头（树建议随树模块移除）
@@ -1899,10 +1900,11 @@
             score: bestMs.total,
             prototype_score: bestMs.total / 100,
             score_valid: true,
-            level: 'web_model_semantic',
+            level: bestMs.model ? `web_cascade_${bestMs.model}` : 'web_model_semantic',
             feedback: [{ type: 'model', message: scoreText(advice.join('；'), advice.join('; ')) }],
             diagnostics: {
-              scoring_mode: 'web_model_semantic',
+              scoring_mode: bestMs.model ? `cascade_${bestMs.model}` : 'web_model_semantic',
+              model_ver: bestMs.model || 'v5',
               word,
               frame_count: state.landmarkRows.length,
               model_composite: bestMs.composite,
