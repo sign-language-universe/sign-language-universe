@@ -538,6 +538,9 @@
 
   function mapHolisticTasksResults(results) {
     const lm = results.landmarks || [];
+    // 调试：输出 Tasks API 原始结构（各组点数）
+    const lens = Array.isArray(lm) ? lm.map(a => (a && a.length) || 0).join(',') : 'not-array';
+    console.log('[holistic] Tasks keys:', Object.keys(results).join(','), '| landmarks len:', lm.length, '| 各组点数:', lens);
     // HolisticLandmarkerResult.landmarks: [face, pose, leftHand, rightHand]
     if (Array.isArray(lm) && lm.length >= 4) {
       return {
@@ -866,7 +869,8 @@
     const word = currentWordData().word;
     const rec = getCaptureRecommendation(word);
     const defaultSec = defaultCaptureDuration(word);
-    const durationSec = clampNumber(inputValue('scoring-duration-sec', defaultSec), 1, 8, defaultSec);
+    const rawDur = inputValue('scoring-duration-sec', '');
+    const durationSec = clampNumber(rawDur === '' ? defaultSec : rawDur, 1, 8, defaultSec);
     const uploadFps = Math.round(clampNumber(inputValue('scoring-capture-fps', DEFAULT_CAPTURE_FPS), 1, 12, DEFAULT_CAPTURE_FPS));
     const frameWidth = Math.round(clampNumber(inputValue('scoring-frame-width', DEFAULT_FRAME_WIDTH), 480, 1280, DEFAULT_FRAME_WIDTH));
     const requestedDurationSec = durationSec;
