@@ -59,7 +59,11 @@ const ModelScorer = (() => {
   const SPREAD_PAIRS = [[4, 8], [8, 12], [12, 16], [16, 20]];
 
   function points3(arr) {
-    return (arr || []).map(p => [Number(p.x) || 0, Number(p.y) || 0, Number(p.z) || 0]);
+    return (arr || []).map(p => {
+      if (!p) return [0, 0, 0];
+      if (Array.isArray(p)) return [Number(p[0]) || 0, Number(p[1]) || 0, Number(p[2]) || 0];
+      return [Number(p.x) || 0, Number(p.y) || 0, Number(p.z) || 0];
+    });
   }
   function dist(a, b) {
     return Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
