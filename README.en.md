@@ -40,7 +40,7 @@ GitHub Pages static front-end
   -> Optional: ModelScope lite Docker FastAPI backend (server-side scoring / fallback route)
 ```
 
-- Primary front-end scoring: cascade model semantic-action scoring (`model-scoring-cascade.js`, CascadeScorer, D6.1 default), pure front-end ONNX inference; **conf gating**: total = overall × min(1, target-word leaf activation / 0.5), so random/off-target input is auto-discounted with a hint; models in `apps/web/assets/model/` (cascade ONNX 4.7MB); inference runtime `vendor/onnxruntime/` served same-origin.
+- Primary front-end scoring: cascade model semantic-action scoring (`model-scoring-cascade.js`, CascadeScorer, D6.1 default, switchable D6.2/D6.3/T7.1/T7.2), pure front-end ONNX inference; **conf gating**: total = overall × min(1, target-word leaf activation / 0.5), random/off-target input is auto-discounted with a hint; **word-level exemption**: fine hand-shape / low-sample words (人们（人民）/汽车（二）) bypass the gate (conf threshold 0) to avoid penalizing real positives; **mirror max**: both the original sequence and the left-right mirrored sequence are scored and the higher is taken, keeping single-hand / dominant-hand scoring symmetric; models in `apps/web/assets/model/` (cascade ONNX 4.7MB); inference runtime `vendor/onnxruntime/` served same-origin.
 - Default capture settings: `3s / 10fps / 720p`
 - When connected to the scoring API, `landmark_rows` are uploaded first; image frames are not uploaded.
 - `deploy/modelscope-space-lite/`: optional online demo backend (no MediaPipe worker).
@@ -77,6 +77,12 @@ Lightweight model semantic-action scoring module (data / architecture / training
 
 ```text
 docs/scoring/sign_language_lightweight_model_scoring_20260809.md
+```
+
+**Cascade model (D6.x) scoring module tech doc** (conf gating + word-level exemption + mirror max):
+
+```text
+docs/scoring/sign_language_cascade_model_scoring_20260816.md
 ```
 
 ModelScope Docker Space scoring API deployment:
