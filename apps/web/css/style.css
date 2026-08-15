@@ -3279,7 +3279,7 @@ body.theme-day .interactive-side-nav:hover {
 .interactive-video-empty small { color: var(--text-muted); }
 .interactive-reference-video { margin-top: 12px; padding: 12px; border: 1px solid rgba(77,232,210,0.22); border-radius: 12px; background: var(--bg-card); color: var(--text-primary); }
 .interactive-video-heading { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; flex-wrap: wrap; color: var(--text-primary); font-size: 13px; }
-.interactive-reference-video video { display: block; width: 100%; max-height: 520px; margin-top: 10px; border-radius: 8px; background: #fff; }
+.interactive-reference-video video { display: block; width: auto; height: auto; max-width: 100%; max-height: 520px; margin-top: 10px; border-radius: 8px; background: #fff; object-fit: contain; }
 .interactive-reference-video video[hidden] { display: none !important; }
 .interactive-video-controls { display: flex; gap: 8px; margin-top: 8px; }
 .interactive-video-controls button { padding: 7px 12px; border: 1px solid rgba(77,232,210,0.45); border-radius: 8px; color: var(--text-primary); background: rgba(77,232,210,0.12); cursor: pointer; }
@@ -3291,7 +3291,7 @@ body.theme-day .interactive-side-nav:hover {
 .challenge-reference-video-slot { margin-top: 14px; padding: 12px; border: 1px solid rgba(77,232,210,0.22); border-radius: 12px; background: rgba(5,12,24,0.28); }
 .challenge-reference-video-heading { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; color: var(--text-main); }
 .challenge-reference-video-heading span { color: var(--text-muted); font-size: 12px; }
-.challenge-reference-video-slot video { display: block; width: 100%; max-height: 520px; margin-top: 10px; border-radius: 8px; background: #fff; }
+.challenge-reference-video-slot video { display: block; width: auto; height: auto; max-width: 100%; max-height: 520px; margin-top: 10px; border-radius: 8px; background: #fff; object-fit: contain; }
 .interactive-practice-panel { display: flex; flex-direction: column; align-self: start; }
 .interactive-practice-btn {
   margin-top: 3px;
