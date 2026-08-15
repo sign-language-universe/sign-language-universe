@@ -127,6 +127,9 @@ body.theme-day .app-controls {
   overflow-y: auto;
   overflow-x: hidden;
   overscroll-behavior-y: contain;
+  /* 打分结果展开时滚动条出现/消失会导致内容区宽度变化，aspect-ratio 板块（摄像机）随之伸缩抖动；
+     预留滚动条槽位（scrollbar-gutter: stable）使宽度恒定，根治该类布局抖动 */
+  scrollbar-gutter: stable;
 }
 
 /* ---------- 页面切换 ---------- */

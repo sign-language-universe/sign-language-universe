@@ -337,8 +337,13 @@
     const seenDetails = new Set();
     const bodyParts = [];
     for (const item of advice) {
-      const detail = item.related_stage_detail;
-      const label = item.related_stage_label;
+      // 双语字段优先，按当前 UI 语言显式选择（避免打分时 locale 检测与渲染不一致导致混中文）
+      const label = en
+        ? (item.related_stage_label_en || item.related_stage_label)
+        : (item.related_stage_label_zh || item.related_stage_label);
+      const detail = en
+        ? (item.related_stage_detail_en || item.related_stage_detail)
+        : (item.related_stage_detail_zh || item.related_stage_detail);
       if (detail && !seenDetails.has(detail)) {
         seenDetails.add(detail);
         bodyParts.push(
