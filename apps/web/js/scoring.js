@@ -835,7 +835,7 @@
       plan.candidateFrames = plan.targetFrames;
       plan.captureTransport = 'web_holistic_landmarks';
       setWebHolisticStatus('ready', webHolisticReadyText(scoreText(` · 采集 ${plan.targetFrames} 帧`, ` · capturing ${plan.targetFrames} frames`)));
-      setServiceStatus('ready', scoreText(`浏览器 Holistic 已就绪 · 将上传 ${plan.targetFrames} 帧关键点`, `Browser Holistic ready · ${plan.targetFrames} landmark frames will be uploaded`));
+      setServiceStatus('ready', scoreText(`浏览器 Holistic 已就绪 · 采集 ${plan.targetFrames} 帧关键点，本机处理不上传`, `Browser Holistic ready · capturing ${plan.targetFrames} landmark frames, processed locally (never uploaded)`));
     } catch (error) {
       state.browserHolisticActive = false;
       state.browserHolisticStats = {
@@ -925,8 +925,8 @@
     const suffix = captureHintSuffix(plan);
     if (plan.captureTransport === 'web_holistic_landmarks') {
       hint.textContent = scoreText(
-        `采样：浏览器本机提取 Holistic 关键点；${recommendationText}；当前按设置采集 ${currentText}，只上传姿态、双手和面部核心点。${suffix}`,
-        `Capture: browser Holistic landmarks; ${recommendationText}; ${currentText}; only pose, hands, and face-core landmarks are uploaded. ${suffix}`
+        `采样：浏览器本机提取 Holistic 关键点并直接在本机打分，不上传视频帧；${recommendationText}；当前按设置采集 ${currentText}。${suffix}`,
+        `Capture: browser Holistic landmarks processed locally (video frames are never uploaded); ${recommendationText}; ${currentText}. ${suffix}`
       );
       return;
     }
@@ -1392,7 +1392,7 @@
         }));
       state.landmarkRows = [];
       state.lastReviewData = { frames: state.frames, landmarkRows: state.landmarkRows };
-      if (countEl) countEl.textContent = scoreText(`${state.frames.length} 上传帧`, `${state.frames.length} uploaded frames`);
+      if (countEl) countEl.textContent = scoreText(`${state.frames.length} 采集帧（本机处理）`, `${state.frames.length} captured frames (processed locally)`);
     }
     return selected;
   }
