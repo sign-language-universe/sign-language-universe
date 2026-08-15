@@ -66,18 +66,21 @@ const ReviewPlayer = (() => {
     current = 0;
     canvas = panel.querySelector('[data-review-canvas]');
     ctx = canvas ? canvas.getContext('2d') : null;
-    // 画布比例适配帧宽高
+    // 画布比例适配帧宽高（保持录制原始宽高比）。
+    // 注意：缓存图片可能已 complete，onload 不再触发——需在设置 onload 前检查并立即适配。
     const firstFrame = frames[0];
-    if (firstFrame) {
+    if (firstFrame && canvas) {
       const img = loadImage(firstFrame.image_base64);
+      const adaptCanvas = () => {
+        if (img.naturalWidth && img.naturalHeight) {
+          canvas.width = Math.min(900, img.naturalWidth);
+          canvas.height = Math.round(canvas.width * img.naturalHeight / img.naturalWidth);
+        }
+        renderFrame(panel);
+      };
       if (img) {
-        img.onload = () => {
-          if (img.naturalWidth && img.naturalHeight) {
-            canvas.width = Math.min(900, img.naturalWidth);
-            canvas.height = Math.round(canvas.width * img.naturalHeight / img.naturalWidth);
-          }
-          renderFrame(panel);
-        };
+        if (img.complete && img.naturalWidth) adaptCanvas();
+        else img.onload = adaptCanvas;
       }
     }
     panel.hidden = false;
