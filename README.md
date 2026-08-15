@@ -22,7 +22,8 @@ https://sign-language-universe.github.io/sign-language-universe/
 
 - `apps/web/`：团队前端静态 Demo，来源于已有 `sign-language-universe` 前端资料。
 - `apps/scoring-demo/`：手语打分模块早期静态 Demo，来源于 `/data/WYC/signLanguage/work/web/static`。
-- `packages/scoring-core/`：手语评分核心算法代码，来源于 `/data/WYC/signLanguage/work/scripts` 的可维护子集。
+- `packages/scoring-core/`：**旧版 DTW 并集打分核心（模型不可用时降级兜底）**，来源于 `/data/WYC/signLanguage/work/scripts` 的可维护子集；当前主打分为前端级联模型（见下）。
+- **打分模型**（级联 ONNX）托管在 `apps/web/assets/model/`（`dual_cascade_v*.onnx` 4.7MB + `action_meta.json`），随 GitHub Pages 部署、浏览器本地加载推理（onnxruntime WASM），训练脚本与权重在私有仓（`work/scripts/` + zhuhai `slu_train_20260809/runs/`）。
 - `services/scoring-api/`：评分 API 服务入口，当前默认接收浏览器 Web Holistic 的 `landmark_rows`，并保留浏览器帧提交、可选 Holistic worker、服务器模板评分和降级预览评分。
 - `apps/web` 互动学习实验室：提供中英双语动作指导、程序化动作示意，以及当前词汇内嵌的摄像头采集、评分、重试、下一词和成功反馈流程。
 - `packages/shared-contracts/`：前后端共享 API 契约。

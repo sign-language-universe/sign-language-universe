@@ -22,7 +22,8 @@ https://sign-language-universe.github.io/sign-language-universe/
 
 - `apps/web/`: Team front-end static demo (interactive learning lab with bilingual guidance, camera capture, scoring, retry, next-word, and success feedback).
 - `apps/scoring-demo/`: Early static demo of the scoring module.
-- `packages/scoring-core/`: Maintainable subset of the scoring core algorithms (ported from private work scripts).
+- `packages/scoring-core/`: **Legacy DTW union scoring core (degraded fallback when the model is unavailable)**, ported from private work scripts; the primary scorer is the front-end cascade model (see below).
+- **Scoring models** (cascade ONNX) are hosted in `apps/web/assets/model/` (`dual_cascade_v*.onnx` 4.7MB + `action_meta.json`), deployed with GitHub Pages and inferred locally in the browser (onnxruntime WASM); training scripts/weights live in the private repo (`work/scripts/` + zhuhai `slu_train_20260809/runs/`).
 - `services/scoring-api/`: Scoring API entry; receives browser `landmark_rows` by default, keeps frame submission, optional Holistic worker, server-side template scoring, and degraded preview scoring.
 - `packages/shared-contracts/`: Shared API contracts between front-end and back-end.
 - `docs/`: Product, architecture, scoring-module, AI-context, and operations docs.
