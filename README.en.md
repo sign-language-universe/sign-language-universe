@@ -12,10 +12,10 @@ Team repository for the sign-language learning frontend, scoring service, scorin
 https://sign-language-universe.github.io/sign-language-universe/
 ```
 
-- Features: 21-word interactive learning (EN/ZH), real-time camera capture, **lightweight model semantic-action scoring** (pure front-end ONNX inference, no backend needed)
-- **Semantic tree model (v6.3)**: hand-shape/motion/leaf 3-layer detector (tree_model_v63.onnx), fine-grained diagnostics (shape/motion layer activation hints) + reference-video comparison
+- Features: 21-word interactive learning (EN/ZH), real-time camera capture, **cascade model semantic-action scoring** (pure front-end ONNX inference, no backend needed)
+- **Cascade model (D6.1 default)**: BiLSTM → 47 semantic-action heads → overall (switchable D6.1/D6.2/D6.3/T7.1/T7.2); word-level gate exemption for fine hand-shape words (人们（人民）/汽车（二）)
 - **Semantic overlay reference videos**: 7 words (supermarket/bus/car-one/car-two/people/forest/jump) scene-overlay style (scene elements + semantic-driven animation + top-right label), VL-approved
-- Scoring: core semantic-action composite score (0-100) + per-action color bars + practice advice focused on the weakest action
+- Scoring: composite score (0-100) = overall × **conf gating** (target-word leaf activation discount, blocks random/off-target input) + per-action color bars + practice advice focused on the weakest action; **mirror max** (score both original and left-right mirrored sequences, take the higher) keeps single-hand / dominant-hand scoring symmetric
 - Browser: latest Chrome / Edge / Safari (onnxruntime WASM)
 
 ## Modules
@@ -32,10 +32,9 @@ https://sign-language-universe.github.io/sign-language-universe/
 ```text
 GitHub Pages static front-end
   -> Browser Web Holistic extracts landmarks
-  -> Front-end ModelScorer lightweight model semantic-action scoring (onnxruntime-web WASM, no backend)
-  -> TreeScorer semantic tree model (tree_model_v63.onnx): 3-layer hand-shape/motion/leaf detection + fine-grained diagnostic advice
-     · BiLSTM outputs 47 core semantic-action scores per input (1-7 sparse per word)
-     · Composite score = weighted core semantic actions; advice focuses on the weakest action
+  -> Front-end CascadeScorer cascade model semantic-action scoring (onnxruntime-web WASM, no backend)
+     · BiLSTM backbone outputs 47 core semantic-action scores per input (1-7 sparse per word)
+     · Composite score = overall × conf gating (target-word leaf activation discount) + mirror max
   -> Fallback when model unavailable: scoring-core local weighted DTW union scoring
   -> Optional: ModelScope lite Docker FastAPI backend (server-side scoring / fallback route)
 ```
