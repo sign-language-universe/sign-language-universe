@@ -337,8 +337,13 @@
     const seenDetails = new Set();
     const bodyParts = [];
     for (const item of advice) {
-      const detail = item.related_stage_detail;
-      const label = item.related_stage_label;
+      // 双语字段优先，按当前 UI 语言显式选择（避免打分时 locale 检测与渲染不一致导致混中文）
+      const label = en
+        ? (item.related_stage_label_en || item.related_stage_label)
+        : (item.related_stage_label_zh || item.related_stage_label);
+      const detail = en
+        ? (item.related_stage_detail_en || item.related_stage_detail)
+        : (item.related_stage_detail_zh || item.related_stage_detail);
       if (detail && !seenDetails.has(detail)) {
         seenDetails.add(detail);
         bodyParts.push(
@@ -485,8 +490,9 @@
           if (entry && entry.word_index && entry.path) state.referenceMedia[String(entry.word_index)] = entry;
         });
         // 临时展示版：只展示已上线（有已审核 wan 演示视频）的词，其余默认隐藏；恢复全量词时删除下面一行过滤即可
+        // 下架词：汽车（二）（index 14）打分模块暂不准确，展示版本不展示；恢复展示时删除该排除条件
         state.contracts = (Array.isArray(payload.contracts) ? payload.contracts : [])
-          .filter(item => Boolean(state.referenceMedia[String(item.index)]));
+          .filter(item => Boolean(state.referenceMedia[String(item.index)]) && Number(item.index) !== 14);
         state.loaded = state.contracts.length > 0;
         state.index = 0;
         render();

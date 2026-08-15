@@ -1979,7 +1979,10 @@
           const weakActions = bestMs.actions.slice().sort((a, b) => a.score - b.score).filter(a => a.score < 85).slice(0, 2);
           const groupAdvice = weakActions.map(a => ({
             group: a.name, group_label: a.name, group_score: a.score,
+            // 双语字段：渲染端（renderGroupAdvice）按当前 UI 语言显式选择，避免依赖打分时 locale 检测
             related_stage_label: a.name, related_stage_detail: a.detail || '',
+            related_stage_label_zh: a.name_zh, related_stage_label_en: a.name_en,
+            related_stage_detail_zh: a.detail_zh, related_stage_detail_en: a.detail_en,
           }));
           const modelResult = {
             request_id: `web_model_${Date.now()}`,

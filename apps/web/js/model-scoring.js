@@ -275,6 +275,8 @@ const ModelScorer = (() => {
         name_zh: nameZh,
         name_en: nameEn,
         detail: en ? detailEn : detailZh,
+        detail_zh: detailZh,
+        detail_en: detailEn,
         score: Math.round(Math.max(0, Math.min(1, scores[g])) * 100),
       };
     });
