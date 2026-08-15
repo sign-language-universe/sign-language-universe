@@ -1984,7 +1984,9 @@
           const modelResult = {
             request_id: `web_model_${Date.now()}`,
             score: bestMs.total,
-            prototype_score: bestMs.total / 100,
+            // prototype_score 与本地核心（scoring-core）统一为 0-100 制；此前 bestMs.total/100（0-1 制）
+            // 导致 renderGroupAdvice/buildGroupAdvice 的 <80 低分判断恒真（0.87<80），高分也误报"总分低"警告
+            prototype_score: bestMs.total,
             score_valid: true,
             level: bestMs.model ? `web_cascade_${bestMs.model}` : 'web_model_semantic',
             feedback: [{ type: 'model', message: scoreText(advice.join('；'), advice.join('; ')) }],
