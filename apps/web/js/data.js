@@ -341,6 +341,7 @@ function buildChallengeWords() {
     });
   });
   return words
+    .filter(w => w.word !== '汽车（二）') // 下架：汽车（二）打分模块暂不准确，展示版本不展示；恢复展示时删除该过滤
     .sort((a, b) => {
       if (a.scoringReady !== b.scoringReady) return a.scoringReady ? -1 : 1;
       if (a.scoringReady) {
