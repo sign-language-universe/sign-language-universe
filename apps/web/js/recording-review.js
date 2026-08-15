@@ -298,7 +298,8 @@ const ReviewPlayer = (() => {
       .review-close { font-size: 18px; line-height: 1; padding: 2px 8px; border: none; background: transparent;
         color: #94a3b8; cursor: pointer; margin-left: auto; }
       .review-close:hover { color: #f87171; }
-      .review-modal canvas { width: auto; height: auto; max-width: 100%; max-height: 74vh; object-fit: contain;
+      .review-modal canvas { align-self: center; flex-shrink: 0; width: auto; height: auto;
+        max-width: 100%; max-height: 74vh; object-fit: contain;
         background: #0f172a; border-radius: 8px; }
       .review-controls { display: flex; align-items: center; gap: 8px; justify-content: center; flex-wrap: wrap; }
       .review-controls button { font-size: 14px; padding: 5px 12px; border-radius: 6px; border: 1px solid rgba(148,163,184,0.4);
