@@ -43,7 +43,7 @@ GitHub Pages 静态前端
   -> 可选：ModelScope lite Docker FastAPI 后端（服务端评分/回退路线）
 ```
 
-- 前端默认打分（主）：级联模型语义动作打分（`model-scoring-cascade.js`，CascadeScorer，D6.1 默认），纯前端 ONNX 推理；**conf 门控**：综合分 = overall × min(1, 目标词叶子激活度/0.5)，乱作/非目标词输入自动折减并提示；模型文件见 `apps/web/assets/model/`（级联 ONNX 4.7MB），推理库 `vendor/onnxruntime/` 本地同源。
+- 前端默认打分（主）：级联模型语义动作打分（`model-scoring-cascade.js`，CascadeScorer，D6.1 默认，可切换 D6.2/D6.3/T7.1/T7.2），纯前端 ONNX 推理；**conf 门控**：综合分 = overall × min(1, 目标词叶子激活度/0.5)，乱作/非目标词输入自动折减并提示；**词级豁免**：人们（人民）/汽车（二）等精细手形/少样本词不设门控（conf 阈值 0，避免正例误伤）；**镜像取 max**：原序列 + 左右手镜像序列各打分一次取高者，保证单手/惯用手左右对称；模型文件见 `apps/web/assets/model/`（级联 ONNX 4.7MB），推理库 `vendor/onnxruntime/` 本地同源。
 - 前端默认采集参数：`3s / 10fps / 720p`
 - 连接评分 API 时优先上传 `landmark_rows`，不上传图片帧。
 - `deploy/modelscope-space-lite/` 是可选线上演示后端，不安装 MediaPipe worker。
@@ -80,6 +80,12 @@ docs/operations/scoring_frontend_holistic_worker_deploy_manual_20260611.md
 
 ```text
 docs/scoring/sign_language_lightweight_model_scoring_20260809.md
+```
+
+**级联模型（D6.x）打分模块技术方案**（conf 门控 + 词级豁免 + 镜像取 max）见：
+
+```text
+docs/scoring/sign_language_cascade_model_scoring_20260816.md
 ```
 
 ModelScope 魔搭 Docker 创空间部署评分 API 说明见：
