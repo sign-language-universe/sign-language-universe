@@ -26,6 +26,10 @@ const CascadeScorer = (() => {
   // 阈值依据：正例 conf 0.51-0.82 vs 乱作负例 0.003-0.034（间距 >10 倍，0.5 落在无人区）
   const CONF_GATE_THRESHOLD = 0.5;
   const CONF_GATE_WEAK = 0.1;     // 低于此值视为"几乎未识别到目标词语义动作"（强提示）
+  // 词级门控豁免：部分词（训练样本少 / 精细手形）D6.1 的 conf 对 pos/neg 无分离度，
+  // 用全局阈值会误伤正例（汽车二 pos conf 0.006-0.16 vs neg 0.004-0.007 几乎重叠）。
+  // 值 0 = 该词不设 conf 门控（无折减、无提示）；后续可改为词级标定阈值。
+  const WORD_GATE_OVERRIDE = { '人们（人民）': 0, '汽车（二）': 0 };
 
   let meta = null;
   let sessions = {};      // modelName -> InferenceSession
@@ -166,7 +170,11 @@ const CascadeScorer = (() => {
     // 总分 = overall × min(1, conf/阈值)；conf 不足时按比例折减，拦截乱作/非目标词输入
     const conf = Math.round(composite * 1000) / 1000;
     const gateEnabled = opts.gate !== false;   // 默认启用；显式 gate:false 关闭（调试/兜底路径）
-    const gateFactor = gateEnabled ? Math.min(1, conf / CONF_GATE_THRESHOLD) : 1;
+    // 词级阈值：WORD_GATE_OVERRIDE 覆盖全局阈值（0 = 该词不设门控，无折减无提示）
+    const wordTh = (WORD_GATE_OVERRIDE[targetWord] !== undefined)
+      ? WORD_GATE_OVERRIDE[targetWord] : CONF_GATE_THRESHOLD;
+    const gateActive = gateEnabled && wordTh > 0;
+    const gateFactor = gateActive ? Math.min(1, conf / wordTh) : 1;
     const total01 = Math.max(0, Math.min(1, overall[0])) * gateFactor;
     const total = Math.round(total01 * 100);
 
@@ -188,8 +196,8 @@ const CascadeScorer = (() => {
     });
 
     const advice = buildAdvice(targetWord, total, actions, en);
-    // conf 不足提示词：放 advice 首位，进入主反馈消息
-    if (gateEnabled && conf < CONF_GATE_THRESHOLD) {
+    // conf 不足提示词：放 advice 首位，进入主反馈消息（仅门控启用时）
+    if (gateActive && conf < wordTh) {
       const pct = Math.round(conf * 100);
       const lowHint = conf < CONF_GATE_WEAK
         ? (en
@@ -205,7 +213,8 @@ const CascadeScorer = (() => {
       total,
       composite: Math.round(composite * 1000) / 1000,
       conf,
-      gate: gateEnabled ? gateFactor : 1,
+      gate: gateActive ? gateFactor : 1,
+      gate_th: wordTh,
       actions,
       advice,
       diagnosis: '',
