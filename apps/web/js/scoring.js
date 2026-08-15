@@ -1931,12 +1931,13 @@
     if (row.pose_landmarks && row.pose_landmarks.length) {
       out.pose_landmarks = mirrorSwapPoints(mirrorFlipPoints(row.pose_landmarks), POSE_MIRROR_PAIRS);
     }
-    // 左右手：x 翻转后整体互换（惯用手镜像的核心）
+    // 左右手：x 翻转后整体互换（惯用手镜像的核心）。
+    // 单手（仅一侧有 landmark）时严格互换：空侧保持空，避免镜像后两侧都是同一只手导致特征失真
     const left = mirrorFlipPoints(row.left_hand_landmarks);
     const right = mirrorFlipPoints(row.right_hand_landmarks);
     if (row.left_hand_landmarks || row.right_hand_landmarks) {
-      out.left_hand_landmarks = right.length ? right : row.left_hand_landmarks;
-      out.right_hand_landmarks = left.length ? left : row.right_hand_landmarks;
+      out.left_hand_landmarks = right;
+      out.right_hand_landmarks = left;
     }
     const fc = mirrorFaceCore(row);
     if (fc) out.face_core_landmarks = fc;
