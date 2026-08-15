@@ -490,9 +490,8 @@
           if (entry && entry.word_index && entry.path) state.referenceMedia[String(entry.word_index)] = entry;
         });
         // 临时展示版：只展示已上线（有已审核 wan 演示视频）的词，其余默认隐藏；恢复全量词时删除下面一行过滤即可
-        // 下架词：汽车（二）（index 14）打分模块暂不准确，展示版本不展示；恢复展示时删除该排除条件
         state.contracts = (Array.isArray(payload.contracts) ? payload.contracts : [])
-          .filter(item => Boolean(state.referenceMedia[String(item.index)]) && Number(item.index) !== 14);
+          .filter(item => Boolean(state.referenceMedia[String(item.index)]));
         state.loaded = state.contracts.length > 0;
         state.index = 0;
         render();
