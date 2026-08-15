@@ -1892,13 +1892,19 @@
   const FACE_CORE_MIRROR_PAIRS = [[0, 4], [1, 5], [2, 6], [3, 7], [8, 9], [10, 11]];
   const FACE_CORE_IDS_MIRROR = [33, 133, 159, 145, 362, 263, 386, 374, 61, 291, 13, 14];
 
-  /** 水平翻转点列表（x → 1-x） */
+  /** 水平翻转点列表（x → 1-x）。兼容 dict {x,y,z} 与数组 [x,y,z,vis,pres] 两种 landmark 格式 */
   function mirrorFlipPoints(pts) {
-    return (pts || []).map(p => ({
-      x: 1 - (Number(p && p.x) || 0),
-      y: Number(p && p.y) || 0,
-      z: Number(p && p.z) || 0,
-    }));
+    return (pts || []).map(p => {
+      if (!p) return { x: 1, y: 0, z: 0 };
+      const px = Array.isArray(p) ? p[0] : p.x;
+      const py = Array.isArray(p) ? p[1] : p.y;
+      const pz = Array.isArray(p) ? p[2] : p.z;
+      return {
+        x: 1 - (Number(px) || 0),
+        y: Number(py) || 0,
+        z: Number(pz) || 0,
+      };
+    });
   }
   /** 按左右对称配对交换点位置 */
   function mirrorSwapPoints(pts, pairs) {
