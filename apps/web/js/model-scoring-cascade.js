@@ -30,6 +30,10 @@ const CascadeScorer = (() => {
   // 用全局阈值会误伤正例（汽车二 pos conf 0.006-0.16 vs neg 0.004-0.007 几乎重叠）。
   // 值 0 = 该词不设 conf 门控（无折减、无提示）；后续可改为词级标定阈值。
   const WORD_GATE_OVERRIDE = { '人们（人民）': 0, '汽车（二）': 0 };
+  // 词级彩条校准：豁免词的 action_head 叶子激活整体偏低（模型对精细手形/少样本词激活弱），
+  // 导致语义动作彩条与综合分（overall 头）视觉不一致。展示层按词级因子放大彩条分数，
+  // 因子按该词正例 conf 的典型值反推（目标把典型叶子分拉到 ~70-85）；仅影响展示，不改模型。
+  const WORD_ACTION_CALIB = { '人们（人民）': 6, '汽车（二）': 12 };
 
   let meta = null;
   let sessions = {};      // modelName -> InferenceSession
@@ -179,11 +183,15 @@ const CascadeScorer = (() => {
     const total = Math.round(total01 * 100);
 
     const en = isEnglishLocale();
+    // 词级彩条校准因子（豁免词 action_head 激活整体偏低，展示层放大到与综合分视觉一致）
+    const calibFactor = WORD_ACTION_CALIB[targetWord] || 1;
     const actions = gids.map(g => {
       const nameZh = meta.action_names[g];
       const nameEn = (meta.action_names_en && meta.action_names_en[g]) || nameZh;
       const detailZh = meta.action_details[g];
       const detailEn = (meta.action_details_en && meta.action_details_en[g]) || detailZh;
+      const rawScore = Math.max(0, Math.min(1, scores[g]));
+      const shownScore = Math.min(1, rawScore * calibFactor);
       return {
         name: en ? nameEn : nameZh,
         name_zh: nameZh,
@@ -191,7 +199,8 @@ const CascadeScorer = (() => {
         detail: en ? detailEn : detailZh,
         detail_zh: detailZh,
         detail_en: detailEn,
-        score: Math.round(Math.max(0, Math.min(1, scores[g])) * 100),
+        score: Math.round(shownScore * 100),
+        raw_score: Math.round(rawScore * 100),   // 原始模型激活（诊断用）
       };
     });
 
