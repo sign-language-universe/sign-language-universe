@@ -12,8 +12,8 @@
 https://sign-language-universe.github.io/sign-language-universe/
 ```
 
-- 功能：21 词互动学习（中英双语）、摄像头实时采集、**级联模型语义动作打分**（纯前端 ONNX 推理，无需后端）
-- 打分：综合分（0-100）= overall × **conf 门控**（目标词叶子激活度折减，拦截乱作/非目标词）+ 各语义动作彩色评分 + 聚焦最差动作的练习建议；**镜像取 max**（原序列 + 左右手镜像各打分取高）保证单手/惯用手左右对称
+- 功能：21 词互动学习（中英双语）、摄像头实时采集、**语义动作级联打分模型**（纯前端 ONNX 推理，无需后端）
+- 打分：AI 评分由**语义动作级联打分模型 + 语义头门控**完成——47 维语义动作头与总分头双头级联，模型同时输出**综合分**与各**语义动作头分数**；语义头激活度形成**门控**（拦截乱作/非目标动作），逐条改进建议基于语义头激活情况；**全程本地打分，无需上传任何数据**；**镜像取 max**（原序列 + 左右手镜像各打分取高）保证单手/惯用手左右对称
 - **级联模型（D6.1 默认）**：BiLSTM → 47 语义动作头 → overall（D6.1/D6.2/D6.3/T7.1/T7.2 可切换）；词级门控豁免（人们（人民）/汽车（二）精细手形词不设门控）
 - **语义标注 overlay 参考视频**：7 词场景化（词3 超市/词5 公交车/词13 汽车一/词14 汽车二/词15 人们/词16 森林/词17 跳）——语义场景叠加层（场景元素 + 语义驱动动画 + 卡片右上角标注），VL 审查通过
 - 浏览器要求：Chrome / Edge / Safari 最新版（onnxruntime WASM）
@@ -35,15 +35,15 @@ https://sign-language-universe.github.io/sign-language-universe/
 
 ```text
 GitHub Pages 静态前端
-  -> 浏览器 Web Holistic 提取 landmarks
-  -> 前端 CascadeScorer 级联模型语义动作打分（onnxruntime-web WASM，无后端依赖）
-     · BiLSTM 骨干输出 47 个核心语义动作程度分（每词 1-7 个，稀疏激活）
-     · 综合分 = overall × conf 门控（目标词叶子激活度折减）+ 镜像取 max
+  -> 浏览器 Web Holistic 提取 landmarks（全程本地，不上传）
+  -> 前端语义动作级联打分模型（onnxruntime-web WASM，无后端依赖）
+     · BiLSTM 骨干输出 47 个语义动作头（每词 1-7 个，稀疏激活）
+     · 综合分 = overall × 语义头门控（语义头激活度折减）+ 镜像取 max
   -> 模型不可用时降级：scoring-core 本地加权 DTW 并集打分
   -> 可选：ModelScope lite Docker FastAPI 后端（服务端评分/回退路线）
 ```
 
-- 前端默认打分（主）：级联模型语义动作打分（`model-scoring-cascade.js`，CascadeScorer，D6.1 默认，可切换 D6.2/D6.3/T7.1/T7.2），纯前端 ONNX 推理；**conf 门控**：综合分 = overall × min(1, 目标词叶子激活度/0.5)，乱作/非目标词输入自动折减并提示；**词级豁免**：人们（人民）/汽车（二）等精细手形/少样本词不设门控（conf 阈值 0，避免正例误伤）；**镜像取 max**：原序列 + 左右手镜像序列各打分一次取高者，保证单手/惯用手左右对称；模型文件见 `apps/web/assets/model/`（级联 ONNX 4.7MB），推理库 `vendor/onnxruntime/` 本地同源。
+- 前端默认打分（主）：**语义动作级联打分模型 + 语义头门控**（`model-scoring-cascade.js`，CascadeScorer，D6.1 默认，可切换 D6.2/D6.3/T7.1/T7.2），纯前端 ONNX 推理、**全程本地打分不上传**；**语义头门控**：综合分 = overall × min(1, 目标词叶子激活度/0.5)，乱作/非目标词输入自动折减并提示；**词级豁免**：人们（人民）/汽车（二）等精细手形/少样本词不设门控（阈值 0，避免正例误伤）；**镜像取 max**：原序列 + 左右手镜像序列各打分一次取高者，保证单手/惯用手左右对称；模型文件见 `apps/web/assets/model/`（级联 ONNX 4.7MB），推理库 `vendor/onnxruntime/` 本地同源。
 - 前端默认采集参数：`3s / 10fps / 720p`
 - 连接评分 API 时优先上传 `landmark_rows`，不上传图片帧。
 - `deploy/modelscope-space-lite/` 是可选线上演示后端，不安装 MediaPipe worker。
