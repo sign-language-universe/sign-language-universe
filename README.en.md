@@ -12,10 +12,10 @@ Team repository for the sign-language learning frontend, scoring service, scorin
 https://sign-language-universe.github.io/sign-language-universe/
 ```
 
-- Features: 21-word interactive learning (EN/ZH), real-time camera capture, **cascade model semantic-action scoring** (pure front-end ONNX inference, no backend needed)
-- **Cascade model (D6.1 default)**: BiLSTM → 47 semantic-action heads → overall (switchable D6.1/D6.2/D6.3/T7.1/T7.2); word-level gate exemption for fine hand-shape words (人们（人民）/汽车（二）)
+- Features: 21-word interactive learning (EN/ZH), real-time camera capture, **semantic-action cascade scoring model** (pure front-end ONNX inference, no backend needed)
+- **Semantic-action cascade scoring model with semantic-head gate (D6.1 default)**: BiLSTM → 47 semantic-action heads → overall (switchable D6.1/D6.2/D6.3/T7.1/T7.2); word-level gate exemption for fine hand-shape words (人们（人民）/汽车（二）)
 - **Semantic overlay reference videos**: 7 words (supermarket/bus/car-one/car-two/people/forest/jump) scene-overlay style (scene elements + semantic-driven animation + top-right label), VL-approved
-- Scoring: composite score (0-100) = overall × **conf gating** (target-word leaf activation discount, blocks random/off-target input) + per-action color bars + practice advice focused on the weakest action; **mirror max** (score both original and left-right mirrored sequences, take the higher) keeps single-hand / dominant-hand scoring symmetric
+- Scoring: AI scoring is performed by the **semantic-action cascade scoring model with a semantic-head gate** — a 47-dim semantic action head and an overall score head in cascade; the model outputs both an **overall score** and per-action **semantic head scores**; semantic-head activation forms the **gate** (filters random/off-target movements) with improvement advice derived from semantic-head activation; **scored entirely locally — no data is uploaded**; **mirror max** (score both original and left-right mirrored sequences, take the higher) keeps single-hand / dominant-hand scoring symmetric
 - Browser: latest Chrome / Edge / Safari (onnxruntime WASM)
 
 ## Modules
@@ -32,15 +32,15 @@ https://sign-language-universe.github.io/sign-language-universe/
 
 ```text
 GitHub Pages static front-end
-  -> Browser Web Holistic extracts landmarks
-  -> Front-end CascadeScorer cascade model semantic-action scoring (onnxruntime-web WASM, no backend)
-     · BiLSTM backbone outputs 47 core semantic-action scores per input (1-7 sparse per word)
-     · Composite score = overall × conf gating (target-word leaf activation discount) + mirror max
+  -> Browser Web Holistic extracts landmarks (entirely local, never uploaded)
+  -> Front-end semantic-action cascade scoring model (onnxruntime-web WASM, no backend)
+     · BiLSTM backbone outputs 47 semantic action heads (1-7 sparse per word)
+     · Composite score = overall × semantic-head gate (semantic-head activation discount) + mirror max
   -> Fallback when model unavailable: scoring-core local weighted DTW union scoring
   -> Optional: ModelScope lite Docker FastAPI backend (server-side scoring / fallback route)
 ```
 
-- Primary front-end scoring: cascade model semantic-action scoring (`model-scoring-cascade.js`, CascadeScorer, D6.1 default, switchable D6.2/D6.3/T7.1/T7.2), pure front-end ONNX inference; **conf gating**: total = overall × min(1, target-word leaf activation / 0.5), random/off-target input is auto-discounted with a hint; **word-level exemption**: fine hand-shape / low-sample words (人们（人民）/汽车（二）) bypass the gate (conf threshold 0) to avoid penalizing real positives; **mirror max**: both the original sequence and the left-right mirrored sequence are scored and the higher is taken, keeping single-hand / dominant-hand scoring symmetric; models in `apps/web/assets/model/` (cascade ONNX 4.7MB); inference runtime `vendor/onnxruntime/` served same-origin.
+- Primary front-end scoring: **semantic-action cascade scoring model with a semantic-head gate** (`model-scoring-cascade.js`, CascadeScorer, D6.1 default, switchable D6.2/D6.3/T7.1/T7.2), pure front-end ONNX inference, **scored entirely locally — no data uploaded**; **semantic-head gate**: total = overall × min(1, target-word leaf activation / 0.5), random/off-target input is auto-discounted with a hint; **word-level exemption**: fine hand-shape / low-sample words (人们（人民）/汽车（二）) bypass the gate (threshold 0) to avoid penalizing real positives; **mirror max**: both the original sequence and the left-right mirrored sequence are scored and the higher is taken, keeping single-hand / dominant-hand scoring symmetric; models in `apps/web/assets/model/` (cascade ONNX 4.7MB); inference runtime `vendor/onnxruntime/` served same-origin.
 - Default capture settings: `3s / 10fps / 720p`
 - When connected to the scoring API, `landmark_rows` are uploaded first; image frames are not uploaded.
 - `deploy/modelscope-space-lite/`: optional online demo backend (no MediaPipe worker).
