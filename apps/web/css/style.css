@@ -3325,6 +3325,33 @@ body.theme-day .interactive-side-nav:hover {
   aspect-ratio: 4 / 3;
   max-height: 340px;
 }
+/* ── 互动学习：摄像头开启时右列与左列等高 ──
+   右列 max-height 由 JS 同步为左列高度；超限内容在列内滚动，不撑开页面；
+   摄像头画面区随可用高度伸缩，video object-fit:cover 保证画面等比不拉伸 */
+.interactive-practice-panel.camera-open {
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}
+.interactive-practice-panel.camera-open #interactive-scoring-slot {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.interactive-practice-panel.camera-open .interactive-score-host {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.interactive-practice-panel.camera-open .challenge-active {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.interactive-practice-panel.camera-open .challenge-camera-frame {
+  flex: 1 1 auto;
+  min-height: 120px;
+  aspect-ratio: auto;
+  max-height: none;
+}
 .interactive-score-result {
   width: 100%;
   min-height: 260px;
@@ -3477,20 +3504,31 @@ body.theme-day .interactive-score-result {
   .interactive-side-nav-next { right: 14px; }
 }
 
-/* 中屏降级：参考 | 摄像头 两列，指导面板占整行 */
+/* 中屏降级：参考 | 摄像头 两列，指导面板占整行（显式 grid-area 避免自动排布把摄像头列挤到整行下方） */
 @media (max-width: 1099px) {
-  .interactive-reference-grid { grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr); }
-  .interactive-reference-grid .semantic-contract-panel { grid-column: 1 / -1; }
+  .interactive-reference-grid {
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+    grid-template-areas: 'schematic practice' 'guidance guidance';
+  }
+  .interactive-schematic-panel { grid-area: schematic; }
+  .interactive-practice-panel { grid-area: practice; }
+  .interactive-reference-grid .semantic-contract-panel { grid-area: guidance; }
 }
 
 @media (max-width: 760px) {
   .interactive-reference-grid,
   .semantic-contract-columns { grid-template-columns: 1fr; }
+  .interactive-reference-grid { grid-template-areas: none; }
+  .interactive-schematic-panel,
+  .semantic-contract-panel,
+  .interactive-practice-panel { grid-area: auto; }
   .interactive-schematic-viewer { height: 270px; }
   .semantic-guidance-intro { grid-template-columns: minmax(150px, 0.6fr) minmax(0, 1fr); }
   .interactive-side-nav { width: 34px; height: 56px; border-radius: 11px; font-size: 30px; }
   .interactive-side-nav-prev { left: 6px; }
   .interactive-side-nav-next { right: 6px; }
+  /* 单列布局：摄像头面板不锁高（自然随内容展开），与左列等高校验仅在 ≥761px 生效 */
+  .interactive-practice-panel.camera-open { max-height: none !important; overflow-y: visible; }
 }
 
 @media (max-width: 560px) {
