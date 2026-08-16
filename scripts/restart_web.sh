@@ -4,7 +4,9 @@
 # 端口记录在 /tmp/smoke/web_port，每次 +1。
 set -euo pipefail
 
-WEB_DIR="/data/WYC/sign-language-universe/apps/web"
+# 从脚本自身位置派生仓库路径，不依赖本机固定安装目录
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+WEB_DIR="$(cd "${SCRIPT_DIR}/../apps/web" && pwd)"
 PORT_FILE="/tmp/smoke/web_port"
 CURRENT_PORT="$(cat "${PORT_FILE}" 2>/dev/null || echo 8090)"
 NEW_PORT=$((CURRENT_PORT + 1))

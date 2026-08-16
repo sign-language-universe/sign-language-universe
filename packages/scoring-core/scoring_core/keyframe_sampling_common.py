@@ -33,7 +33,8 @@ import numpy as np
 from .signlanguage_common import probe_video_metadata
 
 
-DEFAULT_REPO_ROOT = Path("/data/WYC/signLanguage")
+# 数据根目录通过环境变量 SIGNLANG_REPO_ROOT 注入；公开仓不硬编码私有环境绝对路径。
+DEFAULT_REPO_ROOT = Path(os.environ.get("SIGNLANG_REPO_ROOT", "~/.sign-language-universe")).expanduser()
 DEFAULT_VIDEO_ROOT = DEFAULT_REPO_ROOT / "data" / "Demo词汇视频"
 
 
