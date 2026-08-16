@@ -24,8 +24,7 @@
     avatar3d: null,
     referenceMode: '2d',
     scoringMounted: false,
-    lastScore: null,
-    practiceResizeObserver: null
+    lastScore: null
   };
 
   const TEXT = {
@@ -150,41 +149,6 @@
     }
     state.scoringMounted = false;
     state.lastScore = null;
-    disablePracticeHeightSync();
-  }
-
-  /** 摄像头开启时右列高度对齐左列：把左列当前高度写为右列 max-height，使右列不撑开页面 */
-  function syncPracticePanelHeight() {
-    const grid = document.querySelector('.interactive-reference-grid');
-    const left = grid ? grid.querySelector('.interactive-schematic-panel') : null;
-    const right = document.querySelector('.interactive-practice-panel');
-    if (!left || !right) return;
-    const leftHeight = left.getBoundingClientRect().height;
-    if (leftHeight > 0) right.style.maxHeight = `${leftHeight}px`;
-  }
-
-  /** 评分/摄像头面板展开：标记 camera-open，并把右列高度锁定为左列高度（左列尺寸变化时自动跟随） */
-  function enablePracticeHeightSync() {
-    const right = document.querySelector('.interactive-practice-panel');
-    if (!right) return;
-    right.classList.add('camera-open');
-    syncPracticePanelHeight();
-    if (state.practiceResizeObserver || typeof ResizeObserver === 'undefined') return;
-    const grid = document.querySelector('.interactive-reference-grid');
-    const left = grid ? grid.querySelector('.interactive-schematic-panel') : null;
-    if (!left) return;
-    state.practiceResizeObserver = new ResizeObserver(() => syncPracticePanelHeight());
-    state.practiceResizeObserver.observe(left);
-  }
-
-  /** 面板收起/重渲染时解除高度锁定与监听 */
-  function disablePracticeHeightSync() {
-    const right = document.querySelector('.interactive-practice-panel');
-    if (right) right.classList.remove('camera-open');
-    if (state.practiceResizeObserver) {
-      state.practiceResizeObserver.disconnect();
-      state.practiceResizeObserver = null;
-    }
   }
 
   function scoringResultMessage(result, passed) {
@@ -759,8 +723,7 @@
     const host = document.getElementById('interactive-score-host');
     const launcher = document.getElementById('interactive-score-launcher');
     if (host) {
-      // flex 纵向布局：配合 camera-open 让摄像头画面区自适应面板可用高度（与 grid 单列视觉一致）
-      host.style.display = 'flex';
+      host.style.display = 'grid';
       host.setAttribute('aria-hidden', 'false');
     }
     if (launcher) {
@@ -768,16 +731,8 @@
       launcher.setAttribute('aria-expanded', 'true');
     }
     if (!state.scoringMounted) mountScoring(item);
-    enablePracticeHeightSync();
     const active = document.querySelector('#interactive-score-host #challenge-active');
-    // 面板已完全可见时不滚动页面（等高校验目标：不因打开摄像头产生额外滚动）；仅当面板超出视口时才滚到可见区
-    if (active) {
-      const rect = active.getBoundingClientRect();
-      const viewHeight = window.innerHeight || document.documentElement.clientHeight;
-      if (rect.bottom > viewHeight || rect.top < 0) {
-        active.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
-    }
+    if (active) active.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }
 
   function beginRecording() {
