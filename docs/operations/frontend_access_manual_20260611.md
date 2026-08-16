@@ -5,7 +5,7 @@
 当前前端位置：
 
 ```text
-/data/WYC/sign-language-universe/apps/web
+<仓库根目录>/apps/web
 ```
 
 模块类型：
@@ -21,7 +21,7 @@
 确认已经进入主仓库：
 
 ```bash
-cd /data/WYC/sign-language-universe
+cd <仓库根目录>
 ```
 
 确认前端入口存在：
@@ -47,7 +47,7 @@ python3 --version
 进入前端目录：
 
 ```bash
-cd /data/WYC/sign-language-universe/apps/web
+cd <仓库根目录>/apps/web
 ```
 
 启动静态服务：
@@ -83,7 +83,7 @@ tmux new -s slu-web
 在 tmux 会话里运行：
 
 ```bash
-cd /data/WYC/sign-language-universe/apps/web
+cd <仓库根目录>/apps/web
 python -m http.server 5173 --bind 127.0.0.1
 ```
 
@@ -132,7 +132,7 @@ http://127.0.0.1:5173/
 这时访问的是服务器里的：
 
 ```text
-/data/WYC/sign-language-universe/apps/web
+<仓库根目录>/apps/web
 ```
 
 这种方式不需要把服务器 `5173` 端口公开到外网，更适合私有开发。
@@ -142,7 +142,7 @@ http://127.0.0.1:5173/
 如果确定当前网络环境安全，也可以让服务监听服务器所有网卡：
 
 ```bash
-cd /data/WYC/sign-language-universe/apps/web
+cd <仓库根目录>/apps/web
 python -m http.server 5173 --bind 0.0.0.0
 ```
 
@@ -250,7 +250,7 @@ http://127.0.0.1:5173/
 不推荐：
 
 ```text
-file:///data/WYC/sign-language-universe/apps/web/index.html
+file://<仓库根目录>/apps/web/index.html
 ```
 
 原因是部分浏览器对本地文件加载脚本、模型或跨文件资源有限制。
@@ -296,7 +296,7 @@ python -m http.server 5173 --bind 127.0.0.1
 团队成员先更新代码：
 
 ```bash
-cd /data/WYC/sign-language-universe
+cd <仓库根目录>
 git pull
 ```
 

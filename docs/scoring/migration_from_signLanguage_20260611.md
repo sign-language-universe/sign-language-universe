@@ -5,7 +5,7 @@
 ## 来源仓库
 
 ```text
-/data/WYC/signLanguage
+私有研发仓库 signLanguage（本地路径从略）
 ```
 
 ## 已迁入内容
@@ -20,9 +20,9 @@
 
 ## 暂不迁入内容
 
-- `work/generated/`
-- `work/logs/`
-- `.codex/tmux-workers/`
+- 私有仓的生成物目录（`work/generated/` 等）
+- 私有仓的日志目录（`work/logs/` 等）
+- 私有 Agent 工作目录（`.codex/` 等）
 - 真实用户视频、Holistic cache、web replay 结果。
 - 大量 DOCX/PDF/PPTX 历史资料。
 

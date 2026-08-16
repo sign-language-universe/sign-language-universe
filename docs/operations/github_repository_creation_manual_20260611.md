@@ -3,14 +3,14 @@
 日期：2026-06-11  
 目标 Organization：`sign-language-universe`  
 目标主仓库：`sign-language-universe`  
-本地仓库：`/data/WYC/sign-language-universe`
+本地仓库：`<仓库根目录>`
 
 ## 0. 当前状态
 
 本地团队主仓库已经初始化完成：
 
 ```bash
-cd /data/WYC/sign-language-universe
+cd <仓库根目录>
 git status
 git log --oneline -3
 git remote -v
@@ -129,7 +129,7 @@ https://github.com/sign-language-universe/sign-language-universe.git
 在服务器运行：
 
 ```bash
-cd /data/WYC/sign-language-universe
+cd <仓库根目录>
 git push -u origin main
 ```
 
@@ -146,7 +146,7 @@ Permission denied (publickey)
 此时改用 HTTPS：
 
 ```bash
-cd /data/WYC/sign-language-universe
+cd <仓库根目录>
 git remote set-url origin https://github.com/sign-language-universe/sign-language-universe.git
 git push -u origin main
 ```
@@ -1159,7 +1159,7 @@ Branch name pattern: main
 1. 本地创建测试分支：
 
 ```bash
-cd /data/WYC/sign-language-universe
+cd <仓库根目录>
 git checkout -b docs/test-branch-protection
 ```
 
@@ -1367,7 +1367,7 @@ M2: 建立第一个可演示评分闭环
 本地创建分支：
 
 ```bash
-cd /data/WYC/sign-language-universe
+cd <仓库根目录>
 git checkout -b docs/test-pr-flow
 ```
 

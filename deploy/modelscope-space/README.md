@@ -31,12 +31,7 @@ license: Apache License 2.0
 
 Dockerfile 固定使用 `mediapipe==0.10.18`，因为新版 MediaPipe 已不再暴露当前 worker 使用的 legacy `mp.solutions.holistic` 接口。
 
-生成创空间 bundle 时，如果本机存在旧仓库模板目录，`create_bundle.py` 会默认复制：
-
-```text
-/data/WYC/signLanguage/work/generated/scoring_mvp_run3/all_demo_step2_worker_cache_semantic_v1/results
-/data/WYC/signLanguage/work/generated/scoring_semantic_profiles/sign_semantic_weights.json
-```
+生成创空间 bundle 时，如果本机存在私有环境生成的模板目录，`create_bundle.py` 会默认复制（本地路径从略）。
 
 容器内默认路径为：
 

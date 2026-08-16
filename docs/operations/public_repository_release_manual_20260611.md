@@ -132,7 +132,7 @@ docs/product/*
 运行：
 
 ```bash
-cd /data/WYC/sign-language-universe
+cd <仓库根目录>
 rg -n --hidden --glob '!/.git/**' \
   "(API[_-]?KEY|SECRET|TOKEN|PASSWORD|PASSWD|BEGIN (RSA |OPENSSH |DSA |EC |)PRIVATE KEY|AKIA[0-9A-Z]{16}|sk-[A-Za-z0-9_-]{20,})" .
 ```
