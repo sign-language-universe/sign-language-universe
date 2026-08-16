@@ -8,9 +8,10 @@ scoring-core.js 直接做 DTW 评分（standard 侧特征由 Python 预计算，
 保证与后端评分完全一致）。
 
 用法：
+  # 私有数据根目录通过环境变量 SIGNLANG_REPO_ROOT 注入（公开仓不硬编码本地路径）
   python scripts/build_frontend_templates.py \
-    --template-root /data/WYC/signLanguage/work/generated/scoring_mvp_run3/all_demo_step2_worker_cache_semantic_v1/results \
-    --semantic-profile /data/WYC/signLanguage/work/generated/scoring_semantic_profiles/sign_semantic_weights.json \
+    --template-root ${SIGNLANG_REPO_ROOT}/work/generated/scoring_mvp_run3/all_demo_step2_worker_cache_semantic_v1/results \
+    --semantic-profile ${SIGNLANG_REPO_ROOT}/work/generated/scoring_semantic_profiles/sign_semantic_weights.json \
     --output apps/web/assets/content/scoring_templates_v1.json
 """
 from __future__ import annotations

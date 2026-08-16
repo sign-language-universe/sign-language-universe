@@ -1,7 +1,7 @@
 {
   "schema_version": "slu-schematic-crop-manifest-v1",
   "coordinate_system": "normalized_0_1000_top_left_origin",
-  "source_dir": "/data/WYC/sign-language-universe/apps/web/assets/content/illustrations",
+  "source_dir": "apps/web/assets/content/illustrations",
   "entries": [
     {
       "file": "word-01.jpeg",

@@ -1,5 +1,5 @@
 {
- "onnx": "/data/WYC/signLanguage/work/generated/slu_model_weights_v1/action_model.onnx",
+ "onnx": "assets/model/action_model.onnx",
  "num_classes": 21,
  "num_actions": 47,
  "size_mb": 4.763474,

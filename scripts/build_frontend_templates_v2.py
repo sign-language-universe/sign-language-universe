@@ -10,9 +10,10 @@
 前端交叉验证后填充 q50/q90 包络参数）。
 
 用法：
+  # 私有数据根目录通过环境变量 SIGNLANG_REPO_ROOT 注入（公开仓不硬编码本地路径）
   python scripts/build_frontend_templates_v2.py \
-    --raw-root /data/WYC/signLanguage/data/手语宇宙_原始Holistic_Landmark数据库_v3_step2_dense_待人工审核_20260802/landmarks \
-    --profile-json /data/WYC/signLanguage/work/generated/.../calibrated_profile_candidates.json \
+    --raw-root ${SIGNLANG_REPO_ROOT}/data/手语宇宙_原始Holistic_Landmark数据库_v3_step2_dense_待人工审核_20260802/landmarks \
+    --profile-json ${SIGNLANG_REPO_ROOT}/work/generated/.../calibrated_profile_candidates.json \
     --output apps/web/assets/content/scoring_templates_v2.json
 """
 from __future__ import annotations

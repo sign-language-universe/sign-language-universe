@@ -27,10 +27,11 @@ from PIL import Image, ImageDraw, ImageFont
 import mediapipe as mp
 
 
-DEFAULT_REPO_ROOT = Path("/data/WYC/signLanguage")
+# 数据根目录通过环境变量 SIGNLANG_REPO_ROOT 注入；公开仓不硬编码私有环境绝对路径。
+DEFAULT_REPO_ROOT = Path(os.environ.get("SIGNLANG_REPO_ROOT", "~/.sign-language-universe")).expanduser()
 DEFAULT_OUTPUT_DIR = DEFAULT_REPO_ROOT / "work" / "generated" / "holistic_viz"
 DEFAULT_CJK_FONT_CANDIDATES = (
-    Path("/home/wuyangcheng/.fonts/SimHei.ttf"),
+    Path("~/.fonts/SimHei.ttf").expanduser(),
     Path("/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc"),
     Path("/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc"),
 )

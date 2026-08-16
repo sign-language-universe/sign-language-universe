@@ -1,5 +1,5 @@
 {
- "onnx": "/data/WYC/sign-language-universe/apps/web/assets/model/tree_model_v64.onnx",
+ "onnx": "assets/model/tree_model_v64.onnx",
  "n_shape": 12,
  "n_motion": 20,
  "n_leaf": 47,

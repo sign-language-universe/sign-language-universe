@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-通过本地视觉模型（zhuhai vLLM qwen3-vl-8b）批量定位 A-Z 教学资料卡中的
+通过本地视觉模型（vLLM qwen3-vl-8b）批量定位 A-Z 教学资料卡中的
 “示意图矩形区域”，并按归一化 bbox 裁剪生成只含示意图的图片。
 
 用法示例：
@@ -28,9 +28,10 @@ import time
 
 import requests
 
-# 默认配置（与 ~/.qwen/settings.json 中的 provider 一致）
-DEFAULT_VLLM_URL = "http://172.28.17.71:8000/v1"
-DEFAULT_MODEL = "qwen3-vl-8b"
+# 默认配置：视觉模型服务地址不硬编码内网地址，统一通过环境变量注入；
+# 未设置时默认本机回环（--url / --api-base 可覆盖，供 CI/外部环境传入）。
+DEFAULT_VLLM_URL = os.environ.get("SIGNLANG_VLLM_URL", "http://127.0.0.1:8000/v1")
+DEFAULT_MODEL = os.environ.get("SIGNLANG_VLLM_MODEL", "qwen3-vl-8b")
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DEFAULT_ILLUST_DIR = os.path.join(PROJECT_ROOT, "apps", "web", "assets", "content", "illustrations")
@@ -138,7 +139,8 @@ def analyze(illust_dir, out_manifest, url, model, force=False):
     manifest = {
         "schema_version": "slu-schematic-crop-manifest-v1",
         "coordinate_system": "normalized_0_1000_top_left_origin",
-        "source_dir": illust_dir,
+        # source_dir 记录相对仓库根的路径，避免把本机绝对路径写进 manifest（跨机器可移植）
+        "source_dir": os.path.relpath(illust_dir, PROJECT_ROOT),
         "entries": entries,
     }
     with open(out_manifest, "w", encoding="utf-8") as f:
@@ -226,7 +228,8 @@ def main():
     ap.add_argument("--crop", action="store_true", help="按 manifest 裁剪")
     ap.add_argument("--verify", action="store_true", help="裁剪后视觉抽检")
     ap.add_argument("--sample", type=int, default=3, help="抽检数量")
-    ap.add_argument("--url", default=DEFAULT_VLLM_URL)
+    ap.add_argument("--url", default=DEFAULT_VLLM_URL, help="vLLM OpenAI 兼容 API 地址")
+    ap.add_argument("--api-base", dest="url", default=DEFAULT_VLLM_URL, help="--url 的别名（API base）")
     ap.add_argument("--model", default=DEFAULT_MODEL)
     ap.add_argument("--force", action="store_true", help="强制重跑分析")
     args = ap.parse_args()

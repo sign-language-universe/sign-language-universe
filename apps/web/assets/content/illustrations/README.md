@@ -8,6 +8,6 @@
 
 `word-XX.jpeg` 原始资料卡包含顶部标题栏、图解/视频标签、中央黑白简笔画示意图和底部中文动作描述文字。其中文字部分在前端互动学习页已由语义合约（ordered/simultaneous 文本）完整呈现，无需重复展示，因此：
 
-- `schematic-crops/word-XX.jpeg`：通过本地视觉模型（zhuhai vLLM qwen3-vl-8b）逐张定位示意图矩形区域后裁剪生成，只保留中央简笔画示意图（含运动虚线箭头），排除标题栏、标签与文字说明，前端展示更聚焦清晰。
+- `schematic-crops/word-XX.jpeg`：通过本地视觉模型（vLLM qwen3-vl-8b，服务地址由环境变量 `SIGNLANG_VLLM_URL` 注入）逐张定位示意图矩形区域后裁剪生成，只保留中央简笔画示意图（含运动虚线箭头），排除标题栏、标签与文字说明，前端展示更聚焦清晰。
 - 前端 `interactive-learning.js` 默认加载裁剪版；若裁剪图缺失会回退到原始整页图。
-- 裁剪 bbox（归一化坐标）记录于 `/data/WYC/sign-language-universe/work/schematic_crop_manifest.json`，可用 `scripts/crop_schematic_bbox.py` 复现/重跑。
+- 裁剪 bbox（归一化坐标）记录于 `work/schematic_crop_manifest.json`（相对仓库根路径），可用 `scripts/crop_schematic_bbox.py` 复现/重跑。

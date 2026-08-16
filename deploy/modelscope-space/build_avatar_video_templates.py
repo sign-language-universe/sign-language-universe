@@ -6,7 +6,7 @@
 records[].row 为帧摘要，records[].result_data 为 legacy 坐标对象（x/y/z/visibility/presence）。
 
 用法：
-  /home/wuyangcheng/myenv/bin/python build_avatar_video_templates.py \
+  python build_avatar_video_templates.py \
       --video apps/web/assets/content/reference-videos/word-03-supermarket-avatar.mp4 \
       --word 超市 --template-id chaoshi --output work/generated/modelscope-space-bundle/templates/holistic/超市
 """

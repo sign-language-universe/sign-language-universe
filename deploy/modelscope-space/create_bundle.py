@@ -4,18 +4,21 @@
 from __future__ import annotations
 
 import argparse
+import os
 import shutil
 from pathlib import Path
 
 
+def _env_path(name: str) -> Path:
+    """从环境变量读取路径；未设置时返回空占位（公开仓不硬编码私有环境绝对路径）。"""
+    value = os.environ.get(name)
+    return Path(value) if value else Path()
+
+
 SCRIPT_DIR = Path(__file__).resolve().parent
 REPO_ROOT = SCRIPT_DIR.parents[1]
-DEFAULT_LEGACY_TEMPLATE_ROOT = Path(
-    "/data/WYC/signLanguage/work/generated/scoring_mvp_run3/all_demo_step2_worker_cache_semantic_v1/results"
-)
-DEFAULT_LEGACY_SEMANTIC_PROFILE = Path(
-    "/data/WYC/signLanguage/work/generated/scoring_semantic_profiles/sign_semantic_weights.json"
-)
+DEFAULT_LEGACY_TEMPLATE_ROOT = _env_path("SLU_LEGACY_TEMPLATE_ROOT")
+DEFAULT_LEGACY_SEMANTIC_PROFILE = _env_path("SLU_LEGACY_SEMANTIC_PROFILE")
 
 
 IGNORE_PATTERNS = shutil.ignore_patterns(

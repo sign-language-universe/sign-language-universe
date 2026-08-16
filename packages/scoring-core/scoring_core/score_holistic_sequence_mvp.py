@@ -20,6 +20,7 @@ import argparse
 import csv
 import json
 import math
+import os
 import re
 from dataclasses import dataclass
 from datetime import datetime
@@ -46,7 +47,8 @@ GROUP_WEIGHTS = {
 }
 
 SCORE_SCALE = 0.12
-DEFAULT_REPO_ROOT = Path("/data/WYC/signLanguage")
+# 数据根目录通过环境变量 SIGNLANG_REPO_ROOT 注入；公开仓不硬编码私有环境绝对路径。
+DEFAULT_REPO_ROOT = Path(os.environ.get("SIGNLANG_REPO_ROOT", "~/.sign-language-universe")).expanduser()
 DEFAULT_SEMANTIC_PROFILE_JSON = DEFAULT_REPO_ROOT / "work/generated/scoring_semantic_profiles/sign_semantic_weights.json"
 DEFAULT_DENSE_TEMPLATE_ROOT = DEFAULT_REPO_ROOT / "work/generated/scoring_mvp_run3/all_demo_step2_worker_cache_semantic_v1/results"
 BASE_GROUPS = ["left_hand", "right_hand", "pose", "face"]
@@ -4757,7 +4759,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     parser.add_argument("--semantic-profile-json", default=str(DEFAULT_SEMANTIC_PROFILE_JSON), help="文本语义权重 profile JSON")
     parser.add_argument("--target-word", help="显式指定目标词；默认从 standard-json 路径推断")
     parser.add_argument("--disable-semantic-profile", action="store_true", help="关闭文本语义加权，使用旧的均衡手部优先权重")
-    parser.add_argument("--output-dir", default="/data/WYC/signLanguage/work/generated/scoring_mvp_run1")
+    parser.add_argument("--output-dir", default=str(DEFAULT_REPO_ROOT / "work" / "generated" / "scoring_mvp_run1"))
     args = parser.parse_args(argv)
 
     standard_path = Path(args.standard_json)
