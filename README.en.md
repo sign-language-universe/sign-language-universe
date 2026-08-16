@@ -10,6 +10,8 @@ Team repository for the sign-language learning frontend, scoring service, scorin
 
 [Try the live app (no login)](https://sign-language-universe.github.io/sign-language-universe/)
 
+https://sign-language-universe.github.io/sign-language-universe/
+
 - Features: 21-word interactive learning (EN/ZH), real-time camera capture, **semantic-action cascade scoring model** (pure front-end ONNX inference, no backend needed)
 - **Semantic-action cascade scoring model with semantic-head gate (D6.1 default)**: BiLSTM → 47 semantic-action heads → overall (switchable D6.1/D6.2/D6.3/T7.1/T7.2); word-level gate exemption for fine hand-shape words (人们（人民）/汽车（二）)
 - **Semantic overlay reference videos**: 7 words (supermarket/bus/car-one/car-two/people/forest/jump) scene-overlay style (scene elements + semantic-driven animation + top-right label), VL-approved
