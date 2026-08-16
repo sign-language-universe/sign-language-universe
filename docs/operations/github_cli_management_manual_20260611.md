@@ -7,7 +7,7 @@
 当前服务器用户：
 
 ```text
-wuyangcheng
+<内部用户名（从略）>
 ```
 
 当前系统：
@@ -28,13 +28,13 @@ gh version 2.94.0
 安装位置：
 
 ```text
-/home/wuyangcheng/.local/share/gh-2.94.0/bin/gh
+~/.local/share/gh-2.94.0/bin/gh
 ```
 
 命令入口：
 
 ```text
-/home/wuyangcheng/.local/bin/gh
+~/.local/bin/gh
 ```
 
 `~/.local/bin` 已在当前 `PATH` 中，因此可以直接运行：
@@ -130,7 +130,7 @@ gh auth logout
 推荐每天开始工作时执行：
 
 ```bash
-cd /data/WYC/sign-language-universe
+cd <仓库根目录>
 git fetch --all --prune
 git switch main
 git pull --ff-only
@@ -185,7 +185,7 @@ git pull --ff-only
 进入仓库：
 
 ```bash
-cd /data/WYC/sign-language-universe
+cd <仓库根目录>
 ```
 
 查看仓库信息：
@@ -288,7 +288,7 @@ http://127.0.0.1:5173/
 验证完回到仓库根目录：
 
 ```bash
-cd /data/WYC/sign-language-universe
+cd <仓库根目录>
 ```
 
 ### 5.4 提交 review

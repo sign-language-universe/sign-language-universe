@@ -1,10 +1,6 @@
 # apps/web
 
-团队前端静态 Demo，来源于：
-
-```text
-/data/WYC/signLanguage/work/other/sign-language-universe/sign-language-universe
-```
+团队前端静态 Demo，来源于私有研发仓库中的早期前端资源。
 
 ## 本地预览
 
@@ -22,7 +18,7 @@ http://127.0.0.1:5173
 ## 无缓存本地服务（推荐，避开 VSCode 内置浏览器缓存）
 
 ```bash
-python3 /data/WYC/sign-language-universe/scripts/serve_nocache.py --port 8147 --dir /data/WYC/sign-language-universe/apps/web
+python3 scripts/serve_nocache.py --port 8147 --dir apps/web
 ```
 
 浏览器打开：

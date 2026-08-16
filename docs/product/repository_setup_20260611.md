@@ -12,7 +12,7 @@ Main Repo:  sign-language-universe
 ## 本地路径
 
 ```text
-/data/WYC/sign-language-universe
+<本地克隆路径>/sign-language-universe
 ```
 
 ## 已完成

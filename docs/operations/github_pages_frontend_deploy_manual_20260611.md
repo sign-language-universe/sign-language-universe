@@ -228,7 +228,7 @@ Settings -> Pages
 修改前端：
 
 ```bash
-cd /data/WYC/sign-language-universe
+cd <仓库根目录>
 ```
 
 编辑：

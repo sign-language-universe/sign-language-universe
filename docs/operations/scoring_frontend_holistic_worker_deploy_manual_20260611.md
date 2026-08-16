@@ -101,7 +101,7 @@ http://127.0.0.1:5080
 推荐目录示例：
 
 ```text
-/srv/sign-language-universe/
+<DEPLOY_ROOT>/
   repo/                       # Git 仓库
   venv/                       # Python 环境
   work/generated/scoring-api/ # worker 输出，不进 Git
@@ -111,7 +111,7 @@ http://127.0.0.1:5080
 初始化：
 
 ```bash
-cd /srv/sign-language-universe
+cd <DEPLOY_ROOT>
 git clone git@github.com:sign-language-universe/sign-language-universe.git repo
 python -m venv venv
 source venv/bin/activate
@@ -124,9 +124,9 @@ pip install -e packages/scoring-core
 
 ```bash
 export SLU_ENABLE_HOLISTIC_WORKER=true
-export SLU_SCORING_OUTPUT_ROOT=/srv/sign-language-universe/work/generated/scoring-api
-export SLU_TEMPLATE_ROOT=/srv/sign-language-universe/templates/holistic
-export SLU_SEMANTIC_PROFILE_JSON=/srv/sign-language-universe/templates/sign_semantic_weights.json
+export SLU_SCORING_OUTPUT_ROOT=<DEPLOY_ROOT>/work/generated/scoring-api
+export SLU_TEMPLATE_ROOT=<DEPLOY_ROOT>/templates/holistic
+export SLU_SEMANTIC_PROFILE_JSON=<DEPLOY_ROOT>/templates/sign_semantic_weights.json
 ```
 
 启动：
@@ -148,7 +148,7 @@ curl http://127.0.0.1:5080/api/scoring/health
 
 ```bash
 PYTHONPATH=packages/scoring-core timeout 180 \
-  /srv/sign-language-universe/venv/bin/python \
+  <DEPLOY_ROOT>/venv/bin/python \
   services/scoring-api/app/holistic_worker_daemon.py
 ```
 
@@ -162,12 +162,12 @@ Description=Sign Language Universe Scoring API
 After=network.target
 
 [Service]
-WorkingDirectory=/srv/sign-language-universe/repo
+WorkingDirectory=<DEPLOY_ROOT>/repo
 Environment=SLU_ENABLE_HOLISTIC_WORKER=true
-Environment=SLU_SCORING_OUTPUT_ROOT=/srv/sign-language-universe/work/generated/scoring-api
-Environment=SLU_TEMPLATE_ROOT=/srv/sign-language-universe/templates/holistic
-Environment=SLU_SEMANTIC_PROFILE_JSON=/srv/sign-language-universe/templates/sign_semantic_weights.json
-ExecStart=/srv/sign-language-universe/venv/bin/uvicorn app.main:app --app-dir services/scoring-api --host 127.0.0.1 --port 5080
+Environment=SLU_SCORING_OUTPUT_ROOT=<DEPLOY_ROOT>/work/generated/scoring-api
+Environment=SLU_TEMPLATE_ROOT=<DEPLOY_ROOT>/templates/holistic
+Environment=SLU_SEMANTIC_PROFILE_JSON=<DEPLOY_ROOT>/templates/sign_semantic_weights.json
+ExecStart=<DEPLOY_ROOT>/venv/bin/uvicorn app.main:app --app-dir services/scoring-api --host 127.0.0.1 --port 5080
 Restart=always
 RestartSec=3
 
@@ -234,7 +234,7 @@ https://sign-language-universe.github.io/sign-language-universe/
 如果后续要做“标准动作相似度评分”，在服务器私有目录准备模板 JSON：
 
 ```text
-/srv/sign-language-universe/templates/holistic/
+<DEPLOY_ROOT>/templates/holistic/
   flower/flower_holistic_results.json
   jump/jump_holistic_results.json
   ...

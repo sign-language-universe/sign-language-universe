@@ -22,12 +22,7 @@ SLU_TEMPLATE_ROOT=/app/templates/holistic
 SLU_SEMANTIC_PROFILE_JSON=/app/templates/sign_semantic_weights.json
 ```
 
-`deploy/modelscope-space/create_bundle.py` 在本机默认会尝试复制旧仓库已有模板：
-
-```text
-/data/WYC/signLanguage/work/generated/scoring_mvp_run3/all_demo_step2_worker_cache_semantic_v1/results
-/data/WYC/signLanguage/work/generated/scoring_semantic_profiles/sign_semantic_weights.json
-```
+`deploy/modelscope-space/create_bundle.py` 在本机默认会尝试复制私有环境中已生成的模板（本地路径从略）。
 
 如果模板复制成功，线上 `/api/scoring/templates` 中对应词的 `template_configured` 会变为 `true`，打分返回 `diagnostics.scoring_mode=holistic_template_similarity`。如果仍为 `holistic_capture_quality`，说明该词没有模板或模板目录未生效。
 
@@ -59,10 +54,9 @@ POST /api/scoring/worker/warmup
 
 ## 生成创空间部署包
 
-在主仓库执行：
+在仓库根目录执行：
 
 ```bash
-cd /data/WYC/sign-language-universe
 python deploy/modelscope-space/create_bundle.py --force
 ```
 
@@ -95,7 +89,7 @@ work/generated/modelscope-space-bundle/
 示例 Git 操作：
 
 ```bash
-cd /data/WYC/sign-language-universe/work/generated/modelscope-space-bundle
+cd work/generated/modelscope-space-bundle
 git init
 git add .
 git commit -m "deploy scoring api to modelscope space"

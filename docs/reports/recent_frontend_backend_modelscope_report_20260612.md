@@ -1,9 +1,9 @@
 # 手语学习宇宙近期前后端更新与 ModelScope 部署报告
 
-日期：2026-06-12  
-仓库：`sign-language-universe/sign-language-universe`  
-本地路径：`/data/WYC/sign-language-universe`  
-线上前端：<https://sign-language-universe.github.io/sign-language-universe/>  
+日期：2026-06-12
+仓库：`sign-language-universe/sign-language-universe`
+本地路径：本机克隆路径（从略）
+线上前端：<https://sign-language-universe.github.io/sign-language-universe/>
 ModelScope full API：<https://scottwyc-sign-language-universe.ms.show>  
 ModelScope lite API：<https://scottwyc-sign-language-universe-lite.ms.show>  
 
@@ -15,7 +15,7 @@ ModelScope lite API：<https://scottwyc-sign-language-universe-lite.ms.show>
    前端挑战页已经接入摄像头采集、Web Holistic 预加载、浏览器端关键点提取、自动评分、低分建议、采样参数控制、结果诊断展示和 Web Holistic 失败重试。默认采集参数已调整为 `2.5s / 10fps / 480px`，默认约采集 `25` 帧。本次补充后，挑战模式覆盖全部 `47` 个学习词汇，但仅对模板数据库已覆盖的 `10` 个词开放录制评分，其他词明确提示“评分模板待上线”。
 
 2. **评分后端标准化与旧算法迁移**  
-   `services/scoring-api` 已提供统一 FastAPI 入口，支持 `landmark_rows` 和 `frame_slices` 两类输入。后端已接入旧仓库 `/data/WYC/signLanguage` 中已有的 Holistic 模板相似度算法，即 `score_holistic_sequence_mvp.run_pair()`，并保留 worker、模板、捕获质量和 fallback 多种评分路径。
+   `services/scoring-api` 已提供统一 FastAPI 入口，支持 `landmark_rows` 和 `frame_slices` 两类输入。后端已接入旧私有仓库中已有的 Holistic 模板相似度算法，即 `score_holistic_sequence_mvp.run_pair()`，并保留 worker、模板、捕获质量和 fallback 多种评分路径。
 
 3. **ModelScope 魔搭创空间双部署路线**  
    已保留一个完整 Docker 空间用于验证服务端 Holistic worker，同时新增一个 lite Docker 空间用于浏览器 Web Holistic 路线。当前推荐线上演示使用 lite 空间，且前端默认评分 API 已指向该 lite 空间：前端只上传关键点，后端只做模板 DTW/semantic prototype scoring，不再在服务器运行 MediaPipe Holistic。
@@ -431,17 +431,7 @@ browser_local_fallback
 
 ### 5.3 模板与语义权重
 
-模板来自旧仓库本地生成结果：
-
-```text
-/data/WYC/signLanguage/work/generated/scoring_mvp_run3/all_demo_step2_worker_cache_semantic_v1/results
-```
-
-语义权重来自：
-
-```text
-/data/WYC/signLanguage/work/generated/scoring_semantic_profiles/sign_semantic_weights.json
-```
+模板与语义权重来自旧仓库本地生成结果（本地路径从略）。
 
 在 ModelScope Docker 容器内默认路径：
 
@@ -751,14 +741,14 @@ https://sign-language-universe.github.io/sign-language-universe/?api=https://api
 前端静态服务：
 
 ```bash
-cd /data/WYC/sign-language-universe
-/home/wuyangcheng/myenv/bin/python -m http.server 5173 --directory apps/web
+cd <仓库根目录>
+python -m http.server 5173 --directory apps/web
 ```
 
 本地后端：
 
 ```bash
-cd /data/WYC/sign-language-universe
+cd <仓库根目录>
 pip install -r services/scoring-api/requirements.txt
 pip install -e packages/scoring-core
 uvicorn app.main:app --app-dir services/scoring-api --host 127.0.0.1 --port 5080
@@ -929,20 +919,16 @@ gh run list --limit 5
 
 ### ModelScope 日志
 
-本机已安装 ModelScope CLI 时，可用如下形式查看日志。注意不要在命令行或文档中打印 token 值。
+本机已安装 ModelScope CLI 时，可用如下形式查看日志（`MODELSCOPE_TOKEN` 从本地安全位置导入，如密钥管理工具或本地环境文件；注意不要在命令行或文档中打印 token 值）。
 
 ```bash
-set -a
-. /home/wuyangcheng/.codex/secrets/modelscope.env
-set +a
-
 MODELSCOPE_API_TOKEN="$MODELSCOPE_TOKEN" \
-  /data/WYC/.venvs/modelscope-hub/bin/ms logs scottwyc/sign-language-universe \
+  ms logs scottwyc/sign-language-universe \
   --repo-type studio --log-type run --page-size 200
 
 MODELSCOPE_API_TOKEN="$MODELSCOPE_TOKEN" \
-  /data/WYC/.venvs/modelscope-hub/bin/ms logs scottwyc/sign-language-universe-lite \
+  ms logs scottwyc/sign-language-universe-lite \
   --repo-type studio --log-type run --page-size 200
 ```
 
-不要使用 `--tail`，当前 CLI 路径下该参数不可用。
+不要使用 `--tail`，当前 CLI 版本下该参数不可用。

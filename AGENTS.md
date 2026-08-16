@@ -14,7 +14,7 @@
 
 ## Scoring Module Rules
 
-- 手语打分模块来源于 `/data/WYC/signLanguage` 的核心算法和后端 demo。
+- 手语打分模块来源于私有研发仓库（signLanguage）的核心算法和后端 demo。
 - MediaPipe Holistic 初始化开销高，不要在每次请求中重复启动完整 pipeline；优先使用长驻 worker 或可复用服务。
 - 评分流程按三层理解：候选/关键点生成、评分/选择策略、可视化/报告。
 - 支持 `video_path` 和前端帧切片 `frame_slices` 两种输入形态时，应保持 API 参数显式。

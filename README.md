@@ -8,9 +8,7 @@
 
 **手语学习应用（GitHub Pages 部署，免登录）：**
 
-```text
-https://sign-language-universe.github.io/sign-language-universe/
-```
+[在线体验（免登录）](https://sign-language-universe.github.io/sign-language-universe/)
 
 - 功能：21 词互动学习（中英双语）、摄像头实时采集、**语义动作级联打分模型**（纯前端 ONNX 推理，无需后端）
 - 打分：AI 评分由**语义动作级联打分模型 + 语义头门控**完成——47 维语义动作头与总分头双头级联，模型同时输出**综合分**与各**语义动作头分数**；语义头激活度形成**门控**（拦截乱作/非目标动作），逐条改进建议基于语义头激活情况；**全程本地打分，无需上传任何数据**；**镜像取 max**（原序列 + 左右手镜像各打分取高）保证单手/惯用手左右对称
@@ -21,9 +19,9 @@ https://sign-language-universe.github.io/sign-language-universe/
 ## 当前模块
 
 - `apps/web/`：团队前端静态 Demo，来源于已有 `sign-language-universe` 前端资料。
-- `apps/scoring-demo/`：手语打分模块早期静态 Demo，来源于 `/data/WYC/signLanguage/work/web/static`。
-- `packages/scoring-core/`：**旧版 DTW 并集打分核心（模型不可用时降级兜底）**，来源于 `/data/WYC/signLanguage/work/scripts` 的可维护子集；当前主打分为前端级联模型（见下）。
-- **打分模型**（级联 ONNX）托管在 `apps/web/assets/model/`（`dual_cascade_v*.onnx` 4.7MB + `action_meta.json`），随 GitHub Pages 部署、浏览器本地加载推理（onnxruntime WASM），训练脚本与权重在私有仓（`work/scripts/` + zhuhai `slu_train_20260809/runs/`）。
+- `apps/scoring-demo/`：手语打分模块早期静态 Demo，来源于私有研发仓库中的静态页面资源。
+- `packages/scoring-core/`：**旧版 DTW 并集打分核心（模型不可用时降级兜底）**，来源于私有研发仓库脚本的可维护子集；当前主打分为前端级联模型（见下）。
+- **打分模型**（级联 ONNX）托管在 `apps/web/assets/model/`（`dual_cascade_v*.onnx` 4.7MB + `action_meta.json`），随 GitHub Pages 部署、浏览器本地加载推理（onnxruntime WASM）；训练脚本与权重保留在内部私有仓库与内部训练服务器，不随公开仓库分发。
 - `services/scoring-api/`：评分 API 服务入口，当前默认接收浏览器 Web Holistic 的 `landmark_rows`，并保留浏览器帧提交、可选 Holistic worker、服务器模板评分和降级预览评分。
 - `apps/web` 互动学习实验室：提供中英双语动作指导、程序化动作示意，以及当前词汇内嵌的摄像头采集、评分、重试、下一词和成功反馈流程。
 - `packages/shared-contracts/`：前后端共享 API 契约。
@@ -51,7 +49,7 @@ GitHub Pages 静态前端
 - 挑战模式覆盖全部 `47` 个学习词汇；互动学习 21 词已全部上线评分模板（DTW 兜底：每词 3 模板 top-2 均值 + 判别力组权重 + 包络软化），Python 校准与前端交叉验证 21/21 通过。
 - 互动学习实验室当前不携带私人志愿者视频、切片、真人预览图或未授权 landmark 缓存；超市、人们（人民）、跳、汽车（一）已发布经人工审核的匿名 Avatar 自生成参考视频，评分模板由这些公开动画视频提取。
 
-## 本地预览前端
+## 本地开发：预览前端（仅限本机）
 
 ```bash
 cd apps/web
@@ -118,7 +116,7 @@ docs/operations/github_cli_management_manual_20260611.md
 docs/operations/team_development_workflow_manual_20260611.md
 ```
 
-## 启动评分 API
+## 本地开发：启动评分 API
 
 ```bash
 python -m venv .venv
