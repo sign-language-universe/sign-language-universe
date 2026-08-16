@@ -2,8 +2,6 @@
 
 本目录原存放真人手语样本相关的研究/实现记录（含志愿者信息与私有视频路径），属隐私红线内容。
 
-**2026-08-16 已将这些文件移回本地私有仓备份目录**：
-
-`/data/WYC/signLanguage/work/documents/opensource_cleanup_sensitive_20260816/`
+**2026-08-16 已将这些文件移回本地私有仓的备份目录**（`work/documents/opensource_cleanup_sensitive_20260816/`，不随公开仓分发）。
 
 公开仓（GitHub）不保留任何真人志愿者姓名、原始视频路径或本地绝对路径。
