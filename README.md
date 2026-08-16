@@ -8,8 +8,6 @@
 
 **手语学习应用（GitHub Pages 部署，免登录）：**
 
-[在线体验（免登录）](https://sign-language-universe.github.io/sign-language-universe/)
-
 https://sign-language-universe.github.io/sign-language-universe/
 
 - 功能：21 词互动学习（中英双语）、摄像头实时采集、**语义动作级联打分模型**（纯前端 ONNX 推理，无需后端）
