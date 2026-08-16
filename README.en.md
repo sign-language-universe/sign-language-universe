@@ -8,8 +8,6 @@ Team repository for the sign-language learning frontend, scoring service, scorin
 
 **Sign Language Learning App (deployed on GitHub Pages, no login):**
 
-[Try the live app (no login)](https://sign-language-universe.github.io/sign-language-universe/)
-
 https://sign-language-universe.github.io/sign-language-universe/
 
 - Features: 21-word interactive learning (EN/ZH), real-time camera capture, **semantic-action cascade scoring model** (pure front-end ONNX inference, no backend needed)
