@@ -29,7 +29,9 @@
 
   const TEXT = {
     zh: {
-      title: '互动学习实验室',
+      universeTitle: '🪐 手语小宇宙',
+      labTitle: '互动学习实验室',
+      title: '手语小宇宙 - 互动学习实验室',
       subtitle: '语义过程 · 示意参考 · 摄像头练习',
       back: '← 返回',
       language: 'English',
@@ -68,7 +70,9 @@
       current: '当前词汇'
     },
     en: {
-      title: 'Interactive Learning Lab',
+      universeTitle: '🪐 Sign Language Universe',
+      labTitle: 'Interactive Learning Lab',
+      title: 'Sign Language Universe - Interactive Learning Lab',
       subtitle: 'Semantic process · schematic reference · camera practice',
       back: '← Back',
       language: '中文',
@@ -507,12 +511,17 @@
   }
 
   function renderHeader(item) {
+    const universeTitle = document.getElementById('interactive-universe-title');
     const title = document.getElementById('interactive-learning-title');
     const subtitle = document.getElementById('interactive-learning-subtitle');
     const localeBtn = document.getElementById('interactive-locale-toggle');
     const indexLabel = document.getElementById('interactive-index-label');
     const backBtn = document.getElementById('interactive-back-btn');
-    if (title) title.textContent = t('title');
+    if (universeTitle) universeTitle.textContent = t('universeTitle');
+    // 组合标题：主标题（渐变）+ 分隔符 + 实验室名（蓝色调，与主标题区分）
+    if (title) {
+      title.innerHTML = `<span class="slu-title-main">${esc(t('universeTitle'))}</span><span class="slu-title-sep"> - </span><span class="slu-title-lab">${esc(t('labTitle'))}</span>`;
+    }
     if (subtitle) subtitle.textContent = t('subtitle');
     if (localeBtn) localeBtn.textContent = t('language');
     if (indexLabel) indexLabel.textContent = item ? `${state.index + 1} / ${state.contracts.length}` : '--';

@@ -3057,11 +3057,26 @@ model-viewer {
 }
 .interactive-title-block h1 {
   margin: 0;
-  font-size: clamp(18px, 3vw, 26px);
-  background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue), var(--accent-purple));
+  font-size: clamp(20px, 2.9vw, 30px);
+  font-weight: 800;
+  letter-spacing: 1px;
+}
+/* 主标题「手语小宇宙 / Sign Language Universe」：黄-粉-蓝渐变 */
+.interactive-title-block .slu-title-main {
+  background: linear-gradient(135deg, var(--accent-yellow), var(--accent-pink), var(--accent-blue));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+}
+/* 实验室名「互动学习实验室 / Interactive Learning Lab」：从主标题渐变的蓝色继续渐变（蓝→紫），保持一体渐变感 */
+.interactive-title-block .slu-title-lab {
+  background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.interactive-title-block .slu-title-sep {
+  color: var(--text-muted);
 }
 .interactive-title-block p {
   margin: 3px 0 0;

@@ -7,7 +7,7 @@
   <link rel="dns-prefetch" href="//cdn.jsdelivr.net">
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <link rel="preload" href="vendor/mediapipe/holistic/holistic.js" as="script">
-  <link rel="stylesheet" href="css/style.css?v=20260816-revert119-v1">
+  <link rel="stylesheet" href="css/style.css?v=20260816-slu-title-v1">
 </head>
 <body>
   <!-- ============ 星空背景画布 ============ -->
@@ -141,7 +141,7 @@
       <header class="top-bar interactive-top-bar">
         <button class="back-btn" onclick="navigateTo('splash')" id="interactive-back-btn">← 返回</button>
         <div class="interactive-title-block">
-          <h1 id="interactive-learning-title">互动学习实验室</h1>
+          <h1 id="interactive-learning-title"><span class="slu-title-main">🪐 手语小宇宙</span><span class="slu-title-sep"> - </span><span class="slu-title-lab">互动学习实验室</span></h1>
           <p id="interactive-learning-subtitle">语义过程 · 示意参考 · 摄像头练习</p>
         </div>
         <div class="interactive-top-actions">
@@ -535,9 +535,9 @@
   <script src="js/model-scoring-cascade.js?v=20260815-cascade-v2"></script>
   <script src="js/recording-review.js?v=20260815-aspect"></script>
   <script src="js/scoring.js?v=20260815-21words-v12"></script>
-  <script src="js/interactive-learning.js?v=20260816-revert119-v2"></script>
+  <script src="js/interactive-learning.js?v=20260816-slu-title-v2"></script>
   <!-- 版本徽章：每次合并功能 PR 后更新为最新 PR 号，用户可核对是否为最新版 -->
-  <div id="build-badge" style="position:fixed;bottom:6px;left:10px;font-size:11px;color:#94a3b8;opacity:.75;z-index:9999;pointer-events:none;">build PR#125</div>
+  <div id="build-badge" style="position:fixed;bottom:6px;left:10px;font-size:11px;color:#94a3b8;opacity:.75;z-index:9999;pointer-events:none;">build PR#126</div>
   <script>
   // 级联模型切换：初始化下拉（localStorage 记忆）+ change 绑定
   (function () {
