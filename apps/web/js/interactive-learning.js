@@ -646,6 +646,10 @@
         </section>
       </div>`;
 
+    // 默认优先显示语义叠加（semantic overlay）展示视频：该词有语义叠加视频时，
+    // 默认展示 semantic 并自动播放，用户可手动切回原始演示；无语义叠加的词保持原逻辑（显示 original）
+    if (hasSemanticVideo) setReferenceVideoMode('semantic');
+
     initAnimation(item);
     setReferenceMode(state.referenceMode, true);
     renderInteractiveScoringPanel(item, canPractice, statusText, statusDetail);
