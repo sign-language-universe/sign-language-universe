@@ -3,39 +3,68 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>手语课后练习任务台 · 黑客松版</title>
+<title>手语小宇宙 · 伴学 Agent（黑客松 ②-06）</title>
 <style>
   *{box-sizing:border-box}
   body{margin:0;background:#0b1020;color:#e8ecf8;
     font-family:"Microsoft YaHei","PingFang SC",system-ui,sans-serif;
     line-height:1.6;font-size:15px}
-  header{padding:14px 20px;background:#121a33;border-bottom:1px solid #263255;
-    display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+  header{padding:12px 20px;background:#121a33;border-bottom:1px solid #263255;
+    display:flex;flex-wrap:wrap;gap:8px;align-items:center}
   header h1{margin:0;font-size:17px;font-weight:600}
   .tag{font-size:12px;padding:3px 9px;border-radius:999px;background:#1d2745;
     color:#9fb0d8;border:1px solid #2c3a63}
   .tag.sim{background:#3a2a12;color:#f0b96a;border-color:#6b4a1e}
   header a{color:#8fb2ff;font-size:13px;margin-left:auto;text-decoration:none}
-  header a:hover{text-decoration:underline}
-  main{max-width:1180px;margin:0 auto;padding:16px 20px 50px}
-  .nav{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
-  .nav button{font:inherit;cursor:pointer;padding:7px 13px;border-radius:9px;
-    background:#1d2745;color:#cdd8f0;border:1px solid #2c3a63}
+  main{max-width:1280px;margin:0 auto;padding:14px 18px 40px}
+  .grid{display:grid;grid-template-columns:380px 1fr;gap:14px}
+  @media(max-width:1000px){.grid{grid-template-columns:1fr}}
+  .card{background:#121a33;border:1px solid #263255;border-radius:12px;padding:14px}
+  .card h2{margin:0 0 4px;font-size:15px}
+  .sub{color:#8ea0c8;font-size:12px;margin:0 0 10px}
+  .nav{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+  .nav button{font:inherit;cursor:pointer;padding:6px 12px;border-radius:8px;
+    background:#1d2745;color:#cdd8f0;border:1px solid #2c3a63;font-size:13px}
   .nav button:hover{background:#263255}
   .nav button.on{background:#3b6ef5;color:#fff;border-color:#3b6ef5}
   .nav button.done{border-color:#2b6b47;color:#7fe0ab}
-  .bar{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
+  .bar{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
   .bar button{font:inherit;cursor:pointer;padding:6px 12px;border-radius:8px;
     background:#141d38;color:#b9c6e4;border:1px solid #263255;font-size:13px}
   .bar button.on{background:#2b3f7a;color:#fff;border-color:#3b6ef5}
   .bar button.act{background:#16402c;border-color:#2b6b47;color:#7fe0ab}
   .bar button.ghost{background:transparent;color:#8ea0c8}
-  .cols{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-  @media(max-width:900px){.cols{grid-template-columns:1fr}}
-  .card{background:#121a33;border:1px solid #263255;border-radius:12px;padding:15px}
-  .card h2{margin:0 0 8px;font-size:15px}
-  .sub{color:#8ea0c8;font-size:13px;margin:0 0 10px}
-  /* goal module */
+  /* chat */
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+  .chips button{font-size:12px;padding:4px 9px;border-radius:999px;
+    background:#141d38;color:#9fb0d8;border:1px solid #263255;cursor:pointer}
+  .chips button:hover{background:#1d2745;color:#cdd8f0}
+  .chatlog{max-height:330px;overflow:auto;margin-bottom:8px}
+  .me{font-size:13px;color:#8fb2ff;margin:8px 0 4px;text-align:right}
+  .agent-answer{background:#0f1730;border:1px solid #2c3a63;border-radius:10px;padding:10px}
+  .aa-title{font-size:13px;color:#cfe0ff;margin-bottom:6px}
+  .aa-lines{margin:0;padding-left:18px;font-size:13px}
+  .aa-lines li{margin:4px 0}
+  .ask{display:flex;gap:6px}
+  .ask input{flex:1;font:inherit;font-size:13px;padding:7px 10px;border-radius:8px;
+    background:#0b1226;border:1px solid #2c3a63;color:#e8ecf8}
+  .ask button{font:inherit;font-size:13px;padding:7px 14px;border-radius:8px;
+    background:#3b6ef5;color:#fff;border:0;cursor:pointer}
+  /* shared */
+  .pill{display:inline-block;font-size:12px;padding:2px 8px;border-radius:999px;
+    background:#1d2745;margin:3px 4px 0 0;color:#cdd8f0}
+  .pill.ok{background:#132c20;color:#7fe0ab}
+  .pill.warn{background:#3a2a12;color:#f0b96a}
+  .pill.no{background:#3a1d22;color:#f39aa4}
+  .row{margin:8px 0}
+  .rowtop{display:flex;justify-content:space-between;font-size:13px}
+  .track{height:9px;background:#0b1226;border-radius:5px;overflow:hidden;margin-top:4px}
+  .fill{height:100%;border-radius:5px}
+  .note{font-size:13px;padding:9px 11px;border-radius:9px;background:#10203a;
+    border-left:3px solid #3b6ef5;margin:8px 0}
+  .note.honest{background:#2a2210;border-left-color:#e0a33c;color:#f3d9a8}
+  .note.bad{background:#2a1519;border-left-color:#d95566;color:#f6c3ca}
+  /* goal */
   .goal-card{background:#0f1730;border:1px solid #2c3a63;border-radius:10px;padding:12px}
   .goal-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
   .goal-title{margin:0;font-size:15px;color:#cfe0ff}
@@ -48,80 +77,85 @@
   .goal-nm-head{font-size:12px;color:#9fb0d8;margin-bottom:6px}
   .nm-group{margin:6px 0}
   .nm-label{font-size:13px;color:#c9d6f2}
-  /* shared */
-  .pill{display:inline-block;font-size:12px;padding:2px 8px;border-radius:999px;
-    background:#1d2745;margin:3px 4px 0 0;color:#cdd8f0}
-  .pills{margin-top:4px}
-  .row{margin:9px 0}
-  .rowtop{display:flex;justify-content:space-between;font-size:13px}
-  .track{height:9px;background:#0b1226;border-radius:5px;overflow:hidden;margin-top:4px}
-  .fill{height:100%;border-radius:5px}
-  .note{font-size:13px;padding:9px 11px;border-radius:9px;background:#10203a;
-    border-left:3px solid #3b6ef5;margin:8px 0}
-  .note.honest{background:#2a2210;border-left-color:#e0a33c;color:#f3d9a8}
-  .note.bad{background:#2a1519;border-left-color:#d95566;color:#f6c3ca}
-  .advice{font-size:13px;margin:8px 0}
-  /* diagnose module */
-  .diagnose .overall{margin:10px 0}
-  .diagnose .overall .num{font-size:32px;font-weight:700}
+  /* live hint */
+  .live-hint{background:#12233d;border:1px solid #2f4a7a;border-radius:10px;
+    padding:10px 12px;margin-bottom:10px}
+  .lh-head{display:flex;justify-content:space-between;align-items:center;font-size:12px}
+  .lh-progress{color:#8ea0c8}
+  .lh-label{font-size:15px;color:#a8c4ff;margin:4px 0 2px;font-weight:600}
+  .lh-tip{font-size:13px;color:#d6e0f8}
+  .tutor-badge{font-size:11px;padding:2px 8px;border-radius:999px;
+    background:#1e3a6b;color:#a8c4ff;border:1px solid #3b6ef5}
+  /* tutor */
+  .tutor{background:#0f1730;border:1px solid #3b6ef5;border-radius:12px;padding:12px}
+  .tutor-head{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+  .tutor-title{font-size:15px;font-weight:600;color:#cfe0ff}
+  .tutor-steps{margin:8px 0;padding-left:20px;font-size:13px}
+  .tutor-steps li{margin:6px 0}
+  .tutor-closing{font-size:12px;color:#8ea0c8;margin-top:6px}
   /* teacher */
   table{width:100%;border-collapse:collapse;font-size:13px}
   th,td{padding:6px 7px;border-bottom:1px solid #222d4d;text-align:center}
   th{color:#9fb0d8;font-weight:600;font-size:12px}
   td.worst{background:#3a1d22;color:#f6c3ca;font-weight:600}
   td.best{background:#132c20;color:#7fe0ab}
-  footer{max-width:1180px;margin:0 auto;padding:0 20px 40px;color:#6d7d9f;font-size:12px}
-  footer p{margin:6px 0}
+  footer{max-width:1280px;margin:0 auto;padding:0 18px 30px;color:#6d7d9f;font-size:12px}
+  footer p{margin:5px 0}
 </style>
 </head>
 <body>
 <header>
-  <h1>手语课后练习任务台</h1>
+  <h1>手语小宇宙 · 伴学 Agent</h1>
   <span class="tag">黑客松 ②-06</span>
-  <span class="tag">手语小宇宙</span>
   <span class="tag sim">分数为模拟演示数据</span>
   <a href="../index.html">← 返回主站（真实摄像头打分）</a>
 </header>
 
 <main>
-  <div class="nav" id="nav"></div>
-  <div class="bar" id="wordBar"></div>
-  <div class="bar">
-    <button id="btnRun" class="act">模拟一次练习</button>
-    <button id="btnWhy" class="ghost">设计依据</button>
-    <button id="btnReset" class="ghost">清空记录</button>
-  </div>
-
-  <div class="cols">
+  <div class="grid">
     <div class="card">
-      <h2 id="leftTitle">目标</h2>
-      <p class="sub" id="leftSub"></p>
-      <div id="leftBody"></div>
+      <h2>问答伴学 · 课前</h2>
+      <p class="sub">问我某个词怎么打。答案来自线上真实教学契约，不调云模型。</p>
+      <div class="chips" id="chips"></div>
+      <div class="chatlog" id="chatlog"></div>
+      <div class="ask">
+        <input id="askInput" placeholder="例如：超市怎么打？" autocomplete="off">
+        <button id="btnAsk">问</button>
+      </div>
     </div>
+
     <div class="card">
-      <h2 id="rightTitle">错因</h2>
-      <p class="sub" id="rightSub"></p>
-      <div id="rightBody"></div>
+      <div class="nav" id="nav"></div>
+      <div class="bar" id="wordBar"></div>
+      <div class="bar">
+        <button id="btnNextStage">下一阶段</button>
+        <button id="btnDone" class="act">完成练习</button>
+        <button id="btnWhy" class="ghost">设计依据</button>
+        <button id="btnReset" class="ghost">清空记录</button>
+      </div>
+      <div id="panel"></div>
     </div>
   </div>
 
   <div class="card" style="margin-top:14px">
-    <h2 id="reviewTitle">复盘</h2>
-    <p class="sub" id="reviewSub"></p>
+    <h2>复盘 · 跨词弱项</h2>
+    <p class="sub">只存维度分数，不存视频、面部关键点与身份。</p>
     <div id="review"></div>
   </div>
 </main>
 
 <footer>
-  <p><b>与主站的关系：</b>练习与真实打分仍在主站「互动学习实验室」完成，需要 HTTPS 与摄像头；
-    本页负责练习前后的流程层：目标、错因归类、复盘、教师下一步。</p>
-  <p><b>模拟数据声明：</b>四个词的分阶段动作分解、并行非手控特征、最少可辨帧数取自线上现行教学契约，为真实数据；
-    维度分数与班级矩阵为模拟演示数据。门控豁免（汽车（二）训练样本 39 条）为官方记录的真实设定。</p>
+  <p><b>与主站的关系：</b>真实练习与摄像头打分在主站「互动学习实验室」完成（需 HTTPS 与摄像头）；
+    本页负责课前问答、练习中提示、课后导师、复盘与教师视图。</p>
+  <p><b>数据声明：</b>分阶段动作分解、并行非手控特征、最少可辨帧数取自线上现行教学契约，为真实数据；
+    维度分数与班级矩阵为模拟演示数据。门控豁免词（汽车（二）、人们）不出分为官方设定的真实行为。</p>
 </footer>
 
+<script src="coach-agent.js"></script>
 <script src="coach-goal.js"></script>
 <script src="coach-diagnose.js"></script>
 <script src="coach-review.js"></script>
+<script src="coach-tutor.js"></script>
 <script>
 var RAW = {
   chaoshi: { word:'超市', overall:74, dims:[
@@ -144,132 +178,185 @@ var RAW = {
 
 var STEPS = [
   {k:'goal',  n:'目标'},
-  {k:'train', n:'练习'},
+  {k:'live',  n:'练习中提示'},
   {k:'cause', n:'错因'},
-  {k:'review',n:'复盘'},
+  {k:'tutor', n:'AI 导师'},
   {k:'teach', n:'教师'}
 ];
 
-var st = { word:'chaoshi', step:'goal', diag:null, ran:false, why:false };
+var st = { word:'chaoshi', step:'goal', stage:0, diag:null, why:false, pack:null };
 
 function el(id){ return document.getElementById(id); }
 
+function contractOf(zh){
+  if(!st.pack || !st.pack.words) return null;
+  for(var i=0;i<st.pack.words.length;i++){
+    if(st.pack.words[i].zh === zh) return st.pack.words[i];
+  }
+  return null;
+}
+
+function currentContract(){
+  var raw = RAW[st.word];
+  var c = contractOf(raw.word);
+  if(c) return c;
+  var g = (window.CoachGoal && CoachGoal.WORDS[st.word]) ? CoachGoal.WORDS[st.word] : null;
+  if(!g) return null;
+  var seq = [];
+  for(var i=0;i<g.stages.length;i++){
+    seq.push({label_zh:g.stages[i], detail_zh:''});
+  }
+  return { zh:g.zh, ordered_sequence:seq,
+    simultaneous_features:g.nonmanual || [], minimum_distinct_frames:g.minFrames };
+}
+
 function renderNav(){
+  var order = ['goal','live','cause','tutor','teach'];
+  var cur = order.indexOf(st.step);
+  if(cur < 0) cur = 0;
   var h='';
-  STEPS.forEach(function(s,i){
-    var cls='';
-    var order=['goal','train','cause','review','teach'];
-    var cur=order.indexOf(st.step), mine=i;
-    if(mine<cur) cls='done';
-    if(s.k===st.step) cls='on';
-    h+='<button data-step="'+s.k+'" class="'+cls+'">'+(i+1)+'. '+s.n+'</button>';
-  });
-  el('nav').innerHTML=h;
+  for(var i=0;i<STEPS.length;i++){
+    var cls = '';
+    if(i < cur) cls='done';
+    if(i === cur) cls='on';
+    h += '<button data-step="'+STEPS[i].k+'" class="'+cls+'">'+(i+1)+'. '+STEPS[i].n+'</button>';
+  }
+  el('nav').innerHTML = h;
 }
 
 function renderWordBar(){
-  var h='';
   var keys=['chaoshi','gongjiao','qiche1','qiche2'];
-  keys.forEach(function(k){
-    var zh = (window.CoachGoal && CoachGoal.WORDS[k]) ? CoachGoal.WORDS[k].zh : k;
-    h+='<button data-w="'+k+'" class="'+(k===st.word?'on':'')+'">'+zh+'</button>';
-  });
-  el('wordBar').innerHTML=h;
-}
-
-function renderGoalPanel(){
-  el('leftTitle').textContent='目标 · 今天练什么';
-  el('leftSub').textContent='系统按弱项推荐，不按词表顺序。教学契约提到练习之前。';
-  if(!window.CoachGoal){ el('leftBody').innerHTML='<div class="note bad">目标模块未加载</div>'; return; }
-  var hist=loadHist();
-  var pick=CoachGoal.pickTodayWord(hist);
-  var key=st.word || pick.key;
-  var seen=CoachGoal.goalComplete(hist,key);
-  var card=CoachGoal.renderGoalCard(key,{done:seen});
-  el('leftBody').innerHTML=
-    '<div class="note">推荐：'+(pick.reason||'')+'</div>'+card;
-}
-
-function renderTrainPanel(){
-  el('rightTitle').textContent='练习 · 两种方式';
-  el('rightSub').textContent='真实打分请在主站完成，本页可模拟走通流程。';
-  el('rightBody').innerHTML=
-    '<div class="note"><b>真实练习：</b>点右上角「返回主站」，进互动学习实验室。'+
-    '需要摄像头权限与模型预热，视频不出浏览器。</div>'+
-    '<div class="note honest"><b>模拟练习：</b>点上方「模拟一次练习」，'+
-    '用演示分数走通 错因→复盘，不依赖摄像头。</div>';
-}
-
-function renderCausePanel(){
-  el('rightTitle').textContent='错因 · 四态归类';
-  el('rightSub').textContent='做错词 / 做得不标准 / 双手未入画 / 样本不足不出分。';
-  if(!st.diag){
-    el('rightBody').innerHTML='<div class="note">还没有结果。点「模拟一次练习」。</div>';
-    return;
+  var h='';
+  for(var i=0;i<keys.length;i++){
+    var k=keys[i];
+    var zh = (window.CoachGoal && CoachGoal.WORDS[k]) ? CoachGoal.WORDS[k].zh : RAW[k].word;
+    h += '<button data-w="'+k+'" class="'+(k===st.word?'on':'')+'">'+zh+'</button>';
   }
-  if(!window.CoachDiagnose){ el('rightBody').innerHTML='<div class="note bad">错因模块未加载</div>'; return; }
-  el('rightBody').innerHTML=CoachDiagnose.renderDiagnose(st.diag,{showWhy:st.why});
+  el('wordBar').innerHTML = h;
 }
 
-function renderReviewPanel(){
-  el('reviewTitle').textContent='复盘 · 跨词弱项';
-  el('reviewSub').textContent='只存维度分数，不存视频、面部关键点与身份。';
-  if(!window.CoachReview){ el('review').innerHTML='<div class="note bad">复盘模块未加载</div>'; return; }
-  el('review').innerHTML=CoachReview.renderReview(loadHist(),{});
+function panelGoal(){
+  var h='';
+  if(!window.CoachGoal){ return '<div class="note bad">目标模块未加载</div>'; }
+  var hist = loadHist();
+  var pick = CoachGoal.pickTodayWord(hist);
+  var key = st.word || pick.key;
+  h += '<div class="note">推荐今日词：'+(pick.reason||'')+'</div>';
+  h += CoachGoal.renderGoalCard(key, {done: CoachGoal.goalComplete(hist, key)});
+  return h;
+}
+
+function panelLive(){
+  var c = currentContract();
+  var h='';
+  h += '<div class="note honest">这一步对应主站的摄像头练习。'+
+    '下面是<b>练习进行中</b>导师给的即时提示——按阶段推进，不用等到打完分。</div>';
+  if(window.CoachTutor && c){
+    h += CoachTutor.renderLiveHint(c, st.stage, 0);
+  } else {
+    h += '<div class="note bad">导师模块未加载</div>';
+  }
+  var total = (c && c.ordered_sequence) ? c.ordered_sequence.length : 1;
+  h += '<p class="sub">当前第 '+(st.stage+1)+' / '+total+' 阶段。点「下一阶段」推进，点「完成练习」出结果。</p>';
+  return h;
+}
+
+function panelCause(){
+  var h='';
+  if(!st.diag){
+    h += '<div class="note">还没有结果。点「完成练习」或直接切换到此步查看示例。</div>';
+  } else if(window.CoachDiagnose){
+    h += CoachDiagnose.renderDiagnose(st.diag, {showWhy: st.why});
+  } else {
+    h += '<div class="note bad">错因模块未加载</div>';
+  }
+  return h;
+}
+
+function panelTutor(){
+  var raw = RAW[st.word];
+  var c = currentContract();
+  var h='';
+  if(!window.CoachTutor){ return '<div class="note bad">导师模块未加载</div>'; }
+  h += '<div class="note">打分一完成，导师<b>自动</b>根据维度结果给出下一步，不需要学生主动去问。</div>';
+  h += CoachTutor.renderAdvice(CoachTutor.advise(raw, c, loadHist()));
+  return h;
 }
 
 function seed(i,j){
-  var x=Math.sin((i+1)*12.9898+(j+1)*78.233)*43758.5453;
-  return x-Math.floor(x);
+  var x = Math.sin((i+1)*12.9898+(j+1)*78.233)*43758.5453;
+  return x - Math.floor(x);
 }
 var GROUPS=['手形','双手关系','轨迹','重复次数'];
 
-function renderTeacherPanel(){
-  el('rightTitle').textContent='教师 · 班级维度聚合';
-  el('rightSub').textContent='只看维度，不看录像。';
+function panelTeacher(){
   var rows=[];
   for(var i=0;i<30;i++){
     var r={name:'S'+(i+1)};
-    GROUPS.forEach(function(g,j){
+    for(var j=0;j<GROUPS.length;j++){
+      var g=GROUPS[j];
       var base=55+seed(i,j)*40;
       if(g==='手形') base-=17;
       r[g]=Math.max(28,Math.min(99,Math.round(base)));
-    });
+    }
     rows.push(r);
   }
   var avg={};
-  GROUPS.forEach(function(g){
-    avg[g]=Math.round(rows.reduce(function(a,r){return a+r[g];},0)/rows.length);
-  });
+  for(var a=0;a<GROUPS.length;a++){
+    var sum=0;
+    for(var b=0;b<rows.length;b++) sum+=rows[b][GROUPS[a]];
+    avg[GROUPS[a]]=Math.round(sum/rows.length);
+  }
   var worst=GROUPS[0], best=GROUPS[0];
-  GROUPS.forEach(function(g){
-    if(avg[g]<avg[worst]) worst=g;
-    if(avg[g]>avg[best]) best=g;
-  });
+  for(var c2=0;c2<GROUPS.length;c2++){
+    if(avg[GROUPS[c2]]<avg[worst]) worst=GROUPS[c2];
+    if(avg[GROUPS[c2]]>avg[best]) best=GROUPS[c2];
+  }
   var h='<div class="note">教师不看 30 段录像。AI 只把维度按班聚合，'+
-        '告诉老师明天课上示范什么。</div>';
+    '告诉老师明天课上示范什么。</div>';
   h+='<h3 class="goal-meta">班级维度均分（30 人，模拟演示数据）</h3>';
   h+='<table><tr><th>学习者</th>';
-  GROUPS.forEach(function(g){h+='<th>'+g+'</th>';});
+  for(var d=0;d<GROUPS.length;d++) h+='<th>'+GROUPS[d]+'</th>';
   h+='</tr>';
-  rows.slice(0,10).forEach(function(r){
-    h+='<tr><td>'+r.name+'</td>';
-    GROUPS.forEach(function(g){
-      var cls=(g===worst)?'worst':((g===best)?'best':'');
-      h+='<td class="'+cls+'">'+r[g]+'</td>';
-    });
+  for(var e=0;e<10;e++){
+    h+='<tr><td>'+rows[e].name+'</td>';
+    for(var f=0;f<GROUPS.length;f++){
+      var g2=GROUPS[f];
+      var cls=(g2===worst)?'worst':((g2===best)?'best':'');
+      h+='<td class="'+cls+'">'+rows[e][g2]+'</td>';
+    }
     h+='</tr>';
-  });
+  }
   h+='<tr><td><b>班级均分</b></td>';
-  GROUPS.forEach(function(g){
-    var cls=(g===worst)?'worst':((g===best)?'best':'');
-    h+='<td class="'+cls+'"><b>'+avg[g]+'</b></td>';
-  });
+  for(var k=0;k<GROUPS.length;k++){
+    var g3=GROUPS[k];
+    var cls2=(g3===worst)?'worst':((g3===best)?'best':'');
+    h+='<td class="'+cls2+'"><b>'+avg[g3]+'</b></td>';
+  }
   h+='</tr></table>';
   h+='<div class="note"><b>全班在「'+worst+'」这一列系统性偏低（均分 '+avg[worst]+'）。</b>'+
      '建议课上集体示范含该维度的词：超市、公交车、汽车（一）。</div>';
   h+='<div class="note">老师看到的只有维度分数：没有视频、没有面部关键点、没有身份标识。</div>';
-  el('rightBody').innerHTML=h;
+  return h;
+}
+
+var TITLES = {
+  goal:['目标 · 今天练什么','按弱项推荐，教学契约提到练习之前。'],
+  live:['练习中提示 · 导师在旁','按阶段给即时提示，不必等打分。'],
+  cause:['错因 · 四态归类','做错词 / 做得不标准 / 双手未入画 / 样本不足不出分。'],
+  tutor:['AI 导师 · 课后','打分完成自动跳出，给下一步建议。'],
+  teach:['教师 · 班级维度聚合','只看维度，不看录像。']
+};
+
+function renderPanel(){
+  var t = TITLES[st.step] || TITLES.goal;
+  var body = '';
+  if(st.step==='goal') body = panelGoal();
+  else if(st.step==='live') body = panelLive();
+  else if(st.step==='cause') body = panelCause();
+  else if(st.step==='tutor') body = panelTutor();
+  else body = panelTeacher();
+  el('panel').innerHTML = '<h2>'+t[0]+'</h2><p class="sub">'+t[1]+'</p>'+body;
 }
 
 function loadHist(){
@@ -277,58 +364,95 @@ function loadHist(){
   try{ return JSON.parse(localStorage.getItem('slu_taskboard_v1')||'[]'); }catch(e){ return []; }
 }
 
-function pushAttempt(raw){
-  if(window.CoachReview){ CoachReview.pushAttempt({
-    word:raw.word, ts:Date.now(), overall:raw.overall,
-    gateState:'normal', dims:raw.dims
-  }); return; }
-  var h=loadHist();
-  h.push({word:raw.word,ts:Date.now(),overall:raw.overall,gateState:'normal',dims:raw.dims});
-  localStorage.setItem('slu_taskboard_v1',JSON.stringify(h));
+function renderReview(){
+  if(!window.CoachReview){ el('review').innerHTML='<div class="note bad">复盘模块未加载</div>'; return; }
+  el('review').innerHTML = CoachReview.renderReview(loadHist(), {});
 }
 
-function render(){
-  renderNav();
-  renderWordBar();
-  if(st.step==='goal'){ renderGoalPanel(); renderTrainPanel(); }
-  else if(st.step==='train'){ renderGoalPanel(); renderTrainPanel(); }
-  else if(st.step==='cause'){ renderGoalPanel(); renderCausePanel(); }
-  else if(st.step==='teach'){ renderGoalPanel(); renderTeacherPanel(); }
-  else { renderGoalPanel(); renderCausePanel(); }
-  renderReviewPanel();
+function packOrNull(){
+  return (st.pack && st.pack.words && st.pack.words.length) ? st.pack : null;
 }
 
-function runOnce(){
-  var raw=RAW[st.word];
-  st.diag=raw;
-  st.ran=true;
-  pushAttempt(raw);
+function renderChat(){
+  var pack = packOrNull();
+  el('chips').innerHTML = (window.CoachAgent ? CoachAgent.suggestChips(pack ? pack.words : null) : [])
+    .map(function(q){ return '<button data-ask="'+q+'">'+q+'</button>'; }).join('');
+}
+
+function ask(q){
+  if(!window.CoachAgent) return;
+  var pack = packOrNull();
+  var ans = CoachAgent.answer(q, pack);
+  var log = el('chatlog');
+  log.innerHTML = '<div class="me">'+q+'</div>' + CoachAgent.renderAnswer(ans) + log.innerHTML;
+  if(ans.word){
+    for(var k in RAW){ if(RAW[k].word === ans.word.zh){ st.word = k; break; } }
+  }
+}
+
+function finish(){
+  var raw = RAW[st.word];
+  if(window.CoachReview){
+    CoachReview.pushAttempt({word:raw.word, ts:Date.now(), overall:raw.overall,
+      gateState:'normal', dims:raw.dims});
+  }
   if(window.CoachGoal) CoachGoal.markGoalSeen(st.word);
-  st.step='cause';
+  st.diag = raw;
+  st.step = 'tutor';
   render();
 }
 
-document.addEventListener('click',function(e){
-  var b=e.target.closest?e.target.closest('button'):null;
+function render(){
+  renderNav(); renderWordBar(); renderPanel(); renderReview(); renderChat();
+}
+
+document.addEventListener('click', function(e){
+  var b = e.target.closest ? e.target.closest('button') : null;
   if(!b) return;
+  if(b.dataset.ask){ ask(b.dataset.ask); return; }
   if(b.dataset.w){
-    st.word=b.dataset.w; st.diag=null; st.ran=false;
+    st.word = b.dataset.w; st.diag = null; st.stage = 0;
     if(window.CoachGoal) CoachGoal.markGoalSeen(st.word);
   } else if(b.dataset.step){
-    st.step=b.dataset.step;
-    if(b.dataset.step==='cause' && !st.diag) st.diag=RAW[st.word];
-  } else if(b.id==='btnRun'){
-    runOnce();
+    st.step = b.dataset.step;
+    if(b.dataset.step==='cause' && !st.diag) st.diag = RAW[st.word];
+  } else if(b.id==='btnNextStage'){
+    var c = currentContract();
+    var total = (c && c.ordered_sequence) ? c.ordered_sequence.length : 1;
+    st.stage = (st.stage + 1) % total;
+  } else if(b.id==='btnDone'){
+    finish(); return;
   } else if(b.id==='btnWhy'){
-    st.why=!st.why;
+    st.why = !st.why;
   } else if(b.id==='btnReset'){
     localStorage.removeItem('slu_taskboard_v1');
-    st.diag=null; st.ran=false; st.step='goal';
+    st.diag = null; st.stage = 0; st.step = 'goal';
+  } else if(b.id==='btnAsk'){
+    var inp = el('askInput');
+    if(inp && inp.value){ ask(inp.value); inp.value=''; return; }
   }
   render();
 });
 
+document.addEventListener('keydown', function(e){
+  if(e.key === 'Enter' && document.activeElement === el('askInput')){
+    var inp = el('askInput');
+    if(inp.value){ ask(inp.value); inp.value=''; }
+  }
+});
+
 render();
+
+if(window.CoachAgent && CoachAgent.loadContracts){
+  CoachAgent.loadContracts().then(function(pack){
+    st.pack = pack;
+    render();
+  }).catch(function(){
+    st.pack = { words: [], degraded: true };
+    render();
+  });
+}
 </script>
+<div id="build-badge" style="position:fixed;bottom:6px;left:10px;font-size:11px;color:#94a3b8;opacity:.75;z-index:9999;pointer-events:none;">build PR#TBD · ②-06</div>
 </body>
 </html>
