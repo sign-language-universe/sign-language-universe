@@ -50,6 +50,16 @@
     background:#0b1226;border:1px solid #2c3a63;color:#e8ecf8}
   .ask button{font:inherit;font-size:13px;padding:7px 14px;border-radius:8px;
     background:#3b6ef5;color:#fff;border:0;cursor:pointer}
+  .linkrow{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:8px}
+  .linkrow button{font:inherit;font-size:13px;padding:7px 13px;border-radius:8px;
+    background:#16402c;border:1px solid #2b6b47;color:#7fe0ab;cursor:pointer}
+  .linkrow button:hover{background:#1c5238}
+  .linkrow a{font-size:12px;color:#8fb2ff;text-decoration:none;
+    border:1px solid #2c3a63;border-radius:8px;padding:6px 11px}
+  .linkrow a:hover{background:#1d2745}
+  body.light .linkrow button{background:#e6f7ec;border-color:#8fd0a8;color:#146b3a}
+  body.light .linkrow a{color:#2f5fe0;border-color:#d7e0f0}
+  body.light .linkrow a:hover{background:#eef2fb}
   /* shared */
   .pill{display:inline-block;font-size:12px;padding:2px 8px;border-radius:999px;
     background:#1d2745;margin:3px 4px 0 0;color:#cdd8f0}
@@ -464,13 +474,37 @@ function renderChat(){
     .map(function(q){ return '<button data-ask="'+q+'">'+q+'</button>'; }).join('');
 }
 
+function wordKeyOfZh(zh){
+  for(var k in RAW){ if(RAW[k].word === zh) return k; }
+  return null;
+}
+
+function linkBlock(ans){
+  if(!ans || !ans.word) return '';
+  var zh = ans.word.zh;
+  var key = wordKeyOfZh(zh);
+  var h = '<div class="linkrow">';
+  if(key){
+    h += '<button data-goto="'+key+'">进入练习 · '+zh+'</button>';
+  }
+  h += '<a href="../index.html" target="_blank" rel="noopener">主站真实打分 ↗</a>';
+  h += '</div>';
+  if(key){
+    h += '<div class="note">在主站打开后选择「'+zh+'」，即可用摄像头练习并看到 47 维打分。</div>';
+  } else {
+    h += '<div class="note">该词的练习尚未上线，可以先看上面的动作要点。</div>';
+  }
+  return h;
+}
+
 function ask(q){
   if(!window.CoachAgent) return;
   setQaAvatar('thinking', '让我看一下教学契约…');
   var pack = packOrNull();
   var ans = CoachAgent.answer(q, pack);
   var log = el('chatlog');
-  log.innerHTML = '<div class="me">'+q+'</div>' + CoachAgent.renderAnswer(ans) + log.innerHTML;
+  log.innerHTML = '<div class="me">'+q+'</div>' +
+    CoachAgent.renderAnswer(ans) + linkBlock(ans) + log.innerHTML;
   if(ans.word){
     for(var k in RAW){ if(RAW[k].word === ans.word.zh){ st.word = k; break; } }
   }
@@ -499,6 +533,13 @@ document.addEventListener('click', function(e){
   var b = e.target.closest ? e.target.closest('button') : null;
   if(!b) return;
   if(b.dataset.ask){ ask(b.dataset.ask); return; }
+  if(b.dataset.goto){
+    st.word = b.dataset.goto;
+    st.stage = 0;
+    st.step = 'live';
+    render();
+    return;
+  }
   if(b.dataset.w){
     st.word = b.dataset.w; st.diag = null; st.stage = 0;
     if(window.CoachGoal) CoachGoal.markGoalSeen(st.word);
@@ -552,6 +593,6 @@ if(window.CoachAgent && CoachAgent.loadContracts){
   });
 }
 </script>
-<div id="build-badge" style="position:fixed;bottom:6px;left:10px;font-size:11px;color:#94a3b8;opacity:.75;z-index:9999;pointer-events:none;">build PR#130 · ②-06</div>
+<div id="build-badge" style="position:fixed;bottom:6px;left:10px;font-size:11px;color:#94a3b8;opacity:.75;z-index:9999;pointer-events:none;">build PR#131 · ②-06</div>
 </body>
 </html>
