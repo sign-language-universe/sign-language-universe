@@ -101,13 +101,66 @@
   td.best{background:#132c20;color:#7fe0ab}
   footer{max-width:1280px;margin:0 auto;padding:0 18px 30px;color:#6d7d9f;font-size:12px}
   footer p{margin:5px 0}
+  .ca-wrap{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+  .theme-btn{margin-left:8px;font:inherit;font-size:12px;padding:4px 10px;
+    border-radius:999px;background:#1d2745;color:#cdd8f0;border:1px solid #2c3a63;cursor:pointer}
+  /* ---------- 浅色主题（白天模式，默认） ---------- */
+  body.light{background:#f6f8fc;color:#1b2437}
+  body.light header{background:#ffffff;border-bottom-color:#dbe3f0}
+  body.light h1{color:#12203a}
+  body.light .tag{background:#eef2fb;color:#4a5b7a;border-color:#d7e0f0}
+  body.light .tag.sim{background:#fff4e0;color:#8a5a00;border-color:#f0d7a8}
+  body.light header a{color:#2f5fe0}
+  body.light .theme-btn{background:#eef2fb;color:#3d4f6d;border-color:#d7e0f0}
+  body.light .card{background:#ffffff;border-color:#dbe3f0}
+  body.light .card h2,body.light .card h3{color:#12203a}
+  body.light .sub,body.light .goal-meta,body.light .tutor-closing,
+  body.light .lh-progress,body.light footer{color:#5b6b85}
+  body.light .nav button{background:#f1f5fd;color:#33415c;border-color:#d7e0f0}
+  body.light .nav button.on{background:#2f5fe0;color:#fff;border-color:#2f5fe0}
+  body.light .nav button.done{border-color:#8fd0a8;color:#146b3a}
+  body.light .bar button{background:#ffffff;color:#33415c;border-color:#d7e0f0}
+  body.light .bar button.on{background:#dbe6ff;color:#12203a;border-color:#2f5fe0}
+  body.light .bar button.act{background:#e6f7ec;border-color:#8fd0a8;color:#146b3a}
+  body.light .bar button.ghost{background:transparent;color:#5b6b85}
+  body.light .chips button{background:#f1f5fd;color:#3d4f6d;border-color:#d7e0f0}
+  body.light .ask input{background:#ffffff;border-color:#d7e0f0;color:#1b2437}
+  body.light .me{color:#2f5fe0}
+  body.light .agent-answer{background:#f7f9fe;border-color:#d7e0f0}
+  body.light .aa-title{color:#12203a}
+  body.light .note{background:#eef4ff;border-left-color:#2f5fe0;color:#20304d}
+  body.light .note.honest{background:#fff6e0;border-left-color:#d79a1e;color:#61430a}
+  body.light .note.bad{background:#ffecef;border-left-color:#d63a4f;color:#7a2230}
+  body.light .pill{background:#eef2fb;color:#3d4f6d}
+  body.light .pill.ok{background:#e6f7ec;color:#146b3a}
+  body.light .pill.warn{background:#fff4e0;color:#8a5a00}
+  body.light .pill.no{background:#ffe8ea;color:#a11f31}
+  body.light .track{background:#e8edf7}
+  body.light .goal-card{background:#f7f9fe;border-color:#d7e0f0}
+  body.light .goal-title{color:#12203a}
+  body.light .goal-seen{background:#e6f7ec;color:#146b3a;border-color:#8fd0a8}
+  body.light .goal-nm{border-top-color:#dbe3f0}
+  body.light .nm-label{color:#33415c}
+  body.light .live-hint{background:#eef4ff;border-color:#c3d4f5}
+  body.light .lh-label{color:#1f4bb8}
+  body.light .lh-tip{color:#20304d}
+  body.light .tutor-badge{background:#dbe6ff;color:#1f4bb8;border-color:#2f5fe0}
+  body.light .tutor{background:#ffffff;border-color:#2f5fe0}
+  body.light .tutor-title{color:#12203a}
+  body.light table th{color:#5b6b85}
+  body.light table th,body.light table td{border-bottom-color:#e3e9f4}
+  body.light td.worst{background:#ffe8ea;color:#a11f31}
+  body.light td.best{background:#e6f7ec;color:#146b3a}
+  body.light .rowtop{color:#20304d}
+  body.light .ca-wrap{background:transparent}
 </style>
 </head>
-<body>
+<body class="light">
 <header>
   <h1>手语小宇宙 · 伴学 Agent</h1>
   <span class="tag">黑客松 ②-06</span>
   <span class="tag sim">分数为模拟演示数据</span>
+  <button id="btnTheme" class="theme-btn">夜间模式</button>
   <a href="../index.html">← 返回主站（真实摄像头打分）</a>
 </header>
 
@@ -116,6 +169,7 @@
     <div class="card">
       <h2>问答伴学 · 课前</h2>
       <p class="sub">问我某个词怎么打。答案来自线上真实教学契约，不调云模型。</p>
+      <div class="ca-wrap" id="qaAvatar"></div>
       <div class="chips" id="chips"></div>
       <div class="chatlog" id="chatlog"></div>
       <div class="ask">
@@ -156,6 +210,7 @@
 <script src="coach-diagnose.js"></script>
 <script src="coach-review.js"></script>
 <script src="coach-tutor.js"></script>
+<script src="coach-avatar.js"></script>
 <script>
 var RAW = {
   chaoshi: { word:'超市', overall:74, dims:[
@@ -187,6 +242,32 @@ var STEPS = [
 var st = { word:'chaoshi', step:'goal', stage:0, diag:null, why:false, pack:null };
 
 function el(id){ return document.getElementById(id); }
+
+function av(state, text){
+  if(!window.CoachAvatar) return '';
+  return '<div class="ca-wrap">' + CoachAvatar.render(state) +
+         CoachAvatar.bubble(state, text || '') + '</div>';
+}
+
+function setQaAvatar(state, text){
+  var box = el('qaAvatar');
+  if(!box || !window.CoachAvatar) return;
+  box.innerHTML = CoachAvatar.render(state) + CoachAvatar.bubble(state, text || '');
+}
+
+function applyTheme(t){
+  var light = (t !== 'dark');
+  if(light){ document.body.classList.add('light'); }
+  else { document.body.classList.remove('light'); }
+  var btn = el('btnTheme');
+  if(btn){ btn.textContent = light ? '夜间模式' : '白天模式'; }
+  try { localStorage.setItem('slu_theme', light ? 'light' : 'dark'); } catch(e) {}
+}
+
+function toggleTheme(){
+  var isLight = document.body.classList.contains('light');
+  applyTheme(isLight ? 'dark' : 'light');
+}
 
 function contractOf(zh){
   if(!st.pack || !st.pack.words) return null;
@@ -251,6 +332,7 @@ function panelLive(){
   var h='';
   h += '<div class="note honest">这一步对应主站的摄像头练习。'+
     '下面是<b>练习进行中</b>导师给的即时提示——按阶段推进，不用等到打完分。</div>';
+  h += av('pointing', '跟着我，先把这一阶段做出来');
   if(window.CoachTutor && c){
     h += CoachTutor.renderLiveHint(c, st.stage, 0);
   } else {
@@ -278,8 +360,11 @@ function panelTutor(){
   var c = currentContract();
   var h='';
   if(!window.CoachTutor){ return '<div class="note bad">导师模块未加载</div>'; }
+  var adv = CoachTutor.advise(raw, c, loadHist());
+  var mood = adv.gated ? 'thinking' : (adv.weakest && adv.weakest.length ? 'care' : 'praise');
   h += '<div class="note">打分一完成，导师<b>自动</b>根据维度结果给出下一步，不需要学生主动去问。</div>';
-  h += CoachTutor.renderAdvice(CoachTutor.advise(raw, c, loadHist()));
+  h += av(mood, '');
+  h += CoachTutor.renderAdvice(adv);
   return h;
 }
 
@@ -381,6 +466,7 @@ function renderChat(){
 
 function ask(q){
   if(!window.CoachAgent) return;
+  setQaAvatar('thinking', '让我看一下教学契约…');
   var pack = packOrNull();
   var ans = CoachAgent.answer(q, pack);
   var log = el('chatlog');
@@ -388,6 +474,9 @@ function ask(q){
   if(ans.word){
     for(var k in RAW){ if(RAW[k].word === ans.word.zh){ st.word = k; break; } }
   }
+  var mood = ans.state === 'entry_only' ? 'care'
+    : (ans.gatedNoScore ? 'thinking' : 'idle');
+  setTimeout(function(){ setQaAvatar(mood, ''); }, 320);
 }
 
 function finish(){
@@ -427,6 +516,9 @@ document.addEventListener('click', function(e){
   } else if(b.id==='btnReset'){
     localStorage.removeItem('slu_taskboard_v1');
     st.diag = null; st.stage = 0; st.step = 'goal';
+  } else if(b.id==='btnTheme'){
+    toggleTheme();
+    return;
   } else if(b.id==='btnAsk'){
     var inp = el('askInput');
     if(inp && inp.value){ ask(inp.value); inp.value=''; return; }
@@ -441,6 +533,13 @@ document.addEventListener('keydown', function(e){
   }
 });
 
+(function initTheme(){
+  var t = 'light';
+  try { t = localStorage.getItem('slu_theme') || 'light'; } catch(e) {}
+  applyTheme(t);
+})();
+
+setQaAvatar('idle', '');
 render();
 
 if(window.CoachAgent && CoachAgent.loadContracts){
@@ -453,6 +552,6 @@ if(window.CoachAgent && CoachAgent.loadContracts){
   });
 }
 </script>
-<div id="build-badge" style="position:fixed;bottom:6px;left:10px;font-size:11px;color:#94a3b8;opacity:.75;z-index:9999;pointer-events:none;">build PR#129 · ②-06</div>
+<div id="build-badge" style="position:fixed;bottom:6px;left:10px;font-size:11px;color:#94a3b8;opacity:.75;z-index:9999;pointer-events:none;">build PR#130 · ②-06</div>
 </body>
 </html>
