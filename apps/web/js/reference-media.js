@@ -5,7 +5,11 @@
     .then((response) => response.ok ? response.json() : { entries: [] })
     .then((payload) => {
       (payload.entries || []).forEach((entry) => {
-        if (entry && entry.word_index != null) state.entries[String(entry.word_index)] = entry;
+        if (!entry || entry.word_index == null || !entry.path || entry.review_status !== 'manually_approved' || entry.public_release !== true) return;
+        state.entries[String(entry.word_index)] = {
+          ...entry,
+          semantic_overlay_path: entry.semantic_overlay_status === 'manually_approved' ? entry.semantic_overlay_path : ''
+        };
       });
       return state.entries;
     })

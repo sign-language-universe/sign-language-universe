@@ -24,7 +24,13 @@
     avatar3d: null,
     referenceMode: '2d',
     scoringMounted: false,
-    lastScore: null
+    lastScore: null,
+    teacherOpen: false,
+    teacherFocusReturn: null,
+    teacherUi: null,
+    teacherHistory: [],
+    teacherHistoryIndex: null,
+    teacherCleanup: null
   };
 
   const TEXT = {
@@ -51,8 +57,6 @@
       originalVideo: '原始演示',
       semanticVideo: '语义叠加',
       videoMode: '视频模式',
-      videoPause: '暂停视频',
-      videoPlay: '继续播放',
       practice: '打开摄像头练习与评分',
       available: '评分模板已接入',
       pending: '评分模板待上线',
@@ -67,7 +71,7 @@
       retryHint: '再看一遍动作指导后重新采集。',
       stage: '阶段',
       features: '局部特征',
-      current: '当前词汇'
+      current: ''
     },
     en: {
       universeTitle: '🪐 Sign Language Universe',
@@ -92,8 +96,6 @@
       originalVideo: 'Original demo',
       semanticVideo: 'Semantic overlay',
       videoMode: 'Video mode',
-      videoPause: 'Pause video',
-      videoPlay: 'Resume video',
       practice: 'Open camera practice and scoring',
       available: 'Scoring template connected',
       pending: 'Scoring template pending',
@@ -155,30 +157,44 @@
     state.lastScore = null;
   }
 
-  function scoringResultMessage(result, passed) {
-    if (state.locale === 'en') {
-      const mode = result?.diagnostics?.scoring_mode || result?.level || '';
-      if (mode === 'web_holistic_template_similarity' || mode === 'holistic_template_similarity') {
-        return passed
-          ? 'The motion was compared with the server template.'
-          : 'The motion differs from the server template; review the guidance and try again.';
-      }
-      if (mode.includes('fallback')) return 'This is a local preview score; connect the scoring service for template similarity.';
-      if (mode.includes('capture_quality')) return 'Browser Holistic landmarks were received; this is a capture-quality score.';
-      return passed ? 'Scoring completed.' : 'The motion did not meet the current threshold; review the guidance and try again.';
-    }
-    const feedback = Array.isArray(result?.feedback)
-      ? result.feedback.find(item => item && item.message)?.message
-      : '';
-    if (feedback) return feedback;
-    return passed ? t('success') : t('retryHint');
-  }
-
   function handleInteractiveScore(item, result) {
-    const score = Number.isFinite(Number(result?.score)) ? Math.round(Number(result.score)) : 0;
-    const passed = score >= 80 && result?.score_valid !== false;
+    const rawScore = result?.score;
+    const score = rawScore == null || rawScore === '' || !Number.isFinite(Number(rawScore)) ? null : Math.round(Number(rawScore));
+    const thresholdRaw = result?.pass_threshold ?? result?.diagnostics?.pass_threshold;
+    const threshold = thresholdRaw == null || thresholdRaw === '' ? null : Number(thresholdRaw);
+    const mode = String(result?.diagnostics?.scoring_mode || result?.level || '').toLowerCase();
+    const isFallback = mode.includes('fallback') || mode.includes('browser_frame_fallback');
+    const isCaptureQuality = mode.includes('capture_quality') || mode.includes('web_holistic_capture_quality');
+    const safeMode = isFallback || isCaptureQuality;
+    const valid = result?.score_valid === true;
+    const thresholdValid = Number.isFinite(threshold);
+    const validJudgment = valid && !safeMode && score !== null && thresholdValid;
+    const passed = validJudgment && score >= threshold;
     state.lastScore = result;
+    const teacherFeedback = TeacherAgent.scoreFeedback(result, item, state.locale);
+    const resultAdvice = document.getElementById('scoring-result-advice');
+    if (resultAdvice) resultAdvice.hidden = true;
     const root = document.getElementById('interactive-score-host');
+    const teacherAdvice = root?.querySelector('#interactive-teacher-feedback');
+    if (teacherAdvice) {
+      teacherAdvice._resultAvatar?.destroy?.();
+      teacherAdvice.innerHTML = `<span class="teacher-avatar-host teacher-result-avatar" data-teacher-result-avatar aria-hidden="true"></span><span>${esc(teacherFeedback.text)}</span>`;
+      teacherAdvice.hidden = false;
+      const resultAvatar = window.TeacherAvatar?.mount(teacherAdvice.querySelector('[data-teacher-result-avatar]'), {label: state.locale === 'en' ? 'Mia' : '小语老师'});
+      teacherAdvice._resultAvatar = resultAvatar;
+      resultAvatar?.setState(valid && !safeMode ? (passed ? 'happy' : 'thinking') : 'idle');
+    }
+    const duplicateAdvice = root?.querySelector('#interactive-group-advice');
+    if (duplicateAdvice) duplicateAdvice.hidden = true;
+    const stageAdvice = root?.querySelector('#interactive-stage-advice');
+    if (stageAdvice) stageAdvice.hidden = true;
+    if (state.teacherHistoryIndex !== item.index) { state.teacherHistory=[]; state.teacherHistoryIndex=item.index; }
+    if (state.teacherUi) state.teacherUi.replaceScoreFeedback(result);
+    else {
+      const prior = state.teacherHistory.findIndex(message => message.scoreFeedback);
+      if (prior >= 0) state.teacherHistory.splice(prior,1);
+      state.teacherHistory.push({text:teacherFeedback.text,who:'coach',scoreFeedback:true});
+    }
     if (!root) return;
     const active = root.querySelector('#challenge-active');
     const resultPanel = root.querySelector('#challenge-result');
@@ -191,17 +207,26 @@
       resultPanel.classList.toggle('success', passed);
       resultPanel.classList.toggle('retry', !passed);
     }
-    if (icon) icon.textContent = passed ? '🎉' : '🔄';
+    const celebrateScore = valid && !safeMode && score !== null && score >= 80;
+    if (icon) icon.textContent = celebrateScore ? '🎉' : '🔄';
     // 主分标注模型来源：submitFrames 主路径（v5 扁平模型语义打分）vs 降级路径
-    const mode = result?.diagnostics?.scoring_mode || result?.level || '';
-    const isV5 = String(mode).includes('web_model_semantic');
-    if (scoreEl) scoreEl.textContent = `${score} ${state.locale === 'en' ? 'points' : '分'}${isV5 ? (state.locale === 'en' ? ' · model v5' : ' · 模型 v5') : ''}`;
+    const modeLabel = result?.diagnostics?.scoring_mode || result?.level || '';
+    const isV5 = String(modeLabel).includes('web_model_semantic');
+    if (scoreEl) scoreEl.textContent = score === null
+      ? (state.locale === 'en' ? 'No valid score' : '无有效分数')
+      : `${score} ${state.locale === 'en' ? 'points' : '分'}${isV5 ? (state.locale === 'en' ? ' · model v5' : ' · 模型 v5') : ''}`;
     const status = document.getElementById('interactive-score-state');
-    if (status) status.textContent = passed ? t('success') : t('retryHint');
+    if (status) status.textContent = !validJudgment
+      ? (state.locale === 'en' ? 'No pass/fail judgment is available for this result.' : '本次结果不用于判断是否达标。')
+      : passed ? t('success') : t('retryHint');
     // 展示顺序：针对性建议 → 局部语义评分（分数下方直接是建议，不重复小字提示）
-    renderGroupAdvice(result);
-    renderGroupScores(result);
-    renderTreeScore(result);
+    if (!valid || safeMode) {
+      ['interactive-group-advice','interactive-group-scores','interactive-tree-score'].forEach(id => { const node=document.getElementById(id); if(node) node.hidden=true; });
+    } else {
+      renderGroupAdvice(result);
+      renderGroupScores(result);
+      renderTreeScore(result);
+    }
     renderReviewButton(result);
     if (passed && typeof AppState !== 'undefined') {
       AppState.collectedWords.add(item.zh);
@@ -245,8 +270,8 @@
     const en = state.locale === 'en';
     const items = advice.map(item => `
       <li class="stage-advice-item">
-        <strong>⚠️ ${esc(item.stage_label || `${item.stage_index + 1}`)}</strong>
-        <p>${esc(item.suggestion || '')}</p>
+        <strong>⚠️ ${esc(item[`stage_label_${state.locale}`] || item.stage_label || `${item.stage_index + 1}`)}</strong>
+        <p>${esc(item[`suggestion_${state.locale}`] || item.suggestion || '')}</p>
       </li>`).join('');
     host.innerHTML = `<h4>💡 ${esc(en ? 'Targeted guidance' : '针对性指导建议')}</h4><ul>${items}</ul>`;
     host.hidden = false;
@@ -321,26 +346,19 @@
     const host = document.getElementById('interactive-group-advice');
     if (!host) return;
     const advice = result?.diagnostics?.group_advice;
+    const stageAdvice = result?.diagnostics?.stage_advice;
     const en = state.locale === 'en';
-    if (!Array.isArray(advice) || !advice.length) {
-      const score = Number(result?.prototype_score ?? result?.score);
-      // 低分（<80）但核心组无 weak：总距离大但各组距离在包络内——
-      // 问题出在时序/速度/节奏或未评分局部（如 face 无包络），不能显示"全部达标"
-      if (Number.isFinite(score) && score < 80) {
-        host.innerHTML = `<h4>💡 ${esc(en ? 'Targeted part guidance' : '针对性局部指导')}</h4>
-          <p class="stage-advice-all-ok" style="color: var(--accent-orange);">⚠️ ${esc(en ? 'Core semantic parts are within range (≥80), but the total score is low — likely due to motion timing/speed/rhythm or unscored parts (e.g. face). Review the overall motion order and pacing against the reference.' : '核心语义局部距离在合理范围（≥80），但总分未达标——可能出在动作时序/速度/节奏或未评分的局部（如面部）。请对照示范视频整体检查动作顺序与速度。')}</p>`;
-      } else {
-        host.innerHTML = `<h4>💡 ${esc(en ? 'Targeted part guidance' : '针对性局部指导')}</h4>
-          <p class="stage-advice-all-ok">✅ ${esc(en ? 'All semantic parts passed (≥80). Great job!' : '各核心语义局部均达标（≥80），动作标准！')}</p>`;
-      }
+    const validGroups = Array.isArray(advice) ? advice : [];
+    const validStages = Array.isArray(stageAdvice) ? stageAdvice : [];
+    if (!validGroups.length && !validStages.length) {
+      host.innerHTML = `<h4>💡 ${esc(en ? 'Targeted part guidance' : '针对性局部指导')}</h4><p>${esc(en ? 'No valid local semantic detail is available; I will not infer a correction from the overall score.' : '目前没有有效的局部语义信息；我不会只凭总分推断动作问题。')}</p>`;
       host.hidden = false;
       return;
     }
-    // 布局：多个小标题 chips（弱组 + 分数）→ 一段去重的合并建议
-    const heads = advice.map(item => `<span class="advice-head">${esc(item.group_label || item.group)} ${item.group_score != null ? item.group_score : '--'}</span>`).join('');
+    const heads = validGroups.map(item => `<span class="advice-head">${esc(item[`group_label_${state.locale}`] || item[`related_stage_label_${state.locale}`] || item.group_label || item.group)} ${item.group_score != null ? item.group_score : '--'}</span>`).join('');
     const seenDetails = new Set();
     const bodyParts = [];
-    for (const item of advice) {
+    for (const item of validGroups) {
       // 双语字段优先，按当前 UI 语言显式选择（避免打分时 locale 检测与渲染不一致导致混中文）
       const label = en
         ? (item.related_stage_label_en || item.related_stage_label)
@@ -355,9 +373,17 @@
         );
       }
     }
+    for (const item of validStages) {
+      const label = item[`stage_label_${state.locale}`] || item.stage_label || '';
+      const detail = item[`suggestion_${state.locale}`] || item.suggestion || '';
+      if (detail && !seenDetails.has(detail)) {
+        seenDetails.add(detail);
+        bodyParts.push(en ? `${label ? `${label}: ` : ''}${detail}` : `${label ? `【${label}】` : ''}${detail}`);
+      }
+    }
     const tail = en
-      ? 'Compare with the reference video and practice these parts.'
-      : '请对照示范视频，重点练习上述局部动作。';
+      ? 'Compare with the reference and practice these reported parts.'
+      : '请对照示范，练习以上评分实际反馈的局部。';
     const body = bodyParts.length ? bodyParts.join(' ') + ' ' + tail : tail;
     host.innerHTML = `<h4>💡 ${esc(en ? 'Targeted part guidance' : '针对性局部指导')}</h4>
       <div class="advice-heads">${heads}</div>
@@ -391,7 +417,11 @@
     if (!host || !window.ScoringBridge?.mountInteractive) return false;
     syncChallengeWord(item);
     state.scoringMounted = window.ScoringBridge.mountInteractive(host, {
-      onResult: result => handleInteractiveScore(item, result)
+      onResult: result => handleInteractiveScore(item, result),
+      onCaptureStart: () => {
+        const message = state.locale === 'en' ? 'Your recording has started. Show the sign clearly; I will review the key movements when scoring is ready.' : '已经开始采集了，请清晰展示手语动作；评分完成后我会马上和你一起看关键动作。';
+        state.teacherUi?.say(message);
+      }
     });
     return state.scoringMounted;
   }
@@ -438,6 +468,7 @@
       '<div><span>' + (en ? 'Frames' : '上传帧数') + '</span><strong id="scoring-result-frames">--</strong></div>',
       '<div><span>Worker</span><strong id="scoring-result-worker">--</strong></div>',
       '<div><span>Request</span><strong id="scoring-result-request">--</strong></div><p id="scoring-result-advice">--</p></div>',
+      '<div class="interactive-teacher-feedback" id="interactive-teacher-feedback" hidden></div>',
       '<div class="interactive-group-advice" id="interactive-group-advice" hidden></div>',
       '<div class="interactive-group-scores" id="interactive-group-scores" hidden></div>',
       '<div class="interactive-tree-score" id="interactive-tree-score" hidden></div>',
@@ -466,6 +497,7 @@
   function setLocale(locale) {
     const wasScoringMounted = state.scoringMounted;
     state.locale = locale === 'en' ? 'en' : 'zh';
+    state.teacherHistory = [];
     window.localStorage.setItem('sluInteractiveLocale', state.locale);
     // 同步到 AppState（model-scoring 等模块按此读取界面语言）
     if (window.AppState) window.AppState.locale = state.locale;
@@ -540,6 +572,7 @@
     }
     renderHeader(item);
     if (!host) return;
+    if (!document.getElementById('screen-interactive-learning')?.classList.contains('active')) return;
     if (!item) {
       host.innerHTML = `<div class="interactive-loading">${esc(t('loading'))}</div>`;
       return;
@@ -568,7 +601,7 @@
     const media = state.referenceMedia[String(item.index)];
     const hasSemanticVideo = Boolean(media?.semantic_overlay_path);
     const mediaBlock = media
-      ? `<div class="interactive-reference-video">${hasSemanticVideo ? `<div class="interactive-video-mode-label">${esc(t('videoMode'))}</div><div class="interactive-video-mode-controls"><button type="button" class="reference-video-mode-btn active" data-reference-video-mode="original" onclick="InteractiveLearning.setReferenceVideoMode('original')">${esc(t('originalVideo'))}</button><button type="button" class="reference-video-mode-btn" data-reference-video-mode="semantic" onclick="InteractiveLearning.setReferenceVideoMode('semantic')">${esc(t('semanticVideo'))}</button></div>` : ''}<video id="interactive-reference-video" data-reference-video-role="original" controls preload="metadata" autoplay loop muted playsinline src="${esc(media.path)}" aria-label="${esc(t('videoLabel'))}"></video>${hasSemanticVideo ? `<video id="interactive-semantic-reference-video" data-reference-video-role="semantic" controls preload="metadata" loop muted playsinline hidden src="${esc(media.semantic_overlay_path)}" aria-label="${esc(t('semanticVideo'))}"></video>` : ''}<div class="interactive-video-controls"><button type="button" id="interactive-reference-video-toggle" onclick="InteractiveLearning.toggleReferenceVideo()">Ⅱ ${esc(t('videoPause'))}</button></div></div>`
+      ? `<div class="interactive-reference-video">${hasSemanticVideo ? `<div class="interactive-video-mode-controls"><button type="button" class="reference-video-mode-btn active" data-reference-video-mode="original" onclick="InteractiveLearning.setReferenceVideoMode('original')">${esc(t('originalVideo'))}</button><button type="button" class="reference-video-mode-btn" data-reference-video-mode="semantic" onclick="InteractiveLearning.setReferenceVideoMode('semantic')">${esc(t('semanticVideo'))}</button></div>` : ''}<video id="interactive-reference-video" data-reference-video-role="original" controls preload="metadata" autoplay loop muted playsinline onclick="InteractiveLearning.toggleReferenceVideo(event)" src="${esc(media.path)}" aria-label="${esc(t('videoLabel'))}"></video>${hasSemanticVideo ? `<video id="interactive-semantic-reference-video" data-reference-video-role="semantic" controls preload="metadata" loop muted playsinline hidden onclick="InteractiveLearning.toggleReferenceVideo(event)" src="${esc(media.semantic_overlay_path)}" aria-label="${esc(t('semanticVideo'))}"></video>` : ''}</div>`
       : `<div class="interactive-video-empty"><strong>📹 ${esc(t('noVideo'))}</strong></div>`;
     const referenceHeading = media ? t('videoLabel') : t('schematic');
     const referenceBadge = media
@@ -583,8 +616,8 @@
       <button type="button" class="interactive-side-nav interactive-side-nav-next" onclick="InteractiveLearning.next()" aria-label="${esc(t('next'))}" title="${esc(t('next'))}">›</button>
       <div class="interactive-word-toolbar">
         <button type="button" class="interactive-nav-btn" onclick="InteractiveLearning.previous()">◀ ${esc(t('previous'))}</button>
-        <label class="interactive-word-select-label" for="interactive-word-select">${esc(t('current'))}
-          <select id="interactive-word-select" onchange="InteractiveLearning.select(Number(this.value))">
+        <label class="interactive-word-select-label" for="interactive-word-select">
+          <select id="interactive-word-select" aria-label="${esc(state.locale === 'en' ? 'Current word' : '选择词汇')}" onchange="InteractiveLearning.select(Number(this.value))">
             ${state.contracts.map((entry, idx) => `<option value="${idx}" ${idx === state.index ? 'selected' : ''}>${idx + 1}. ${esc(wordLabel(entry))}</option>`).join('')}
           </select>
         </label>
@@ -595,7 +628,6 @@
           <span class="interactive-index-badge">#${item.index}</span>
           <div class="interactive-word-title">
             <h2>${esc(item.zh)}<span class="interactive-word-en">${esc(item.en)}</span></h2>
-            <p class="interactive-word-pinyin">${esc(item.pinyin)}</p>
           </div>
         </div>
       </section>
@@ -627,6 +659,169 @@
     setReferenceMode(state.referenceMode, true);
     renderInteractiveScoringPanel(item, canPractice, statusText, statusDetail);
     if (canPractice) mountScoring(item);
+    mountTeacherAgent(item);
+  }
+
+  function mountTeacherAgent(item) {
+    const host = document.getElementById('interactive-learning-content');
+    if (!host || !window.TeacherAgent) return;
+    state.teacherCleanup?.();
+    if (!document.getElementById('screen-interactive-learning')?.classList.contains('active')) return;
+    state.teacherUi?.destroy?.();
+    state.teacherUi = null;
+    document.querySelectorAll('.teacher-agent-launcher, #teacher-agent-panel').forEach(node => node.remove());
+    state.teacherOpen = false;
+    if (state.teacherHistoryIndex !== item.index) {
+      state.teacherHistory = [];
+      state.teacherHistoryIndex = item.index;
+      state.teacherUi = null;
+    }
+    const en = state.locale === 'en';
+    const launcher = document.createElement('button');
+    launcher.type = 'button';
+    launcher.className = 'teacher-agent-launcher';
+    launcher.dataset.teacherAgentUi = 'launcher';
+    launcher.innerHTML = `<span class="teacher-avatar-host teacher-agent-floating-avatar" data-teacher-launch-avatar aria-hidden="true"></span><span>${en ? 'Ask Mia' : '问问小语'}</span>`;
+    const launcherAvatar = window.TeacherAvatar?.mount(launcher.querySelector('[data-teacher-launch-avatar]'), {label: en ? 'Mia' : '小语老师'});
+    launcherAvatar?.setState('idle');
+    launcher.setAttribute('aria-label', en ? 'Open Mia, your sign-language coach' : '打开小语老师，查看当前词动作提示或提问');
+    launcher.setAttribute('aria-expanded', 'false');
+    launcher.setAttribute('aria-controls', 'teacher-agent-panel');
+    const panel = document.createElement('div');
+    panel.id = 'teacher-agent-panel';
+    panel.className = 'teacher-agent-panel';
+    panel.hidden = true;
+    document.body.append(launcher, panel);
+    let autoCloseTimer = null;
+    let disposed = false;
+    function positionTeacherPanel() {
+      if (disposed) return;
+      const reference = host.querySelector('.interactive-schematic-panel');
+      const badge = document.getElementById('build-badge');
+      const app = document.getElementById('app');
+      const appRect = app?.getBoundingClientRect();
+      const referenceMedia = reference
+        ? Array.from(reference.querySelectorAll('.interactive-reference-video video:not([hidden]), .interactive-schematic-viewer'))
+          .filter(node => !node.hidden && getComputedStyle(node).display !== 'none')
+        : [];
+      const referenceBottom = referenceMedia.length
+        ? Math.max(...referenceMedia.map(node => node.getBoundingClientRect().bottom))
+        : reference?.getBoundingClientRect().bottom ?? innerHeight * 0.72;
+      const badgeTop = badge?.getBoundingClientRect().top ?? innerHeight - 8;
+      const contentTop = appRect?.top ?? 0;
+      const contentBottom = Math.min(badgeTop, appRect?.bottom ?? innerHeight);
+      const moduleBottom = reference?.getBoundingClientRect().bottom ?? referenceBottom;
+      const top = Math.max(contentTop + 8, referenceBottom + 16, moduleBottom + 16);
+      const available = Math.max(0, contentBottom - top - 8);
+      panel.style.top = `${top}px`;
+      panel.style.height = `${available}px`;
+      panel.style.maxHeight = `${available}px`;
+    }
+    function alignPracticePage() {
+      const app = document.getElementById('app');
+      const screen = document.getElementById('screen-interactive-learning');
+      const wordBar = host.querySelector('.interactive-hero-card');
+      if (!app || !screen || !wordBar) return;
+      const header = screen.querySelector('.interactive-top-bar');
+      const headerHeight = header?.getBoundingClientRect().height ?? 0;
+      const target = Math.max(0, app.scrollTop + wordBar.getBoundingClientRect().top - app.getBoundingClientRect().top - headerHeight - 8);
+      screen.style.minHeight = `${app.clientHeight + target}px`;
+      app.scrollTop = target;
+    }
+    function openAfterScroll() {
+      alignPracticePage();
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        if (disposed || !document.getElementById('screen-interactive-learning')?.classList.contains('active')) return;
+        positionTeacherPanel();
+        panel.hidden = false;
+        state.teacherOpen = true;
+      }));
+    }
+    function openPanel(autoCloseMs = 0) {
+      state.teacherOpen = false;
+      panel.hidden = true;
+      panel.classList.add('is-floating');
+      launcher.classList.add('is-open');
+      launcher.setAttribute('aria-expanded', 'true');
+      state.teacherHistoryIndex = item.index;
+      state.teacherUi = TeacherAgent.render(panel, {locale:state.locale,item,result:state.lastScore,history:state.teacherHistory,avatar:launcherAvatar,close});
+      state.teacherHistory = state.teacherUi.history;
+      clearTimeout(autoCloseTimer);
+      if (autoCloseMs > 0) {
+        autoCloseTimer = setTimeout(() => {
+          if (state.teacherOpen) close();
+        }, autoCloseMs);
+      }
+      openAfterScroll();
+    }
+    function keepPanelOpen() {
+      clearTimeout(autoCloseTimer);
+      autoCloseTimer = null;
+    }
+    function scrollThenPosition() {
+      if (!disposed && !panel.hidden) requestAnimationFrame(positionTeacherPanel);
+    }
+    function mediaLayoutChanged() {
+      if (disposed || panel.hidden) return;
+      alignPracticePage();
+      scrollThenPosition();
+    }
+    const reference = host.querySelector('.interactive-schematic-panel');
+    const app = document.getElementById('app');
+    const resizeObserver = new ResizeObserver(mediaLayoutChanged);
+    if (reference) {
+      resizeObserver.observe(reference);
+      reference.querySelectorAll('video, .interactive-schematic-viewer').forEach(node => resizeObserver.observe(node));
+      reference.addEventListener('loadedmetadata', mediaLayoutChanged, true);
+    }
+    window.addEventListener('resize', scrollThenPosition);
+    app?.addEventListener('scroll', scrollThenPosition);
+    state.teacherCleanup = () => {
+      disposed = true;
+      clearTimeout(autoCloseTimer);
+      resizeObserver.disconnect();
+      reference?.removeEventListener('loadedmetadata', mediaLayoutChanged, true);
+      window.removeEventListener('resize', scrollThenPosition);
+      app?.removeEventListener('scroll', scrollThenPosition);
+      launcherAvatar?.destroy?.();
+      launcher.remove();
+      panel.remove();
+      state.teacherOpen = false;
+      state.teacherCleanup = null;
+    };
+    function close() {
+      state.teacherHistory = state.teacherUi?.history || state.teacherHistory;
+      state.teacherUi?.destroy?.();
+      state.teacherUi = null;
+      panel.hidden = true;
+      panel.classList.remove('is-floating', 'is-dragging');
+      launcher.classList.remove('is-open');
+      clearTimeout(autoCloseTimer);
+      panel.style.removeProperty('left');
+      panel.style.removeProperty('top');
+      panel.style.removeProperty('right');
+      panel.style.removeProperty('bottom');
+      panel.style.removeProperty('height');
+      panel.style.removeProperty('max-height');
+      launcher.hidden = false;
+      launcher.setAttribute('aria-expanded', 'false');
+      state.teacherOpen = false;
+      state.teacherFocusReturn = launcher;
+      launcher.focus();
+    }
+    launcher.addEventListener('click', () => {
+      if (state.teacherOpen) { close(); return; }
+      openPanel();
+    });
+    openPanel(10000);
+    panel.addEventListener('pointerdown', keepPanelOpen);
+    panel.addEventListener('focusin', keepPanelOpen);
+    panel.addEventListener('teacher-action', event => {
+      keepPanelOpen();
+      const target = event.detail === 'guidance' ? host.querySelector('.semantic-contract-panel') : event.detail === 'reference' ? host.querySelector('.interactive-schematic-panel') : null;
+      if (target) target.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'});
+      if (event.detail === 'practice') document.getElementById('interactive-score-launcher')?.focus();
+    });
   }
 
   function initAnimation(item) {
@@ -686,17 +881,11 @@
     const player = state.referenceMode === '3d' ? state.avatar3d : state.player;
     if (player) { player.stop(); player.play(); }
   }
-  function toggleReferenceVideo() {
-    const video = document.querySelector('.interactive-reference-video video:not([hidden])');
-    const button = document.getElementById('interactive-reference-video-toggle');
-    if (!video) return;
-    if (video.paused) {
-      video.play().catch(() => {});
-      if (button) button.textContent = `Ⅱ ${t('videoPause')}`;
-    } else {
-      video.pause();
-      if (button) button.textContent = `▶ ${t('videoPlay')}`;
-    }
+  function toggleReferenceVideo(event) {
+    const video = event?.currentTarget || document.querySelector('.interactive-reference-video video:not([hidden])');
+    if (!video || video.hidden) return;
+    if (video.paused) video.play().catch(() => {});
+    else video.pause();
   }
 
   function setReferenceVideoMode(mode) {
@@ -749,6 +938,8 @@
       startScore(true);
     }
     if (window.ScoringBridge?.startChallengeRecording) {
+      const message = state.locale === 'en' ? 'Preparing the camera and getting your scoring session ready.' : '正在准备摄像头和评分流程，请按页面提示完成开启。';
+      state.teacherUi?.say(message);
       window.ScoringBridge.startChallengeRecording();
     }
   }
@@ -777,9 +968,14 @@
   }
 
   function stop() {
+    state.teacherCleanup?.();
     stopInteractiveScoring();
     if (state.player) state.player.stop();
     if (state.avatar3d) state.avatar3d.stop();
+    state.teacherUi?.destroy?.();
+    state.teacherUi = null;
+    state.teacherOpen = false;
+    document.querySelectorAll('.teacher-agent-launcher, .teacher-agent-nudge, #teacher-agent-panel').forEach(node => node.remove());
   }
 
   global.InteractiveLearning = {
