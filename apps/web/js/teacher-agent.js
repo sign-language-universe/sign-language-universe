@@ -149,10 +149,11 @@
     const avatarHost=container.parentElement?.querySelector('[data-teacher-launch-avatar]');
     const ownsAvatar=!options.avatar;
     const avatar=options.avatar || (global.TeacherAvatar && avatarHost ? global.TeacherAvatar.mount(avatarHost,{label:c.title}) : null);
-    function appendMessage(message) { const bubble=document.createElement('div'); bubble.className=`teacher-bubble teacher-bubble-${message.who}`; if(message.scoreFeedback) bubble.dataset.scoreFeedback='true'; bubble.textContent=message.text; log.appendChild(bubble); log.scrollTop=log.scrollHeight; }
-    function say(text, who='coach', state='speaking') { const message={text,who}; history.push(message); appendMessage(message); if(who==='coach') { avatar?.setState(state); avatar?.speak(text); } }
+    function appendMessage(message) { const bubble=document.createElement('div'); bubble.className=`teacher-bubble teacher-bubble-${message.who}${message.proactive || message.scoreFeedback ? ' teacher-bubble-proactive' : ''}`; if(message.scoreFeedback) bubble.dataset.scoreFeedback='true'; bubble.textContent=message.text; log.appendChild(bubble); log.scrollTop=log.scrollHeight; }
+    function say(text, who='coach', state='speaking', proactive=false) { const message={text,who,proactive}; history.push(message); appendMessage(message); if(who==='coach') { avatar?.setState(state); avatar?.speak(text); } }
+    function notify(text) { say(text,'coach','speaking',true); }
     history.forEach(appendMessage);
-    if (!history.length) say(welcome(item,L));
+    if (!history.length) notify(welcome(item,L));
     function replaceScoreFeedback(result) {
       const feedback = scoreFeedback(result,item,L).text;
       const d=result?.diagnostics || {}, mode=String(d.scoring_mode || result?.level || '').toLowerCase();
@@ -178,7 +179,7 @@
     container.querySelectorAll('[data-action]').forEach(btn=>btn.addEventListener('click',()=>container.dispatchEvent(new CustomEvent('teacher-action',{bubbles:true,detail:btn.dataset.action}))));
     container.querySelector('form').addEventListener('submit',e=>{e.preventDefault(); const input=e.currentTarget.elements.question, value=input.value.trim(); if(!value)return; say(value,'learner'); const kind=classify(value,L); intent(kind); input.value='';});
     if(options.result) replaceScoreFeedback(options.result);
-    return {say, intent, replaceScoreFeedback, history, destroy:()=>{if(ownsAvatar) avatar?.destroy();}};
+    return {say, notify, intent, replaceScoreFeedback, history, destroy:()=>{if(ownsAvatar) avatar?.destroy();}};
   }
   global.TeacherAgent={render,answer,scoreFeedback,classify,welcome};
 })(window);

@@ -17,6 +17,18 @@ function setup(locale, result) {
   return {ui, buttons, form, log};
 }
 
+test('proactive welcome, capture notifications and score feedback differ from interactive replies', () => {
+  const f = setup('zh');
+  assert.match(f.log.children[0].className, /teacher-bubble-proactive/);
+  f.ui.notify('已经开始采集了。');
+  assert.match(f.log.children.at(-1).className, /teacher-bubble-proactive/);
+  assert.equal(f.ui.history.at(-1).proactive, true);
+  f.buttons[0].click();
+  assert.doesNotMatch(f.log.children.at(-1).className, /teacher-bubble-proactive/);
+  f.ui.replaceScoreFeedback({score_valid:false});
+  assert.match(f.log.children.at(-1).className, /teacher-bubble-proactive/);
+});
+
 test('preset questions append one right-aligned learner message before the coach answer', () => {
   for (const locale of ['zh', 'en']) {
     const f = setup(locale);

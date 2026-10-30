@@ -37,7 +37,11 @@ function fixture(active = true) {
     body: { append(...items) { nodes.push(...items); } }
   };
   const state = { locale: 'zh', teacherHistory: [], teacherHistoryIndex: null };
-  const TeacherAgent = { render: (panel, options) => ({ history: options.history, destroy() {} }) };
+  const log = {scrollTop:0, scrollHeight:900};
+  const TeacherAgent = { render: (panel, options) => {
+    panel.querySelector = () => log;
+    return { history: options.history, notify(text) { options.history.push({text, proactive:true}); }, replaceScoreFeedback(result) { options.history.push({scoreFeedback:true}); }, destroy() {} };
+  } };
   const window = { TeacherAgent, addEventListener() {}, removeEventListener() {} };
   const context = { state, document, window, TeacherAgent, innerHeight: 844, getComputedStyle: () => ({ display: 'block' }),
     requestAnimationFrame: fn => frames.push(fn),
@@ -98,6 +102,29 @@ test('short and long word pages keep the current word bar fully visible at the t
     assert.equal(f.app.scrollTop, 132);
     assert.equal(204 - f.app.scrollTop, 64 + 8);
   }
+});
+
+test('every proactive notification reopens at the latest message and resets inactivity timeout', () => {
+  const f = fixture();
+  vm.runInContext('mountTeacherAgent({index:1})', f.context);
+  f.flush();
+  const [launcher, panel] = f.nodes;
+  launcher.events.click();
+  assert.equal(panel.hidden, true);
+  f.state.teacherNotify('new capture tip');
+  f.flush();
+  assert.equal(panel.hidden, false);
+  const log = panel.querySelector('[data-log]');
+  assert.equal(log.scrollTop, log.scrollHeight);
+  const firstTimer = [...f.timers.keys()][0];
+  panel.events.input();
+  assert.equal(f.timers.has(firstTimer), false);
+  assert.equal(f.timers.size, 1);
+  [...f.timers.values()][0]();
+  assert.equal(panel.hidden, true);
+  f.state.teacherShowScore({score:87,score_valid:true});
+  f.flush();
+  assert.equal(panel.hidden, false);
 });
 
 test('cleanup prevents queued frames and old timeout from reopening a coach', () => {
