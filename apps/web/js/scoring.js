@@ -107,7 +107,8 @@
     scoringStartedAt: 0,
     uiRoot: document,
     uiMode: 'challenge',
-    onResult: null
+    onResult: null,
+    onCaptureStart: null
   };
 
   function installWebGLAlertGuard() {
@@ -1107,12 +1108,13 @@
     setProgress(0);
   }
 
-  function mountInteractive(root, { onResult = null } = {}) {
+  function mountInteractive(root, { onResult = null, onCaptureStart = null } = {}) {
     if (!root) return false;
     stopAll();
     state.uiRoot = root;
     state.uiMode = 'interactive';
     state.onResult = typeof onResult === 'function' ? onResult : null;
+    state.onCaptureStart = typeof onCaptureStart === 'function' ? onCaptureStart : null;
     const active = uiElement('challenge-active');
     const result = uiElement('challenge-result');
     if (active) active.style.display = 'flex';
@@ -1136,6 +1138,7 @@
     state.uiRoot = document;
     state.uiMode = 'challenge';
     state.onResult = null;
+    state.onCaptureStart = null;
   }
 
   function resetForChallenge() {
@@ -1273,6 +1276,7 @@
     state.recordStartedAt = Date.now();
     state.captureDurationMs = Math.round(plan.durationSec * 1000);
     AppState.isRecording = true;
+    try { state.onCaptureStart?.(); } catch (error) { console.error('Capture-start callback failed:', error); }
     setProgress(0);
 
     const recIndicator = uiElement('recording-indicator');
@@ -1985,7 +1989,7 @@
           // 结构化弱动作建议（interactive 面板"针对性局部指导"展示用，聚焦最差 2 个）
           const weakActions = bestMs.actions.slice().sort((a, b) => a.score - b.score).filter(a => a.score < 85).slice(0, 2);
           const groupAdvice = weakActions.map(a => ({
-            group: a.name, group_label: a.name, group_score: a.score,
+            group: a.name, group_label: a.name, group_label_zh: a.name_zh, group_label_en: a.name_en, group_score: a.score,
             // 双语字段：渲染端（renderGroupAdvice）按当前 UI 语言显式选择，避免依赖打分时 locale 检测
             related_stage_label: a.name, related_stage_detail: a.detail || '',
             related_stage_label_zh: a.name_zh, related_stage_label_en: a.name_en,

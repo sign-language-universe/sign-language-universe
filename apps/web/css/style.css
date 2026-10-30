@@ -3607,3 +3607,115 @@ body.theme-day .stage-score-row .stage-score-bar { background: rgba(22, 32, 51, 
   color: var(--text-muted);
   letter-spacing: 0.5px;
 }
+
+
+/* Interactive learning teacher agent */
+.teacher-agent-launcher {
+  position: fixed; z-index: 9998; left: max(10px, env(safe-area-inset-left)); bottom: max(30px, calc(24px + env(safe-area-inset-bottom)));
+  display: inline-flex; align-items: center; gap: 8px; min-height: 48px; padding: 0 16px 0 10px;
+  border: 1px solid rgba(255,255,255,.22); border-radius: 999px; background: linear-gradient(135deg,#6558df,#3386d8);
+  color: #fff; font: inherit; font-weight: 700; box-shadow: 0 10px 30px rgba(18,30,70,.32); cursor: pointer; user-select:none;
+}
+.teacher-agent-floating-avatar { display:grid; place-items:center; width:34px; height:34px; border-radius:50%; color:#4b3d72; background:radial-gradient(circle at 30% 25%,#fff4b8,#ffbf91 48%,#a88aff); font-size:22px; box-shadow:0 2px 12px #17133366; animation:teacher-float 2.8s ease-in-out infinite; }
+.teacher-agent-nudge { position:fixed; z-index:9997; left:158px; bottom:max(58px,calc(42px + env(safe-area-inset-bottom))); width:min(320px,calc(100vw - 178px)); max-height:min(38dvh,260px); overflow:auto; padding:12px 14px; border:1px solid rgba(164,156,255,.45); border-radius:18px; color:var(--text-primary,#f5f7ff); background:linear-gradient(145deg,#22244a,#14182b); box-shadow:0 14px 42px #05061388; animation:teacher-nudge-in .35s ease-out both; }
+.teacher-agent-nudge[hidden] { display:none; }
+.teacher-agent-nudge strong { display:block; padding-right:24px; }
+.teacher-agent-nudge p { margin:8px 0 12px; color:var(--text-secondary,#c4c9dc); font-size:13px; line-height:1.5; }
+.teacher-agent-nudge-close { position:absolute; top:7px; right:8px; width:30px; height:30px; border:0; border-radius:50%; color:inherit; background:transparent; font-size:21px; cursor:pointer; }
+.teacher-agent-nudge-chat { border:1px solid rgba(129,140,248,.42); border-radius:999px; padding:7px 11px; color:inherit; background:#5650b8; cursor:pointer; }
+@keyframes teacher-float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-3px)} }
+@keyframes teacher-nudge-in { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+.teacher-agent-launcher:hover { filter: brightness(1.08); transform: translateY(-1px); }
+.teacher-agent-launcher.is-open { width:48px; min-width:48px; padding:0; justify-content:center; }
+.teacher-agent-launcher.is-open > span:last-child { display:none; }
+.teacher-agent-launcher:focus-visible, .teacher-agent-nudge button:focus-visible, .teacher-agent button:focus-visible, .teacher-agent input:focus-visible { outline: 3px solid #ffbf47; outline-offset: 3px; }
+.teacher-agent-panel { position: relative; z-index: 1002; width: min(560px, 100%); height: min(340px, 46vh); margin: 0 auto; }
+.teacher-agent-panel.is-floating { position: fixed; display:flex; flex-direction:column; left: max(10px, env(safe-area-inset-left)); right: auto; top: min(82vh, calc(100dvh - 168px)); bottom: auto; width: min(620px, calc(100vw - 32px)); min-height:0; margin: 0; transform: none; }
+.teacher-agent-panel.is-floating > .teacher-agent { flex:1 1 auto; height:100%; min-height:0; }
+.teacher-agent-panel.is-floating .teacher-agent-log { flex:1 1 60px; height:auto; min-height:48px; max-height:none; overflow-x:hidden; overflow-y:auto; overscroll-behavior:contain; touch-action:pan-y; scrollbar-gutter:stable; }
+.teacher-agent-head { display:none; }
+.teacher-agent-panel.is-dragging { transform:none; }
+.teacher-agent-panel[hidden] { display:none; }
+.teacher-agent { display:flex; flex-direction:column; max-height:inherit; min-height:0; overflow:hidden; color:var(--text-primary,#f5f7ff); background:var(--panel-bg, #151b2a); border:1px solid rgba(148,163,184,.32); border-radius:18px; box-shadow:0 20px 60px rgba(0,0,0,.42); }
+.teacher-agent-head { display:none; }
+.teacher-agent-panel.is-floating .teacher-agent-progress { gap:3px; padding:4px 12px 2px; }
+.teacher-agent-panel.is-floating .teacher-agent-log { padding:6px 12px; gap:5px; }
+.teacher-agent-sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+.teacher-agent-panel.is-floating .teacher-agent-questions { padding:0 12px 5px; }
+.teacher-agent-panel.is-floating .teacher-agent-form { padding:0 12px 6px; }
+.teacher-agent-panel.is-floating .teacher-agent-tools { gap:5px; padding:6px 12px 8px; }
+.teacher-avatar-host { display:block; flex:0 0 42px; width:42px; height:42px; overflow:hidden; }
+.teacher-avatar-host .tap-avatar { display:block; width:100%; height:100%; }
+.teacher-avatar-host .tap-figure { width:100%; height:100%; }
+.teacher-avatar-host .tap-figure { display:block; width:100%; height:100%; overflow:visible; }
+.teacher-avatar-host .tap-figure .tap-halo-a { stop-color:rgba(107,92,224,.22); }
+.teacher-avatar-host .tap-figure .tap-halo-b { stop-color:rgba(0,229,255,.06); }
+.teacher-avatar-host .tap-figure .tap-knit-a { stop-color:#6558df; }
+.teacher-avatar-host .tap-figure .tap-knit-dot { fill:#eef1ff; }
+.teacher-avatar-host .tap-figure .tap-body-solid { fill:#6558df; }
+.teacher-avatar-host .tap-figure .tap-collar { fill:#eef1ff; }
+.teacher-avatar-host .tap-figure .tap-neck { fill:#e3b391; }
+.teacher-avatar-host .tap-figure .tap-sleeve { stroke:#4539a8; fill:none; stroke-linecap:round; }
+.teacher-avatar-host .tap-figure .tap-arm-limb { stroke:#6558df; fill:none; stroke-linecap:round; }
+.teacher-avatar-host .tap-figure .tap-hand,.teacher-avatar-host .tap-figure .tap-face { fill:#f3cba9; }
+.teacher-avatar-host .tap-figure .tap-hair-back,.teacher-avatar-host .tap-figure .tap-side-hair { fill:#3b3050; }
+.teacher-avatar-host .tap-figure .tap-bangs { fill:#4d3f68; }
+.teacher-avatar-host .tap-figure .tap-ear { fill:#e3b391; }
+.teacher-avatar-host .tap-figure .tap-pupil,.teacher-avatar-host .tap-figure .tap-brow { fill:#2a2440; stroke:#3b3050; }
+.teacher-avatar-host .tap-figure .tap-mouth { fill:#b5556d; }
+.teacher-avatar-host .tap-figure .tap-spark { fill:#ffe08a; }
+.teacher-avatar-host .tap-figure .tap-breath, .teacher-avatar-host .tap-figure .tap-head, .teacher-avatar-host .tap-figure .tap-arm, .teacher-avatar-host .tap-figure .tap-eye { transform-box:view-box; }
+.teacher-avatar-host .tap-figure .tap-breath { transform-origin:120px 258px; animation:tap-breathe 4.2s ease-in-out infinite; }
+.teacher-avatar-host .tap-figure .tap-head { transform-origin:120px 178px; animation:tap-bob 6.4s ease-in-out infinite; }
+.teacher-avatar-host .tap-figure .tap-arm { transform-origin:168px 202px; }
+.teacher-avatar-host .tap-figure .tap-eye--l { transform-origin:100px 122px; }
+.teacher-avatar-host .tap-figure .tap-eye--r { transform-origin:140px 122px; }
+.teacher-avatar-host .tap-figure .tap-spark { animation:tap-sparkle 3.4s ease-in-out infinite; }
+.teacher-avatar-host .tap-figure .tap-spark--b { animation-duration:4.6s; animation-delay:.9s; }
+.teacher-avatar-host .tap-figure .tap-spark--c { animation-duration:5.2s; animation-delay:1.7s; }
+.teacher-avatar-host .tap-figure .tap-eye,.teacher-avatar-host .tap-figure .tap-pupil,.teacher-avatar-host .tap-figure .tap-brow,.teacher-avatar-host .tap-figure .tap-blush { transition:transform .25s ease,opacity .25s ease; }
+.teacher-avatar-host .tap-figure .tap-eye { transition-duration:.09s; }
+.teacher-avatar-host .tap-figure.is-blink .tap-eye { transform:scaleY(.06); }
+.teacher-avatar-host .tap-figure.is-thinking .tap-pupil { transform:translate(-1.4px,-1.8px); }
+.teacher-avatar-host .tap-figure.is-happy .tap-brow { transform:translateY(-2px); }
+.teacher-avatar-host .tap-figure.is-happy .tap-blush { opacity:.8; }
+.teacher-avatar-host .tap-figure.is-waving .tap-arm { animation:tap-wave 1.05s ease-in-out var(--tap-wave-count,2); }
+.teacher-avatar-host .tap-figure.is-talking .tap-mouth-group { animation:tap-jaw .26s ease-in-out infinite; }
+@keyframes tap-breathe { 0%,100%{transform:translateY(0) scale(1)} 50%{transform:translateY(-1.6px) scale(1.014)} }
+@keyframes tap-bob { 0%,100%{transform:rotate(-1.1deg) translateY(0)} 50%{transform:rotate(1.1deg) translateY(-1px)} }
+@keyframes tap-wave { 0%,100%{transform:rotate(0)} 22%{transform:rotate(-17deg)} 48%{transform:rotate(11deg)} 74%{transform:rotate(-13deg)} }
+@keyframes tap-sparkle { 0%,100%{opacity:.15} 50%{opacity:.9} }
+@keyframes tap-jaw { 0%,100%{transform:translateY(0)} 50%{transform:translateY(1.1px)} }
+@media (prefers-reduced-motion:reduce) { .teacher-avatar-host .tap-figure *, .teacher-avatar-host .tap-figure *::before, .teacher-avatar-host .tap-figure *::after { animation:none!important; transition:none!important; } }
+.teacher-agent-floating-avatar { display:block; width:42px; height:42px; overflow:hidden; }
+.teacher-agent-floating-avatar .tap-avatar { width:100%; height:100%; }
+.teacher-agent-floating-avatar .tap-figure { width:100%; height:100%; }
+.teacher-agent-head > div:nth-child(2) { display:grid; gap:2px; min-width:0; flex:1; }
+.teacher-agent-head strong { font-size:15px; } .teacher-agent-head small { color:var(--text-secondary,#aab4c8); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.teacher-agent-close { width:34px; height:34px; border:0; border-radius:50%; background:transparent; color:inherit; font-size:24px; cursor:pointer; }
+.teacher-agent-progress { display:grid; flex:0 0 auto; gap:6px; padding:10px 16px 4px; color:var(--text-secondary,#aab4c8); font-size:12px; }
+.teacher-agent-progress i { height:5px; overflow:hidden; border-radius:9px; background:rgba(148,163,184,.2); } .teacher-agent-progress b { display:block; height:100%; border-radius:inherit; background:#56d6b2; }
+.teacher-agent-log { display:flex; flex:1 1 auto; flex-direction:column; gap:9px; min-height:0; max-height:230px; overflow-y:auto; padding:14px 16px; overscroll-behavior:contain; }
+.teacher-bubble { max-width:90%; padding:10px 12px; border-radius:14px; font-size:13px; line-height:1.55; white-space:pre-wrap; overflow-wrap:anywhere; }
+.teacher-bubble-coach { align-self:flex-start; background:rgba(99,102,241,.16); border:1px solid rgba(129,140,248,.2); } .teacher-bubble-learner { align-self:flex-end; background:rgba(45,160,132,.22); }
+.teacher-agent-questions { display:grid; flex:0 0 auto; grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px; padding:0 16px 8px; }
+.teacher-agent-questions button { min-width:0; padding:6px 5px; line-height:1.25; }
+.teacher-agent button { font:inherit; cursor:pointer; } .teacher-agent-questions button,.teacher-agent-tools button { padding:7px 10px; border:1px solid rgba(129,140,248,.35); border-radius:999px; color:inherit; background:rgba(99,102,241,.1); font-size:12px; }
+.teacher-agent .teacher-agent-questions button { min-width:0; padding:6px 5px; line-height:1.25; }
+.teacher-agent-form { display:flex; gap:7px; padding:0 16px 10px; } .teacher-agent-form input { min-width:0; flex:1; padding:9px 11px; border:1px solid rgba(148,163,184,.35); border-radius:10px; color:inherit; background:rgba(255,255,255,.05); font:inherit; } .teacher-agent-form button { padding:0 13px; border:0; border-radius:10px; color:#fff; background:#6258d9; font-weight:700; }
+.teacher-agent-panel.is-floating .teacher-agent-form { padding-left:58px; }
+.teacher-agent-tools { display:flex; flex-wrap:wrap; align-items:center; gap:7px; padding:10px 16px 14px; border-top:1px solid rgba(148,163,184,.2); } .teacher-agent-tools label { display:flex; align-items:center; gap:4px; margin-left:auto; color:var(--text-secondary,#aab4c8); font-size:12px; }
+.teacher-agent.teacher-no-motion *, .teacher-agent.teacher-no-motion *::before, .teacher-agent.teacher-no-motion *::after { scroll-behavior:auto !important; animation:none !important; transition:none !important; }
+body.theme-day .teacher-agent { color:#172033; background:#fff; } body.theme-day .teacher-agent-form input { color:#172033; background:#f7f8fb; }
+body.theme-day .teacher-agent-nudge { color:#172033; background:linear-gradient(145deg,#fff,#eef2ff); }
+.interactive-teacher-feedback { display:flex; align-items:center; gap:12px; width:100%; margin:10px 0; padding:13px 15px; border:1px solid rgba(129,140,248,.34); border-radius:14px; color:var(--text-primary,#f5f7ff); background:linear-gradient(135deg,rgba(99,102,241,.14),rgba(45,160,132,.1)); white-space:pre-line; line-height:1.6; }
+.teacher-result-avatar { flex:0 0 42px; width:42px; height:42px; }
+.interactive-teacher-feedback > span:last-child { min-width:0; }
+.teacher-agent-head-title { display:none; }
+.teacher-agent-questions { display:flex; flex-wrap:nowrap; overflow-x:auto; gap:6px; }
+.teacher-agent-questions button { flex:0 0 auto; }
+@media (max-width:760px) { .teacher-agent-nudge { left:calc(max(10px,env(safe-area-inset-left)) + 58px); right:max(10px,env(safe-area-inset-right)); bottom:max(58px,calc(42px + env(safe-area-inset-bottom))); width:auto; max-height:min(34dvh,220px); } }
+.interactive-teacher-feedback[hidden] { display:none; }
+body.theme-day .interactive-teacher-feedback { color:#172033; }
+@media (max-width:760px) { .teacher-agent-launcher { left:max(10px,env(safe-area-inset-left)); bottom:max(30px,calc(24px + env(safe-area-inset-bottom))); } .teacher-agent-nudge { left:max(10px,env(safe-area-inset-left)); bottom:max(68px,calc(62px + env(safe-area-inset-bottom))); width:min(300px,calc(100vw - 24px)); } .teacher-agent-panel.is-floating { position:fixed; left:8px; right:8px; width:auto; margin:0; transform:none; } .teacher-agent-panel:not(.is-floating) { width:100%; height:min(300px,40dvh); } .teacher-agent-panel.is-floating .teacher-agent-nudge { left:max(10px,env(safe-area-inset-left)); bottom:max(68px,calc(62px + env(safe-area-inset-bottom))); width:min(300px,calc(100vw - 24px)); } .teacher-agent-panel.is-floating .teacher-agent-log { max-height:none; flex-basis:48px; } .teacher-agent-log { max-height:min(22dvh,160px); } }
+@media (prefers-reduced-motion:reduce) { .teacher-agent-launcher:hover { transform:none; } .teacher-agent-floating-avatar,.teacher-agent-nudge { animation:none !important; } .teacher-agent *, .teacher-agent *::before, .teacher-agent *::after { transition:none !important; scroll-behavior:auto !important; } }
