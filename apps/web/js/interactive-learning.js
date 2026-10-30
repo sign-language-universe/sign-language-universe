@@ -30,7 +30,9 @@
     teacherUi: null,
     teacherHistory: [],
     teacherHistoryIndex: null,
-    teacherCleanup: null
+    teacherCleanup: null,
+    teacherNotify: null,
+    teacherShowScore: null
   };
 
   const TEXT = {
@@ -189,7 +191,8 @@
     const stageAdvice = root?.querySelector('#interactive-stage-advice');
     if (stageAdvice) stageAdvice.hidden = true;
     if (state.teacherHistoryIndex !== item.index) { state.teacherHistory=[]; state.teacherHistoryIndex=item.index; }
-    if (state.teacherUi) state.teacherUi.replaceScoreFeedback(result);
+    if (state.teacherShowScore) state.teacherShowScore(result);
+    else if (state.teacherUi) state.teacherUi.replaceScoreFeedback(result);
     else {
       const prior = state.teacherHistory.findIndex(message => message.scoreFeedback);
       if (prior >= 0) state.teacherHistory.splice(prior,1);
@@ -420,7 +423,7 @@
       onResult: result => handleInteractiveScore(item, result),
       onCaptureStart: () => {
         const message = state.locale === 'en' ? 'Your recording has started. Show the sign clearly; I will review the key movements when scoring is ready.' : '已经开始采集了，请清晰展示手语动作；评分完成后我会马上和你一起看关键动作。';
-        state.teacherUi?.say(message);
+        state.teacherNotify?.(message);
       }
     });
     return state.scoringMounted;
@@ -693,6 +696,7 @@
     panel.hidden = true;
     document.body.append(launcher, panel);
     let autoCloseTimer = null;
+    let autoCloseDelay = 0;
     let disposed = false;
     function positionTeacherPanel() {
       if (disposed) return;
@@ -735,6 +739,9 @@
         positionTeacherPanel();
         panel.hidden = false;
         state.teacherOpen = true;
+        const log = panel.querySelector('[data-log]');
+        if (log) log.scrollTop = log.scrollHeight;
+        resetAutoClose();
       }));
     }
     function openPanel(autoCloseMs = 0) {
@@ -746,18 +753,33 @@
       state.teacherHistoryIndex = item.index;
       state.teacherUi = TeacherAgent.render(panel, {locale:state.locale,item,result:state.lastScore,history:state.teacherHistory,avatar:launcherAvatar,close});
       state.teacherHistory = state.teacherUi.history;
-      clearTimeout(autoCloseTimer);
-      if (autoCloseMs > 0) {
-        autoCloseTimer = setTimeout(() => {
-          if (state.teacherOpen) close();
-        }, autoCloseMs);
-      }
+      autoCloseDelay = autoCloseMs;
+      resetAutoClose();
       openAfterScroll();
     }
-    function keepPanelOpen() {
+    function resetAutoClose() {
       clearTimeout(autoCloseTimer);
-      autoCloseTimer = null;
+      autoCloseTimer = autoCloseDelay > 0 ? setTimeout(() => {
+        if (!disposed && state.teacherOpen) close();
+      }, autoCloseDelay) : null;
     }
+    function keepPanelOpen() {
+      resetAutoClose();
+    }
+    state.teacherNotify = message => {
+      if (disposed) return;
+      if (!state.teacherUi) openPanel(10000);
+      state.teacherUi.notify(message);
+      autoCloseDelay = 10000;
+      openAfterScroll();
+    };
+    state.teacherShowScore = result => {
+      if (disposed) return;
+      if (!state.teacherUi) openPanel(10000);
+      else state.teacherUi.replaceScoreFeedback(result);
+      autoCloseDelay = 10000;
+      openAfterScroll();
+    };
     function scrollThenPosition() {
       if (!disposed && !panel.hidden) requestAnimationFrame(positionTeacherPanel);
     }
@@ -787,6 +809,8 @@
       launcher.remove();
       panel.remove();
       state.teacherOpen = false;
+      state.teacherNotify = null;
+      state.teacherShowScore = null;
       state.teacherCleanup = null;
     };
     function close() {
@@ -816,6 +840,9 @@
     openPanel(10000);
     panel.addEventListener('pointerdown', keepPanelOpen);
     panel.addEventListener('focusin', keepPanelOpen);
+    panel.addEventListener('input', keepPanelOpen);
+    panel.addEventListener('keydown', keepPanelOpen);
+    panel.addEventListener('wheel', keepPanelOpen, {passive:true});
     panel.addEventListener('teacher-action', event => {
       keepPanelOpen();
       const target = event.detail === 'guidance' ? host.querySelector('.semantic-contract-panel') : event.detail === 'reference' ? host.querySelector('.interactive-schematic-panel') : null;
@@ -939,7 +966,7 @@
     }
     if (window.ScoringBridge?.startChallengeRecording) {
       const message = state.locale === 'en' ? 'Preparing the camera and getting your scoring session ready.' : '正在准备摄像头和评分流程，请按页面提示完成开启。';
-      state.teacherUi?.say(message);
+      state.teacherNotify?.(message);
       window.ScoringBridge.startChallengeRecording();
     }
   }
